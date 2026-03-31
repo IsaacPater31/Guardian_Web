@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
@@ -31,22 +32,25 @@ export default function AppLayout() {
     };
 
     return (
-        <div className="app-layout">
-            <Sidebar
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-                collapsed={collapsed}
-            />
-            <div className={`app-main${collapsed ? ' sidebar-collapsed' : ''}`}>
-                <Header
-                    title={pageInfo.title}
-                    subtitle={pageInfo.subtitle}
-                    onMenuClick={handleMenuClick}
+        <>
+            <Analytics />
+            <div className="app-layout">
+                <Sidebar
+                    isOpen={sidebarOpen}
+                    onClose={() => setSidebarOpen(false)}
+                    collapsed={collapsed}
                 />
-                <div className="app-content">
-                    <Outlet />
+                <div className={`app-main${collapsed ? ' sidebar-collapsed' : ''}`}>
+                    <Header
+                        title={pageInfo.title}
+                        subtitle={pageInfo.subtitle}
+                        onMenuClick={handleMenuClick}
+                    />
+                    <div className="app-content">
+                        <Outlet />
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
