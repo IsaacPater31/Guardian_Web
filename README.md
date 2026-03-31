@@ -72,7 +72,7 @@ Todas las variables deben tener el prefijo `VITE_` para que Vite las exponga al 
 src/
   components/
     Layout/          # AppLayout, Header, Sidebar
-    Map/             # DynamicMarkers, UserLocation, SmartCenter
+    Map/             # DynamicMarkers, UserLocation, SelectedAlertPanel, MapAlertCountBadge
     AlertCard.jsx
     AlertDetailModal.jsx
     MapLegend.jsx
@@ -88,6 +88,8 @@ src/
   utils/
     mapUtils.js      # Haversine, clustering
     markerIcons.js   # SVG icon factory
+  hooks/
+    useUserGeolocation.js  # Geolocalizacion por etapas: rapida + precisa
   data/
     emergencyTypes.js
   firebase.js        # Inicialización Firebase (lee de .env)
@@ -126,6 +128,11 @@ La contraparte móvil de Guardian está desarrollada en **Flutter** y comparte l
 ## 🗺️ Funcionalidades Principales
 
 - **Dashboard**: estadísticas en vivo (24h), distribución de alertas por tipo
-- **Mapa**: alertas geolocalizadas en tiempo real, centrado en ubicación del usuario, botón "Centrar"
+- **Mapa**: render inmediato, geolocalizacion por etapas (rapida + precisa), alertas en tiempo real y boton "Centrar"
 - **Alertas**: listado completo con filtros por tipo
 - **Comunidades**: directorio de comunidades con miembros, roles y feed de alertas
+
+### Principios de arquitectura aplicados
+
+- **Responsabilidad unica (SRP)**: logica de geolocalizacion en `useUserGeolocation`, panel de alerta en `SelectedAlertPanel` y badge de conteo en `MapAlertCountBadge`.
+- **Independencia funcional**: cada modulo del mapa puede evolucionar sin acoplarse a `MapPage`.

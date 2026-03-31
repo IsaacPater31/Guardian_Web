@@ -30,7 +30,8 @@ export function AutoCenterOnUser({ position }) {
 
     useEffect(() => {
         if (!position || centered) return;
-        map.flyTo(position, DEFAULT_ZOOM, { duration: 1.2 });
+        // First center must be instant to avoid "jump from Bogotá" perception.
+        map.setView(position, DEFAULT_ZOOM, { animate: false });
         setCentered(true);
     }, [position, centered, map]);
 
