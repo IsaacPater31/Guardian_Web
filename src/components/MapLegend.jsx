@@ -1,10 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Info } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { EMERGENCY_TYPES, CATEGORIES, getAlertLabel } from '../data/emergencyTypes';
 
 export default function MapLegend() {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        return !isMobile; // en móvil: colapsado por defecto
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const m = window.matchMedia('(max-width: 768px)');
+        const handler = (e) => setIsExpanded(!e.matches);
+
+        m.addEventListener?.('change', handler);
+        return () => m.removeEventListener?.('change', handler);
+    }, []);
 
     // Group types by category
     const grouped = {};

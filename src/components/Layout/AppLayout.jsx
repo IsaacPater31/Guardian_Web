@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './Sidebar';
@@ -30,6 +30,13 @@ export default function AppLayout() {
         }
         setCollapsed((c) => !c);
     };
+
+    // On mobile: close sidebar whenever route changes.
+    useEffect(() => {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            setSidebarOpen(false);
+        }
+    }, [location.pathname]);
 
     return (
         <>

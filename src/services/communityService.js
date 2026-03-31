@@ -112,21 +112,50 @@ export async function getCommunityMembers(communityId) {
     if (userIds.length === 0) return members;
 
     const userMap = new Map();
-    for (let i = 0; i < userIds.length; i += 10) {
-        const batch = userIds.slice(i, i + 10);
-        const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
-        usersSnap.forEach((userDoc) => {
-            userMap.set(userDoc.id, userDoc.data());
-        });
+    try {
+        for (let i = 0; i < userIds.length; i += 10) {
+            const batch = userIds.slice(i, i + 10);
+            const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
+            usersSnap.forEach((userDoc) => {
+                userMap.set(userDoc.id, userDoc.data());
+            });
+        }
+    } catch {
+        // Some projects don't have a public 'users' collection (names come from Auth).
+    }
+
+    // Fallback: enrich names from recent alerts (alerts contain userName/userEmail).
+    const alertUserMap = new Map(); // userId -> { userName, userEmail }
+    try {
+        for (let i = 0; i < userIds.length; i += 10) {
+            const batch = userIds.slice(i, i + 10);
+            const alertsSnap = await getDocs(query(collection(db, 'alerts'), where('userId', 'in', batch)));
+            alertsSnap.forEach((aDoc) => {
+                const d = aDoc.data();
+                const uid = d.userId;
+                if (!uid || alertUserMap.has(uid)) return;
+                alertUserMap.set(uid, { userName: d.userName || null, userEmail: d.userEmail || null });
+            });
+        }
+    } catch {
+        // ignore
     }
 
     return members.map((member) => {
         const u = member.userId ? userMap.get(member.userId) : null;
-        if (!u) return member;
+        const au = member.userId ? alertUserMap.get(member.userId) : null;
         return {
             ...member,
-            displayName: member.displayName || u.display_name || u.displayName || u.full_name || u.name || null,
-            email: member.email || u.email || null,
+            displayName:
+                member.displayName ||
+                u?.display_name || u?.displayName || u?.full_name || u?.name ||
+                au?.userName ||
+                null,
+            email:
+                member.email ||
+                u?.email ||
+                au?.userEmail ||
+                null,
         };
     });
 }

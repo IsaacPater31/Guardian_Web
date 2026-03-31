@@ -6,6 +6,7 @@ import {
     onSnapshot,
     Timestamp,
     getDocs,
+    limit,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -59,16 +60,15 @@ export async function getRecentAlerts() {
 }
 
 /**
- * Get map alerts (last 7 days with location).
+ * Get map alerts (recent with location).
+ * We intentionally use a limit instead of a strict time window so entity/community
+ * histories still appear on the map (CommunityDetail doesn't enforce a window).
  */
 export async function getMapAlerts() {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
     const q = query(
         collection(db, 'alerts'),
-        where('timestamp', '>', Timestamp.fromDate(sevenDaysAgo)),
-        orderBy('timestamp', 'desc')
+        orderBy('timestamp', 'desc'),
+        limit(1000)
     );
 
     const snapshot = await getDocs(q);
@@ -98,16 +98,13 @@ export function subscribeToRecentAlerts(callback) {
 }
 
 /**
- * Subscribe to real-time map alerts (last 7 days with location).
+ * Subscribe to real-time map alerts (recent with location).
  */
 export function subscribeToMapAlerts(callback) {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
     const q = query(
         collection(db, 'alerts'),
-        where('timestamp', '>', Timestamp.fromDate(sevenDaysAgo)),
-        orderBy('timestamp', 'desc')
+        orderBy('timestamp', 'desc'),
+        limit(1000)
     );
 
     return onSnapshot(q, (snapshot) => {

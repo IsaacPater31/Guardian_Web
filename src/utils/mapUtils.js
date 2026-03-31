@@ -39,8 +39,8 @@ export function computeOffsets(alerts, map) {
             .filter(a => a.location)
             .map(a => ({
                 alert: a,
-                lat: a.location.latitude,
-                lng: a.location.longitude,
+                lat: a.location.latitude ?? a.location.lat,
+                lng: a.location.longitude ?? a.location.lng,
                 hasOffset: false,
                 offsetLevel: 0,
             }));
@@ -50,13 +50,15 @@ export function computeOffsets(alerts, map) {
     const groups = [];
     for (const alert of alerts) {
         if (!alert.location) continue;
-        const { latitude: lat, longitude: lng } = alert.location;
+        const lat = alert.location.latitude ?? alert.location.lat;
+        const lng = alert.location.longitude ?? alert.location.lng;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
         let matched = false;
         for (const g of groups) {
             if (haversineM(lat, lng, g.cLat, g.cLng) <= GEO_THRESHOLD_M) {
                 g.alerts.push(alert);
-                g.cLat = g.alerts.reduce((s, a) => s + a.location.latitude, 0) / g.alerts.length;
-                g.cLng = g.alerts.reduce((s, a) => s + a.location.longitude, 0) / g.alerts.length;
+                g.cLat = g.alerts.reduce((s, a) => s + (a.location.latitude ?? a.location.lat), 0) / g.alerts.length;
+                g.cLng = g.alerts.reduce((s, a) => s + (a.location.longitude ?? a.location.lng), 0) / g.alerts.length;
                 matched = true;
                 break;
             }

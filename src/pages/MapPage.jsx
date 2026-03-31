@@ -29,7 +29,7 @@ export default function MapPage() {
         <div className="map-page">
             <div className="map-container">
                 <MapContainer
-                    center={DEFAULT_CENTER}
+                    center={userPosition || DEFAULT_CENTER}
                     zoom={DEFAULT_ZOOM}
                     style={{ width: '100%', height: '100%' }}
                     zoomControl={true}
@@ -61,6 +61,8 @@ export default function MapPage() {
                         <div className="loading-spinner" />
                     </div>
                 )}
+
+                {/* If location is blocked, user can use the locate button. */}
 
                 {/* Selected alert side panel */}
                 {selectedAlert && (
