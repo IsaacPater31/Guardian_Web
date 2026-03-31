@@ -72,7 +72,8 @@ Todas las variables deben tener el prefijo `VITE_` para que Vite las exponga al 
 src/
   components/
     Layout/          # AppLayout, Header, Sidebar
-    Map/             # DynamicMarkers, UserLocation, SelectedAlertPanel, MapAlertCountBadge
+    Map/             # DynamicMarkers, UserLocation, SelectedAlertPanel,
+                     # MapAlertCountBadge, RequestLocationOnFirstInteraction
     AlertCard.jsx
     AlertDetailModal.jsx
     MapLegend.jsx
@@ -89,7 +90,7 @@ src/
     mapUtils.js      # Haversine, clustering
     markerIcons.js   # SVG icon factory
   hooks/
-    useUserGeolocation.js  # Geolocalizacion por etapas: rapida + precisa
+    useUserGeolocation.js  # Geolocalización con cache de última posición
   data/
     emergencyTypes.js
   firebase.js        # Inicialización Firebase (lee de .env)
@@ -117,6 +118,12 @@ src/
 - La seguridad real de los datos la proveen las **Firestore Security Rules** en Firebase Console.
 - Las API Keys de Firebase Web son identificadores de proyecto (no secretos de servidor), pero igualmente se mantienen fuera del repositorio como buena práctica.
 
+En producción (por ejemplo en `https://guardian-web-alpha.vercel.app/`) el cliente solo ve:
+
+- Configuración Firebase leída desde variables `VITE_…`.
+- Datos de Firestore según reglas de seguridad.
+- Sin ningún secreto de servidor ni tokens privados.
+
 ---
 
 ## 📱 App Móvil
@@ -127,12 +134,32 @@ La contraparte móvil de Guardian está desarrollada en **Flutter** y comparte l
 
 ## 🗺️ Funcionalidades Principales
 
-- **Dashboard**: estadísticas en vivo (24h), distribución de alertas por tipo
-- **Mapa**: render inmediato, geolocalizacion por etapas (rapida + precisa), alertas en tiempo real y boton "Centrar"
+- **Dashboard**: estadísticas en vivo (24h), distribución de alertas por tipo.
+- **Mapa**:
+  - Render inmediato con centro en la última ubicación conocida (cache local).
+  - Solicitud de geolocalización al montar (centrado rápido en el usuario si el navegador lo permite).
+  - Botón de “Centrar en mi ubicación” y reintentos explícitos.
+  - Muestra alertas recientes con ubicación (incluyendo entidades oficiales como Policía/Bomberos).
+  - Leyenda de tipos de alerta colapsable y responsive.
 - **Alertas**: listado completo con filtros por tipo
-- **Comunidades**: directorio de comunidades con miembros, roles y feed de alertas
+- **Comunidades**:
+  - Directorio de comunidades y entidades oficiales.
+  - Vista de detalle con pestañas `Alertas` y `Miembros`.
+  - Enriquecimiento de nombres de miembros desde `users`/alertas cuando `community_members` no trae displayName.
+  - Cuando una comunidad ya no existe, se muestra como **“Comunidad eliminada o inexistente”**.
 
 ### Principios de arquitectura aplicados
 
-- **Responsabilidad unica (SRP)**: logica de geolocalizacion en `useUserGeolocation`, panel de alerta en `SelectedAlertPanel` y badge de conteo en `MapAlertCountBadge`.
-- **Independencia funcional**: cada modulo del mapa puede evolucionar sin acoplarse a `MapPage`.
+- **Responsabilidad única (SRP)**:
+  - `useUserGeolocation`: geolocalización (solicitud + cache de última posición).
+  - `DynamicMarkers`: cálculo y pintado de marcadores (usa `mapUtils` para offsets/clusterización).
+  - `SelectedAlertPanel`: panel inferior de alerta seleccionada.
+  - `MapAlertCountBadge`: solo badge de conteo de alertas visibles en el mapa.
+  - `RequestLocationOnFirstInteraction`: dispara geolocalización solo en gestos de usuario sobre el mapa.
+- **Independencia funcional**:
+  - `MapPage` se limita a orquestar servicios y componentes (no contiene lógica de Firestore ni de Leaflet).
+  - Servicios (`alertService`, `communityService`) son stateless y reutilizables desde otras vistas.
+  - Componentes de layout (`Sidebar`, `Header`, `AppLayout`) no dependen de la lógica de dominio.
+- **Accesibilidad**:
+  - Colores del sidebar ajustados para cumplir contraste mínimo WCAG 2 AA.
+  - Área principal envuelta en `<main role="main">` para ofrecer landmark claro a lectores de pantalla.

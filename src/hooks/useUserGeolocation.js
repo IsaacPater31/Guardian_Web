@@ -72,10 +72,12 @@ export default function useUserGeolocation() {
         );
     }, []);
 
-    // Importante: NO solicitamos ubicación automáticamente al montar.
-    // Solo se pide cuando el usuario hace un gesto explícito:
-    // - Tap/drag en el mapa (RequestLocationOnFirstInteraction)
-    // - Click en el botón "Centrar en mi ubicación".
+    // Volvemos a solicitar ubicación automáticamente al montar para que
+    // el mapa se centre rápido en la ubicación actual (asumiendo que
+    // el navegador ya permite geolocalización para el sitio).
+    useEffect(() => {
+        request();
+    }, [request]);
 
     return { position, error, request };
 }

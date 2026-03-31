@@ -49,7 +49,7 @@ export default function AppLayout() {
                     onClose={() => setSidebarOpen(false)}
                     collapsed={collapsed}
                 />
-                <div className={`app-main${collapsed ? ' sidebar-collapsed' : ''}`}>
+                <main className={`app-main${collapsed ? ' sidebar-collapsed' : ''}`} role="main">
                     <Header
                         title={pageInfo.title}
                         subtitle={pageInfo.subtitle}
@@ -58,7 +58,7 @@ export default function AppLayout() {
                     <div className="app-content">
                         <Outlet />
                     </div>
-                </div>
+                </main>
             </div>
         </>
     );

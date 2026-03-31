@@ -236,7 +236,7 @@ body {
 
 .sidebar-brand-sub {
   font-size: 10px;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.65);
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -369,7 +369,7 @@ body {
 
 .sidebar-status-text {
   font-size: 11px;
-  color: rgba(255,255,255,0.28);
+  color: rgba(255,255,255,0.6);
   font-weight: 500;
 }
 
@@ -929,6 +929,35 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.map-geo-hint {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  max-width: 260px;
+  z-index: 350;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding: 10px 14px;
+}
+
+.map-geo-hint-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.map-geo-hint-desc {
+  margin-top: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 

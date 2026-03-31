@@ -17,7 +17,7 @@ export default function MapPage() {
     const [alertsLoading, setAlertsLoading] = useState(true);
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const { position: userPosition, request: requestLocation } = useUserGeolocation();
+    const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
     useEffect(() => {
         return subscribeToMapAlerts((data) => {
@@ -64,6 +64,16 @@ export default function MapPage() {
                 {alertsLoading && (
                     <div className="map-loading-overlay">
                         <div className="loading-spinner" />
+                    </div>
+                )}
+
+                {/* Discreet location error hint (Apple-like, non-invasive) */}
+                {geoError && (
+                    <div className="map-geo-hint">
+                        <div className="map-geo-hint-title">Ubicación desactivada</div>
+                        <div className="map-geo-hint-desc">
+                            Activa los permisos de ubicación para este navegador si deseas centrar el mapa en tu posición.
+                        </div>
                     </div>
                 )}
 
