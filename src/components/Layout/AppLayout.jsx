@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
@@ -40,6 +41,7 @@ export default function AppLayout() {
 
     return (
         <>
+            <SpeedInsights />
             <Analytics />
             <div className="app-layout">
                 <Sidebar
