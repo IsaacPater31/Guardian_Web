@@ -3,10 +3,9 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import * as LucideIcons from 'lucide-react';
 import { subscribeToMapAlerts } from '../services/alertService';
 import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '../data/emergencyTypes';
-import { computeSmartCenter, DEFAULT_CENTER, DEFAULT_ZOOM } from '../utils/mapUtils';
+import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../utils/mapUtils';
 import DynamicMarkers from '../components/Map/DynamicMarkers';
-import SmartCenter from '../components/Map/SmartCenter';
-import { UserLocationMarker, LocateMeButton } from '../components/Map/UserLocation';
+import { UserLocationMarker, LocateMeButton, AutoCenterOnUser } from '../components/Map/UserLocation';
 import MapLegend from '../components/MapLegend';
 import AlertDetailModal from '../components/AlertDetailModal';
 import { Eye, Forward, Flag, MapPin, EyeOff, User, X } from 'lucide-react';
@@ -39,19 +38,14 @@ export default function MapPage() {
     const [loading, setLoading] = useState(true);
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [smartCenter, setSmartCenter] = useState(null);
     const { position: userPosition, request: requestLocation } = useGeolocation();
 
     useEffect(() => {
         return subscribeToMapAlerts((data) => {
             setAlerts(data);
             setLoading(false);
-            if (data.length > 0) setSmartCenter(computeSmartCenter(data));
         });
     }, []);
-
-    // Prefer user position; fall back to smart center
-    const initialCenter = userPosition || smartCenter;
 
     return (
         <div className="map-page">
@@ -72,10 +66,8 @@ export default function MapPage() {
                             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
 
-                        {/* Auto-fly to user location or smart center once on load */}
-                        {initialCenter && <SmartCenter center={initialCenter} />}
-
                         {/* User's GPS position — blue pulsing dot */}
+                        <AutoCenterOnUser position={userPosition} />
                         <UserLocationMarker position={userPosition} />
 
                         {/* Locate-me button — bottom right */}

@@ -22,6 +22,22 @@ export function UserLocationMarker({ position }) {
 }
 
 /**
+ * AutoCenterOnUser — centers the map once when GPS becomes available.
+ */
+export function AutoCenterOnUser({ position }) {
+    const map = useMap();
+    const [centered, setCentered] = useState(false);
+
+    useEffect(() => {
+        if (!position || centered) return;
+        map.flyTo(position, DEFAULT_ZOOM, { duration: 1.2 });
+        setCentered(true);
+    }, [position, centered, map]);
+
+    return null;
+}
+
+/**
  * LocateMeButton — fixed button (bottom-right) that flies the map to the
  * user's last known GPS position.
  * Must be rendered inside <MapContainer>.

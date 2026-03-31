@@ -4,6 +4,7 @@ import {
     query,
     where,
     onSnapshot,
+    documentId,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -95,15 +96,37 @@ export async function getCommunityMembers(communityId) {
         where('community_id', '==', communityId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => {
+    const members = snapshot.docs.map((doc) => {
         const d = doc.data();
         return {
             id: doc.id,
             userId: d.user_id || d.userId || null,
             role: d.role || 'member',
             joinedAt: d.joined_at || d.joinedAt || null,
-            displayName: d.display_name || d.displayName || d.name || null,
-            email: d.email || null,
+            displayName: d.display_name || d.displayName || d.full_name || d.name || null,
+            email: d.email || d.user_email || null,
+        };
+    });
+
+    const userIds = [...new Set(members.map((m) => m.userId).filter(Boolean))];
+    if (userIds.length === 0) return members;
+
+    const userMap = new Map();
+    for (let i = 0; i < userIds.length; i += 10) {
+        const batch = userIds.slice(i, i + 10);
+        const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
+        usersSnap.forEach((userDoc) => {
+            userMap.set(userDoc.id, userDoc.data());
+        });
+    }
+
+    return members.map((member) => {
+        const u = member.userId ? userMap.get(member.userId) : null;
+        if (!u) return member;
+        return {
+            ...member,
+            displayName: member.displayName || u.display_name || u.displayName || u.full_name || u.name || null,
+            email: member.email || u.email || null,
         };
     });
 }

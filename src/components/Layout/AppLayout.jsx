@@ -17,21 +17,31 @@ function getPageInfo(pathname) {
 }
 
 export default function AppLayout() {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);      // mobile overlay
+    const [collapsed, setCollapsed] = useState(false);           // desktop collapse
     const location = useLocation();
     const pageInfo = getPageInfo(location.pathname);
+
+    const handleMenuClick = () => {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            setSidebarOpen(true);
+            return;
+        }
+        setCollapsed((c) => !c);
+    };
 
     return (
         <div className="app-layout">
             <Sidebar
                 isOpen={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
+                collapsed={collapsed}
             />
-            <div className="app-main">
+            <div className={`app-main${collapsed ? ' sidebar-collapsed' : ''}`}>
                 <Header
                     title={pageInfo.title}
                     subtitle={pageInfo.subtitle}
-                    onMenuClick={() => setSidebarOpen(true)}
+                    onMenuClick={handleMenuClick}
                 />
                 <div className="app-content">
                     <Outlet />
