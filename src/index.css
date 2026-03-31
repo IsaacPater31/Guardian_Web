@@ -1449,7 +1449,11 @@ body {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 99;
+    z-index: 900;
+  }
+
+  .sidebar {
+    z-index: 1000;
   }
 
   .app-content {
@@ -1469,9 +1473,10 @@ body {
   }
 
   .map-legend {
-    width: 200px;
+    width: min(78vw, 260px);
     top: var(--space-3);
     right: var(--space-3);
+    z-index: 300;
   }
 
   .map-alert-count-badge-wrap {
@@ -1524,9 +1529,10 @@ body {
   }
 
   .map-legend {
-    width: min(88vw, 290px);
+    width: min(86vw, 280px);
     right: 8px;
     top: 8px;
+    z-index: 300;
   }
 
   .map-alert-panel {

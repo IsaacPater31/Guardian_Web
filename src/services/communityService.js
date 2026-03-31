@@ -31,7 +31,7 @@ export async function getCommunityName(id) {
     if (!id) return null;
     if (_nameCache[id]) return _nameCache[id];
     await _loadCache();
-    return _nameCache[id] || id;
+    return _nameCache[id] || 'Comunidad eliminada o inexistente';
 }
 
 // ─── Community Service ───

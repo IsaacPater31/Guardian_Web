@@ -9,6 +9,7 @@ import AlertDetailModal from '../components/AlertDetailModal';
 import useUserGeolocation from '../hooks/useUserGeolocation';
 import SelectedAlertPanel from '../components/Map/SelectedAlertPanel';
 import MapAlertCountBadge from '../components/Map/MapAlertCountBadge';
+import RequestLocationOnFirstInteraction from '../components/Map/RequestLocationOnFirstInteraction';
 
 // ─── MapPage ──────────────────────────────────────────────────────────────────
 export default function MapPage() {
@@ -40,6 +41,10 @@ export default function MapPage() {
                     />
 
                     {/* User's GPS position — blue pulsing dot */}
+                    <RequestLocationOnFirstInteraction
+                        enabled={!userPosition}
+                        onRequest={requestLocation}
+                    />
                     <AutoCenterOnUser position={userPosition} />
                     <UserLocationMarker position={userPosition} />
 
