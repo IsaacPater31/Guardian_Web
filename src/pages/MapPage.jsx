@@ -1,15 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { subscribeToMapAlerts } from '../services/alertService';
+import { subscribeToMapAlertsFiltered } from '../services/alertService';
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../utils/mapUtils';
 import DynamicMarkers from '../components/Map/DynamicMarkers';
 import { UserLocationMarker, LocateMeButton, AutoCenterOnUser } from '../components/Map/UserLocation';
-import MapLegend from '../components/MapLegend';
 import AlertDetailModal from '../components/AlertDetailModal';
 import useUserGeolocation from '../hooks/useUserGeolocation';
 import SelectedAlertPanel from '../components/Map/SelectedAlertPanel';
 import MapAlertCountBadge from '../components/Map/MapAlertCountBadge';
 import RequestLocationOnFirstInteraction from '../components/Map/RequestLocationOnFirstInteraction';
+import MapFilterPanel from '../components/Map/MapFilterPanel';
+
+// ─── Default filter state ─────────────────────────────────────────────────────
+const DEFAULT_FILTERS = {
+    types: [],
+    status: 'all',
+    dateRange: 'all',
+    customStart: null,
+    customEnd: null,
+};
 
 // ─── MapPage ──────────────────────────────────────────────────────────────────
 export default function MapPage() {
@@ -17,12 +26,43 @@ export default function MapPage() {
     const [alertsLoading, setAlertsLoading] = useState(true);
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
+    // Keep a ref to the current unsubscribe fn so we can cancel it when filters change
+    const unsubRef = useRef(null);
+
+    // Re-subscribe every time filters change
     useEffect(() => {
-        return subscribeToMapAlerts((data) => {
+        // Cancel previous subscription
+        if (unsubRef.current) {
+            unsubRef.current();
+            unsubRef.current = null;
+        }
+
+        setAlertsLoading(true);
+
+        const unsub = subscribeToMapAlertsFiltered(filters, (data) => {
             setAlerts(data);
             setAlertsLoading(false);
+        });
+
+        unsubRef.current = unsub;
+
+        return () => {
+            if (unsubRef.current) {
+                unsubRef.current();
+                unsubRef.current = null;
+            }
+        };
+    }, [filters]);
+
+    const handleFiltersChange = useCallback((newFilters) => {
+        setFilters(newFilters);
+        // If the currently selected alert is no longer in the filtered set, deselect it
+        setSelectedAlert((prev) => {
+            if (!prev) return prev;
+            return prev; // will naturally disappear if not in markers anymore
         });
     }, []);
 
@@ -58,8 +98,18 @@ export default function MapPage() {
                     <DynamicMarkers alerts={alerts} onMarkerClick={setSelectedAlert} />
                 </MapContainer>
 
+                {/* ── Filter Panel (replaces old MapLegend) ── */}
+                <MapFilterPanel
+                    types={filters.types}
+                    status={filters.status}
+                    dateRange={filters.dateRange}
+                    customStart={filters.customStart}
+                    customEnd={filters.customEnd}
+                    onChange={handleFiltersChange}
+                    totalVisible={alerts.length}
+                />
+
                 {/* Alert count badge */}
-                <MapLegend />
                 {!alertsLoading && <MapAlertCountBadge count={alerts.length} />}
                 {alertsLoading && (
                     <div className="map-loading-overlay">
@@ -67,7 +117,7 @@ export default function MapPage() {
                     </div>
                 )}
 
-                {/* Discreet location error hint (Apple-like, non-invasive) */}
+                {/* Discreet location error hint */}
                 {geoError && (
                     <div className="map-geo-hint">
                         <div className="map-geo-hint-title">Ubicación desactivada</div>
@@ -76,8 +126,6 @@ export default function MapPage() {
                         </div>
                     </div>
                 )}
-
-                {/* If location is blocked, user can use the locate button. */}
 
                 {/* Selected alert side panel */}
                 {selectedAlert && (

@@ -39,7 +39,42 @@ function parseAlert(doc) {
         forwardsCount: data.forwards_count || 0,
         reportsCount: data.reports_count || 0,
         reportedBy: data.reported_by || [],
+        alertStatus: data.alert_status || 'pending',
     };
+}
+
+/** Build a Date range [start, end] from a preset key. */
+function getDateRange(range) {
+    const now = new Date();
+    let start = null;
+    let end = null;
+
+    if (range === 'today') {
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    } else if (range === 'yesterday') {
+        const y = new Date(now);
+        y.setDate(y.getDate() - 1);
+        start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0);
+        end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59);
+    } else if (range === 'week') {
+        // Current week (Monday – today)
+        const day = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mon=0
+        start = new Date(now);
+        start.setDate(now.getDate() - day);
+        start.setHours(0, 0, 0, 0);
+        end = now;
+    } else if (range === '7days') {
+        start = new Date(now);
+        start.setDate(now.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+        end = now;
+    } else if (range === 'month') {
+        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        end = now;
+    }
+
+    return { start, end };
 }
 
 /**
@@ -61,8 +96,6 @@ export async function getRecentAlerts() {
 
 /**
  * Get map alerts (recent with location).
- * We intentionally use a limit instead of a strict time window so entity/community
- * histories still appear on the map (CommunityDetail doesn't enforce a window).
  */
 export async function getMapAlerts() {
     const q = query(
@@ -111,6 +144,95 @@ export function subscribeToMapAlerts(callback) {
         const alerts = snapshot.docs
             .map(parseAlert)
             .filter((alert) => alert.shareLocation && alert.location);
+        callback(alerts);
+    });
+}
+
+/**
+ * Subscribe to real-time map alerts WITH FILTERS.
+ *
+ * Builds a Firestore query based on active filters:
+ *   - types    : string[]  — array of alertType values (empty = all)
+ *   - status   : string    — 'all' | 'pending' | 'attended'
+ *   - dateRange: string    — 'all' | 'today' | 'yesterday' | 'week' | '7days' | 'month'
+ *   - customStart/customEnd: Date | null — for custom date range
+ *
+ * Returns an unsubscribe function.
+ *
+ * NOTE: Firestore free-plan limits mean we cannot combine an `in` filter on
+ * alertType with an inequality filter on timestamp in the same query AND use
+ * compound orderBy without a composite index. Strategy:
+ *   1. When types filter is present: query by type (in) + fetch more; date filtered client-side.
+ *   2. When only date filter: query by timestamp range; type filtered client-side.
+ *   3. When status filter: always client-side (no server-side ≠ on free plan).
+ * This avoids needing composite indexes while still drastically reducing reads.
+ */
+export function subscribeToMapAlertsFiltered(filters, callback) {
+    const { types = [], status = 'all', dateRange = 'all', customStart = null, customEnd = null } = filters;
+
+    const hasTypes = types.length > 0;
+    const hasDate = dateRange !== 'all';
+    const hasStatus = status !== 'all';
+
+    let { start, end } = hasDate && dateRange !== 'custom'
+        ? getDateRange(dateRange)
+        : { start: customStart, end: customEnd };
+
+    let constraints = [orderBy('timestamp', 'desc')];
+
+    if (hasTypes && types.length === 1) {
+        // Single type — use equality directly (no composite index needed with timestamp)
+        constraints = [
+            where('alertType', '==', types[0]),
+            orderBy('timestamp', 'desc'),
+        ];
+        if (start) constraints.splice(1, 0, where('timestamp', '>=', Timestamp.fromDate(start)));
+        if (end)   constraints.splice(start ? 2 : 1, 0, where('timestamp', '<=', Timestamp.fromDate(end)));
+    } else if (hasTypes) {
+        // Multiple types — use `in` filter; date will be filtered client-side
+        constraints = [
+            where('alertType', 'in', types),
+            orderBy('timestamp', 'desc'),
+            limit(500),
+        ];
+    } else if (hasDate && start) {
+        // Date only — use timestamp range
+        constraints = [
+            where('timestamp', '>=', Timestamp.fromDate(start)),
+            ...(end ? [where('timestamp', '<=', Timestamp.fromDate(end))] : []),
+            orderBy('timestamp', 'desc'),
+        ];
+    } else {
+        // No type/date filter — just fetch recent 1000
+        constraints = [orderBy('timestamp', 'desc'), limit(1000)];
+    }
+
+    const q = query(collection(db, 'alerts'), ...constraints);
+
+    return onSnapshot(q, (snapshot) => {
+        let alerts = snapshot.docs
+            .map(parseAlert)
+            .filter((a) => a.shareLocation && a.location);
+
+        // Client-side post-filters (cheap, already reduced by server query)
+        if (hasTypes && types.length > 1) {
+            // For multi-type queries without date server-side, filter date here
+            if (hasDate && start) {
+                alerts = alerts.filter((a) => {
+                    const ts = a.timestamp?.toDate?.() ?? new Date(a.timestamp);
+                    return ts >= start && (!end || ts <= end);
+                });
+            }
+        }
+
+        if (hasStatus) {
+            alerts = alerts.filter((a) =>
+                status === 'attended'
+                    ? a.alertStatus === 'attended'
+                    : a.alertStatus !== 'attended'
+            );
+        }
+
         callback(alerts);
     });
 }
