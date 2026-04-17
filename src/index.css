@@ -1815,3 +1815,442 @@ body {
     padding: 0;
   }
 }
+
+/* ─── Tags: Estado de atención ─────────────────────────────────────────────── */
+
+.tag-attended {
+  background: rgba(52, 199, 89, 0.12);
+  color: #1A9940;
+  border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+.tag-pending {
+  background: rgba(255, 149, 0, 0.1);
+  color: #CC7A00;
+  border: 1px solid rgba(255, 149, 0, 0.25);
+}
+
+/* Dot verde sobre el ícono */
+.alert-card-icon {
+  position: relative;
+}
+
+.alert-card-attended-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #34C759;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* ─── Filter Toolbar (barra de filtros en AlertsPage) ──────────────────────── */
+
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.filter-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-toolbar-btn:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+}
+
+.filter-toolbar-btn.active {
+  background: var(--color-sidebar);
+  border-color: var(--color-sidebar);
+  color: white;
+}
+
+.filter-toolbar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: #3B82F6;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.filter-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.filter-clear-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.06);
+  color: #EF4444;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-clear-all-btn:hover {
+  background: rgba(239,68,68,0.12);
+}
+
+.filter-loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.filter-loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse 1.2s infinite;
+}
+
+/* ─── Filter Panel (overlay + drawer) ──────────────────────────────────────── */
+
+.filter-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 800;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 180ms ease-out;
+}
+
+.filter-panel {
+  width: 100%;
+  max-width: 560px;
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  animation: slideUp 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.filter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px var(--space-5) 12px;
+  flex-shrink: 0;
+}
+
+.filter-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.filter-panel-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--color-sidebar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-active-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: #3B82F6;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filter-clear-btn {
+  background: none;
+  border: none;
+  color: #EF4444;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.filter-clear-btn:hover {
+  background: rgba(239,68,68,0.08);
+}
+
+.filter-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.filter-close-btn:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.filter-panel-divider {
+  height: 1px;
+  background: var(--color-divider);
+  flex-shrink: 0;
+}
+
+.filter-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.filter-panel-footer {
+  padding: var(--space-3) var(--space-5) 28px;
+  border-top: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.filter-apply-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  border: none;
+  background: var(--color-sidebar);
+  color: white;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  letter-spacing: -0.01em;
+}
+
+.filter-apply-btn:hover {
+  background: #162d66;
+  box-shadow: var(--shadow-md);
+}
+
+/* Filter sections */
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.filter-section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Type chips */
+.filter-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-type-chip:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-secondary);
+}
+
+.filter-type-chip.active {
+  font-weight: 600;
+}
+
+.filter-type-chip-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Status pills */
+.filter-status-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-status-pill {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-status-pill:hover {
+  background: var(--color-surface-secondary);
+}
+
+.filter-status-pill.active {
+  background: var(--color-sidebar);
+  border-color: var(--color-sidebar);
+  color: white;
+}
+
+/* Date chips */
+.filter-date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-date-chip:hover {
+  background: var(--color-surface-secondary);
+}
+
+.filter-date-chip.active {
+  background: #3F51B5;
+  border-color: #3F51B5;
+  color: white;
+  font-weight: 600;
+}
+
+/* Custom date pickers */
+.filter-custom-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.filter-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-date-field label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.06em;
+}
+
+.filter-date-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-secondary);
+}
+
+.filter-date-input-wrap input[type="date"] {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.filter-date-input-wrap input[type="date"]:focus {
+  outline: none;
+}

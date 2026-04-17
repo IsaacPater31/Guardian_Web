@@ -14,6 +14,7 @@ export default function AlertCard({ alert, onClick }) {
     const Icon = LucideIcons[iconName] || LucideIcons.AlertTriangle;
     const label = getAlertLabel(alert.alertType);
     const timeAgo = getTimeAgo(alert.timestamp);
+    const isAttended = alert.alertStatus === 'attended';
 
     return (
         <div className="alert-card" onClick={() => onClick?.(alert)}>
@@ -22,6 +23,10 @@ export default function AlertCard({ alert, onClick }) {
                 style={{ backgroundColor: color }}
             >
                 <Icon />
+                {/* Indicador de atendida (punto verde) */}
+                {isAttended && (
+                    <span className="alert-card-attended-dot" title="Atendida" />
+                )}
             </div>
             <div className="alert-card-content">
                 <div className="alert-card-top">
@@ -32,6 +37,18 @@ export default function AlertCard({ alert, onClick }) {
                     <p className="alert-card-desc">{alert.description}</p>
                 )}
                 <div className="alert-card-tags">
+                    {/* Badge de estado — siempre visible */}
+                    {isAttended ? (
+                        <span className="tag tag-attended">
+                            <LucideIcons.CheckCircle2 style={{ width: 11, height: 11 }} />
+                            Atendida
+                        </span>
+                    ) : (
+                        <span className="tag tag-pending">
+                            <LucideIcons.Clock style={{ width: 11, height: 11 }} />
+                            No atendida
+                        </span>
+                    )}
                     {alert.shareLocation && alert.location && (
                         <span className="tag tag-location">
                             <MapPin /> Ubicación

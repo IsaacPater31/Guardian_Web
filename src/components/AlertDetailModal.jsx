@@ -10,10 +10,25 @@ function MiniMap({ lat, lng, color }) {
     const mapRef = useRef(null);
 
     useEffect(() => {
-        if (!containerRef.current || mapRef.current) return;
+        if (!containerRef.current) return;
 
-        // Dynamically import leaflet only when needed
+        // If the map was already created for this container, just update the view
+        if (mapRef.current) {
+            mapRef.current.setView([lat, lng], 15);
+            return;
+        }
+
+        // Use a cancelled flag to handle the async import race condition:
+        // if the component unmounts before the import resolves, we skip init.
+        let cancelled = false;
+
         import('leaflet').then((L) => {
+            if (cancelled || !containerRef.current) return;
+
+            // Guard: Leaflet sets _leaflet_id on the container after init.
+            // If it's already set another instance owns this node — skip.
+            if (containerRef.current._leaflet_id) return;
+
             const map = L.default.map(containerRef.current, {
                 center: [lat, lng],
                 zoom: 15,
@@ -39,9 +54,15 @@ function MiniMap({ lat, lng, color }) {
 
             L.default.marker([lat, lng], { icon }).addTo(map);
             mapRef.current = map;
+
+            // Invalidate size in case the container was not visible during init
+            requestAnimationFrame(() => {
+                if (!cancelled && mapRef.current) mapRef.current.invalidateSize();
+            });
         });
 
         return () => {
+            cancelled = true;
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -113,6 +134,7 @@ export default function AlertDetailModal({ alert, onClose }) {
         : new Date(alert.timestamp);
 
     const hasLocation = alert.shareLocation && alert.location;
+    const isAttended  = alert.alertStatus === 'attended';
 
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) onClose();
@@ -128,7 +150,35 @@ export default function AlertDetailModal({ alert, onClose }) {
                     </div>
                     <div className="modal-header-info">
                         <div className="modal-header-type">{label}</div>
-                        <div className="modal-header-time">{timeAgo}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <div className="modal-header-time">{timeAgo}</div>
+                            {/* Badge de estado */}
+                            <span
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '2px 8px',
+                                    borderRadius: 'var(--radius-full)',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: 'white',
+                                    background: isAttended
+                                        ? 'rgba(52, 199, 89, 0.85)'
+                                        : 'rgba(255, 255, 255, 0.25)',
+                                    backdropFilter: 'blur(4px)',
+                                    border: isAttended
+                                        ? '1px solid rgba(52,199,89,0.6)'
+                                        : '1px solid rgba(255,255,255,0.3)',
+                                }}
+                            >
+                                {isAttended
+                                    ? <LucideIcons.CheckCircle2 style={{ width: 11, height: 11 }} />
+                                    : <LucideIcons.Clock style={{ width: 11, height: 11 }} />
+                                }
+                                {isAttended ? 'Atendida' : 'No atendida'}
+                            </span>
+                        </div>
                     </div>
                     <button className="modal-close" onClick={onClose}>
                         <X />

@@ -1,34 +1,106 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { subscribeToRecentAlerts } from '../services/alertService';
-import { EMERGENCY_TYPES, getAlertColor, getAlertLabel } from '../data/emergencyTypes';
+import { subscribeToAlertsFiltered } from '../services/alertService';
+import { getAlertColor, getAlertLabel } from '../data/emergencyTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
-import { Filter } from 'lucide-react';
+import AlertFilterPanel, { EMPTY_FILTERS, countActiveFilters } from '../components/AlertFilterPanel';
+
+// ─── Labels de los filtros activos ────────────────────────────────────────────
+
+const STATUS_LABELS = {
+    pending:  'No atendidas',
+    attended: 'Atendidas',
+};
+
+const DATE_LABELS = {
+    today:     'Hoy',
+    yesterday: 'Ayer',
+    week:      'Esta semana',
+    '7days':   'Últimos 7 días',
+    month:     'Este mes',
+    custom:    'Personalizado',
+};
 
 export default function AlertsPage() {
-    const [alerts, setAlerts] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [alerts, setAlerts]               = useState([]);
+    const [loading, setLoading]             = useState(true);
     const [selectedAlert, setSelectedAlert] = useState(null);
-    const [activeFilter, setActiveFilter] = useState('ALL');
+    const [filters, setFilters]             = useState(EMPTY_FILTERS);
+    const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-    useEffect(() => {
-        const unsub = subscribeToRecentAlerts((data) => {
+    // Suscripción reactiva con filtros
+    const subscribe = useCallback((activeFilters) => {
+        setLoading(true);
+
+        const unsub = subscribeToAlertsFiltered(activeFilters, (data) => {
             setAlerts(data);
             setLoading(false);
         });
+
         return unsub;
     }, []);
 
-    // Filter alerts
-    const filteredAlerts = activeFilter === 'ALL'
-        ? alerts
-        : alerts.filter((a) => a.alertType === activeFilter);
+    useEffect(() => {
+        const unsub = subscribe(filters);
+        return unsub;
+    }, [filters, subscribe]);
 
-    // Get types that exist in current data
-    const existingTypes = [...new Set(alerts.map((a) => a.alertType))];
+    const applyFilters = (newFilters) => {
+        setFilters(newFilters);
+    };
 
-    if (loading) {
+    const clearFilters = () => setFilters(EMPTY_FILTERS);
+
+    const activeCount = countActiveFilters(filters);
+    const hasFilters  = activeCount > 0;
+
+    // ─── Chips de filtros activos ─────────────────────────────────────────────
+
+    const activeChips = [];
+
+    if (filters.types.length > 0) {
+        filters.types.forEach((type) => {
+            activeChips.push({
+                key: `type-${type}`,
+                label: getAlertLabel(type),
+                color: getAlertColor(type),
+                onRemove: () =>
+                    setFilters((prev) => ({
+                        ...prev,
+                        types: prev.types.filter((t) => t !== type),
+                    })),
+            });
+        });
+    }
+
+    if (filters.status !== 'all') {
+        activeChips.push({
+            key: 'status',
+            label: STATUS_LABELS[filters.status],
+            color: filters.status === 'attended' ? '#34C759' : '#FF9500',
+            onRemove: () => setFilters((prev) => ({ ...prev, status: 'all' })),
+        });
+    }
+
+    if (filters.dateRange !== 'all') {
+        activeChips.push({
+            key: 'date',
+            label: DATE_LABELS[filters.dateRange] ?? 'Fecha',
+            color: '#3F51B5',
+            onRemove: () =>
+                setFilters((prev) => ({
+                    ...prev,
+                    dateRange: 'all',
+                    customStart: null,
+                    customEnd: null,
+                })),
+        });
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+
+    if (loading && alerts.length === 0) {
         return (
             <div className="loading-container">
                 <div className="loading-spinner" />
@@ -38,42 +110,55 @@ export default function AlertsPage() {
 
     return (
         <>
-            {/* Filter Bar */}
-            <div className="filter-bar">
-                <Filter style={{ width: 16, height: 16, color: 'var(--color-text-tertiary)' }} />
+            {/* ── Barra de herramientas de filtros ── */}
+            <div className="filter-toolbar">
+                {/* Botón principal de filtros */}
                 <button
-                    className={`filter-chip${activeFilter === 'ALL' ? ' active' : ''}`}
-                    style={activeFilter === 'ALL' ? { background: 'var(--color-sidebar)', color: 'white' } : {}}
-                    onClick={() => setActiveFilter('ALL')}
+                    id="alerts-filter-btn"
+                    className={`filter-toolbar-btn${hasFilters ? ' active' : ''}`}
+                    onClick={() => setShowFilterPanel(true)}
                 >
-                    Todas ({alerts.length})
+                    <LucideIcons.SlidersHorizontal style={{ width: 15, height: 15 }} />
+                    Filtros
+                    {hasFilters && (
+                        <span className="filter-toolbar-badge">{activeCount}</span>
+                    )}
                 </button>
-                {existingTypes.map((type) => {
-                    const color = getAlertColor(type);
-                    const count = alerts.filter((a) => a.alertType === type).length;
-                    return (
+
+                {/* Chips de filtros activos */}
+                {activeChips.map((chip) => (
+                    <span
+                        key={chip.key}
+                        className="filter-active-chip"
+                        style={{ borderColor: chip.color, color: chip.color, background: `${chip.color}15` }}
+                    >
+                        {chip.label}
                         <button
-                            key={type}
-                            className={`filter-chip${activeFilter === type ? ' active' : ''}`}
-                            style={activeFilter === type ? { background: color } : {}}
-                            onClick={() => setActiveFilter(type)}
+                            onClick={chip.onRemove}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: 'inherit' }}
                         >
-                            <span
-                                style={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    background: activeFilter === type ? 'white' : color,
-                                    display: 'inline-block',
-                                }}
-                            />
-                            {getAlertLabel(type)} ({count})
+                            <LucideIcons.X style={{ width: 11, height: 11 }} />
                         </button>
-                    );
-                })}
+                    </span>
+                ))}
+
+                {/* Botón limpiar todo */}
+                {hasFilters && (
+                    <button className="filter-clear-all-btn" onClick={clearFilters}>
+                        Limpiar todo
+                    </button>
+                )}
+
+                {/* Indicador de carga */}
+                {loading && alerts.length > 0 && (
+                    <span className="filter-loading-indicator">
+                        <span className="filter-loading-dot" />
+                        Actualizando…
+                    </span>
+                )}
             </div>
 
-            {/* Alerts List */}
+            {/* ── Sección de alertas ── */}
             <div className="section">
                 <div className="section-header">
                     <div className="section-header-left">
@@ -81,29 +166,49 @@ export default function AlertsPage() {
                             <LucideIcons.AlertTriangle style={{ color: '#FF3B30' }} />
                         </div>
                         <h3 className="section-title">
-                            {activeFilter === 'ALL' ? 'Todas las alertas' : getAlertLabel(activeFilter)}
+                            {hasFilters ? 'Alertas filtradas' : 'Todas las alertas'}
                         </h3>
                     </div>
                     <span
                         className="section-badge"
                         style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }}
                     >
-                        {filteredAlerts.length}
+                        {alerts.length}
                     </span>
                 </div>
+
                 <div className="section-body">
-                    {filteredAlerts.length === 0 ? (
+                    {alerts.length === 0 ? (
                         <div className="empty-state">
                             <div className="empty-state-icon">
                                 <LucideIcons.CheckCircle />
                             </div>
                             <div className="empty-state-title">Sin alertas</div>
                             <div className="empty-state-desc">
-                                No hay alertas que coincidan con el filtro seleccionado.
+                                {hasFilters
+                                    ? 'No hay alertas que coincidan con los filtros aplicados.'
+                                    : 'No hay alertas recientes.'}
                             </div>
+                            {hasFilters && (
+                                <button
+                                    style={{
+                                        marginTop: 12,
+                                        padding: '8px 18px',
+                                        borderRadius: 'var(--radius-full)',
+                                        border: '1px solid var(--color-border)',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: 'var(--font-size-sm)',
+                                        color: 'var(--color-text-secondary)',
+                                    }}
+                                    onClick={clearFilters}
+                                >
+                                    Limpiar filtros
+                                </button>
+                            )}
                         </div>
                     ) : (
-                        filteredAlerts.map((alert) => (
+                        alerts.map((alert) => (
                             <AlertCard
                                 key={alert.id}
                                 alert={alert}
@@ -114,6 +219,16 @@ export default function AlertsPage() {
                 </div>
             </div>
 
+            {/* ── Panel de filtros ── */}
+            {showFilterPanel && (
+                <AlertFilterPanel
+                    filters={filters}
+                    onChange={applyFilters}
+                    onClose={() => setShowFilterPanel(false)}
+                />
+            )}
+
+            {/* ── Modal de detalle ── */}
             {selectedAlert && (
                 <AlertDetailModal
                     alert={selectedAlert}

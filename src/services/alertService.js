@@ -151,61 +151,45 @@ export function subscribeToMapAlerts(callback) {
 /**
  * Subscribe to real-time map alerts WITH FILTERS.
  *
- * Builds a Firestore query based on active filters:
- *   - types    : string[]  — array of alertType values (empty = all)
- *   - status   : string    — 'all' | 'pending' | 'attended'
- *   - dateRange: string    — 'all' | 'today' | 'yesterday' | 'week' | '7days' | 'month'
- *   - customStart/customEnd: Date | null — for custom date range
+ * Mirrors Flutter AlertRepository.getMapAlertsStreamFiltered strategy exactly:
+ *   - Single type  → where(alertType == X) + timestamp range server-side.
+ *   - Multi types  → timestamp range server-side ONLY; types filtered client-side.
+ *     (avoids composite index requirement — `in` + orderBy on different field
+ *     requires a composite index in Firestore).
+ *   - No type      → timestamp range (or recent window) server-side.
+ *   - Status       → always client-side.
  *
  * Returns an unsubscribe function.
- *
- * NOTE: Firestore free-plan limits mean we cannot combine an `in` filter on
- * alertType with an inequality filter on timestamp in the same query AND use
- * compound orderBy without a composite index. Strategy:
- *   1. When types filter is present: query by type (in) + fetch more; date filtered client-side.
- *   2. When only date filter: query by timestamp range; type filtered client-side.
- *   3. When status filter: always client-side (no server-side ≠ on free plan).
- * This avoids needing composite indexes while still drastically reducing reads.
  */
 export function subscribeToMapAlertsFiltered(filters, callback) {
     const { types = [], status = 'all', dateRange = 'all', customStart = null, customEnd = null } = filters;
 
-    const hasTypes = types.length > 0;
-    const hasDate = dateRange !== 'all';
+    const hasTypes  = types.length > 0;
+    const hasDate   = dateRange !== 'all';
     const hasStatus = status !== 'all';
 
-    let { start, end } = hasDate && dateRange !== 'custom'
-        ? getDateRange(dateRange)
-        : { start: customStart, end: customEnd };
+    // Resolve date window — only when the user explicitly picks a date filter
+    let start = null;
+    let end   = null;
 
-    let constraints = [orderBy('timestamp', 'desc')];
-
-    if (hasTypes && types.length === 1) {
-        // Single type — use equality directly (no composite index needed with timestamp)
-        constraints = [
-            where('alertType', '==', types[0]),
-            orderBy('timestamp', 'desc'),
-        ];
-        if (start) constraints.splice(1, 0, where('timestamp', '>=', Timestamp.fromDate(start)));
-        if (end)   constraints.splice(start ? 2 : 1, 0, where('timestamp', '<=', Timestamp.fromDate(end)));
-    } else if (hasTypes) {
-        // Multiple types — use `in` filter; date will be filtered client-side
-        constraints = [
-            where('alertType', 'in', types),
-            orderBy('timestamp', 'desc'),
-            limit(500),
-        ];
-    } else if (hasDate && start) {
-        // Date only — use timestamp range
-        constraints = [
-            where('timestamp', '>=', Timestamp.fromDate(start)),
-            ...(end ? [where('timestamp', '<=', Timestamp.fromDate(end))] : []),
-            orderBy('timestamp', 'desc'),
-        ];
-    } else {
-        // No type/date filter — just fetch recent 1000
-        constraints = [orderBy('timestamp', 'desc'), limit(1000)];
+    if (hasDate) {
+        if (dateRange === 'custom') {
+            start = customStart instanceof Date ? customStart : (customStart ? new Date(customStart) : null);
+            end   = customEnd   instanceof Date ? customEnd   : (customEnd   ? new Date(customEnd)   : null);
+        } else {
+            ({ start, end } = getDateRange(dateRange));
+        }
     }
+
+    // ─── Server-side query: ONLY timestamp (single-field index, no composite needed) ───
+    // alertType is ALWAYS filtered client-side to avoid composite index requirements.
+    const constraints = [orderBy('timestamp', 'desc')];
+
+    if (start) constraints.unshift(where('timestamp', '>=', Timestamp.fromDate(start)));
+    if (end)   constraints.unshift(where('timestamp', '<=', Timestamp.fromDate(end)));
+
+    // When no date restriction, cap the fetch to avoid reading the full collection
+    if (!start && !end) constraints.push(limit(1000));
 
     const q = query(collection(db, 'alerts'), ...constraints);
 
@@ -216,17 +200,12 @@ export function subscribeToMapAlertsFiltered(filters, callback) {
                 .map(parseAlert)
                 .filter((a) => a.shareLocation && a.location);
 
-            // Client-side post-filters (cheap, already reduced by server query)
-            if (hasTypes && types.length > 1) {
-                // For multi-type queries without date server-side, filter date here
-                if (hasDate && start) {
-                    alerts = alerts.filter((a) => {
-                        const ts = a.timestamp?.toDate?.() ?? new Date(a.timestamp);
-                        return ts >= start && (!end || ts <= end);
-                    });
-                }
+            // Client-side: type filter (all cases)
+            if (hasTypes) {
+                alerts = alerts.filter((a) => types.includes(a.alertType));
             }
 
+            // Client-side: status filter
             if (hasStatus) {
                 alerts = alerts.filter((a) =>
                     status === 'attended'
@@ -238,9 +217,85 @@ export function subscribeToMapAlertsFiltered(filters, callback) {
             callback(alerts);
         },
         (error) => {
-            // Firestore query error (e.g. missing composite index).
-            // Return empty results so the UI doesn't hang on a loading state.
-            console.error('[subscribeToMapAlertsFiltered] Firestore query failed:', error.message);
+            console.error('[subscribeToMapAlertsFiltered] Firestore error:', error.message);
+            callback([]);
+        }
+    );
+}
+
+/**
+ * Subscribe to real-time alerts WITH FILTERS (Alerts page — no shareLocation filter).
+ *
+ * Mirrors the exact same query strategy as subscribeToMapAlertsFiltered:
+ * - Single type  → equality on alertType + timestamp range server-side.
+ * - Multi types  → timestamp range server-side ONLY; type filter client-side.
+ * - Status       → always client-side.
+ *
+ * customStart/customEnd are ISO date strings ('YYYY-MM-DD') from the date inputs.
+ *
+ * Returns an unsubscribe function.
+ */
+export function subscribeToAlertsFiltered(filters, callback) {
+    const {
+        types = [],
+        status = 'all',
+        dateRange = 'all',
+        customStart = null,
+        customEnd = null,
+    } = filters;
+
+    const hasTypes  = types.length > 0;
+    const hasDate   = dateRange !== 'all';
+    const hasStatus = status !== 'all';
+
+    // Resolve date window — only when the user explicitly picks a date filter
+    let start = null;
+    let end   = null;
+
+    if (hasDate) {
+        if (dateRange === 'custom') {
+            start = customStart ? new Date(customStart + 'T00:00:00') : null;
+            end   = customEnd   ? new Date(customEnd   + 'T23:59:59') : null;
+        } else {
+            ({ start, end } = getDateRange(dateRange));
+        }
+    }
+
+    // ─── Server-side query: ONLY timestamp (single-field index, no composite needed) ───
+    // alertType is ALWAYS filtered client-side to avoid composite index requirements.
+    const constraints = [orderBy('timestamp', 'desc')];
+
+    if (start) constraints.unshift(where('timestamp', '>=', Timestamp.fromDate(start)));
+    if (end)   constraints.unshift(where('timestamp', '<=', Timestamp.fromDate(end)));
+
+    // When no date restriction, cap the fetch to avoid reading the full collection
+    if (!start && !end) constraints.push(limit(500));
+
+    const q = query(collection(db, 'alerts'), ...constraints);
+
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            let alerts = snapshot.docs.map(parseAlert);
+
+            // Client-side: type filter (all cases)
+            if (hasTypes) {
+                alerts = alerts.filter((a) => types.includes(a.alertType));
+            }
+
+            // Client-side: status filter
+            if (hasStatus) {
+                alerts = alerts.filter((a) =>
+                    status === 'attended'
+                        ? a.alertStatus === 'attended'
+                        : a.alertStatus !== 'attended'
+                );
+            }
+
+            callback(alerts);
+        },
+        (error) => {
+            console.error('[subscribeToAlertsFiltered] Firestore error:', error.message);
             callback([]);
         }
     );
