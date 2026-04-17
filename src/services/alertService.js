@@ -209,32 +209,41 @@ export function subscribeToMapAlertsFiltered(filters, callback) {
 
     const q = query(collection(db, 'alerts'), ...constraints);
 
-    return onSnapshot(q, (snapshot) => {
-        let alerts = snapshot.docs
-            .map(parseAlert)
-            .filter((a) => a.shareLocation && a.location);
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            let alerts = snapshot.docs
+                .map(parseAlert)
+                .filter((a) => a.shareLocation && a.location);
 
-        // Client-side post-filters (cheap, already reduced by server query)
-        if (hasTypes && types.length > 1) {
-            // For multi-type queries without date server-side, filter date here
-            if (hasDate && start) {
-                alerts = alerts.filter((a) => {
-                    const ts = a.timestamp?.toDate?.() ?? new Date(a.timestamp);
-                    return ts >= start && (!end || ts <= end);
-                });
+            // Client-side post-filters (cheap, already reduced by server query)
+            if (hasTypes && types.length > 1) {
+                // For multi-type queries without date server-side, filter date here
+                if (hasDate && start) {
+                    alerts = alerts.filter((a) => {
+                        const ts = a.timestamp?.toDate?.() ?? new Date(a.timestamp);
+                        return ts >= start && (!end || ts <= end);
+                    });
+                }
             }
-        }
 
-        if (hasStatus) {
-            alerts = alerts.filter((a) =>
-                status === 'attended'
-                    ? a.alertStatus === 'attended'
-                    : a.alertStatus !== 'attended'
-            );
-        }
+            if (hasStatus) {
+                alerts = alerts.filter((a) =>
+                    status === 'attended'
+                        ? a.alertStatus === 'attended'
+                        : a.alertStatus !== 'attended'
+                );
+            }
 
-        callback(alerts);
-    });
+            callback(alerts);
+        },
+        (error) => {
+            // Firestore query error (e.g. missing composite index).
+            // Return empty results so the UI doesn't hang on a loading state.
+            console.error('[subscribeToMapAlertsFiltered] Firestore query failed:', error.message);
+            callback([]);
+        }
+    );
 }
 
 /**

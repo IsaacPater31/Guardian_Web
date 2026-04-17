@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle } from 'lucide-react';
-import { EMERGENCY_TYPES } from '../../data/emergencyTypes';
+import { ACTIVE_EMERGENCY_TYPES as EMERGENCY_TYPES } from '../../data/emergencyTypes';
 
 const STATUS_OPTIONS = [
     { value: 'all',      label: 'Todas' },
