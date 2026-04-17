@@ -10,15 +10,8 @@ import SelectedAlertPanel from '../components/Map/SelectedAlertPanel';
 import MapAlertCountBadge from '../components/Map/MapAlertCountBadge';
 import RequestLocationOnFirstInteraction from '../components/Map/RequestLocationOnFirstInteraction';
 import MapFilterPanel from '../components/Map/MapFilterPanel';
+import { DEFAULT_FILTERS } from '../config/filterOptions';
 
-// ─── Default filter state ─────────────────────────────────────────────────────
-const DEFAULT_FILTERS = {
-    types: [],
-    status: 'all',
-    dateRange: 'all',
-    customStart: null,
-    customEnd: null,
-};
 
 // ─── MapPage ──────────────────────────────────────────────────────────────────
 export default function MapPage() {

@@ -1,31 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle } from 'lucide-react';
-import { ACTIVE_EMERGENCY_TYPES as EMERGENCY_TYPES } from '../../data/emergencyTypes';
-
-const STATUS_OPTIONS = [
-    { value: 'all',      label: 'Todas' },
-    { value: 'pending',  label: 'No atendida' },
-    { value: 'attended', label: 'Atendida' },
-];
-
-const DATE_OPTIONS = [
-    { value: 'all',       label: 'Cualquier fecha' },
-    { value: 'today',     label: 'Hoy' },
-    { value: 'yesterday', label: 'Ayer' },
-    { value: 'week',      label: 'Esta semana' },
-    { value: '7days',     label: 'Últimos 7 días' },
-    { value: 'month',     label: 'Este mes' },
-    { value: 'custom',    label: 'Personalizado' },
-];
-
-function countActiveFilters(types, status, dateRange) {
-    let n = 0;
-    if (types.length > 0) n++;
-    if (status !== 'all') n++;
-    if (dateRange !== 'all') n++;
-    return n;
-}
+import { ACTIVE_ALERT_TYPES } from '../../config/alertTypes';
+import { STATUS_OPTIONS, DATE_OPTIONS, countActiveFilters } from '../../config/filterOptions';
 
 /**
  * MapFilterPanel — floating collapsible filter panel for the map.
@@ -112,8 +89,8 @@ export default function MapFilterPanel({
                         <span>Tipo de alerta</span>
                     </div>
                     <div className="map-filter-type-grid">
-                        {Object.entries(EMERGENCY_TYPES).map(([key, cfg]) => {
-                            const Icon = LucideIcons[cfg.icon] || LucideIcons.AlertTriangle;
+                        {Object.entries(ACTIVE_ALERT_TYPES).map(([key, cfg]) => {
+                            const Icon   = LucideIcons[cfg.icon] || LucideIcons.AlertTriangle;
                             const active = types.includes(key);
                             return (
                                 <button

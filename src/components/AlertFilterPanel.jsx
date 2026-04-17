@@ -1,45 +1,19 @@
 import { useState } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { EMERGENCY_TYPES, getAlertColor, getAlertLabel } from '../data/emergencyTypes';
+import { ACTIVE_ALERT_TYPES, getAlertColor, getAlertLabel } from '../config/alertTypes';
+import { STATUS_OPTIONS, DATE_OPTIONS, DEFAULT_FILTERS, countActiveFilters } from '../config/filterOptions';
 
-// ─── Opciones de filtro ───────────────────────────────────────────────────────
+// Re-export for consumers that use EMPTY_FILTERS from this module
+export { DEFAULT_FILTERS as EMPTY_FILTERS };
 
-const STATUS_OPTIONS = [
-    { value: 'all',      label: 'Todas' },
-    { value: 'pending',  label: 'No atendidas' },
-    { value: 'attended', label: 'Atendidas' },
-];
+// Active type keys derived from config — no hardcoding
+const ACTIVE_TYPE_KEYS = Object.keys(ACTIVE_ALERT_TYPES);
 
-const DATE_OPTIONS = [
-    { value: 'all',       label: 'Cualquier fecha' },
-    { value: 'today',     label: 'Hoy' },
-    { value: 'yesterday', label: 'Ayer' },
-    { value: 'week',      label: 'Esta semana' },
-    { value: '7days',     label: 'Últimos 7 días' },
-    { value: 'month',     label: 'Este mes' },
-    { value: 'custom',    label: 'Personalizado' },
-];
-
-// Solo los tipos activos para el panel de filtros
-const ALL_TYPES = Object.entries(EMERGENCY_TYPES)
-    .filter(([, v]) => v.active)
-    .map(([key]) => key);
-
-export const EMPTY_FILTERS = {
-    types: [],
-    status: 'all',
-    dateRange: 'all',
-    customStart: null,
-    customEnd: null,
-};
-
-export function countActiveFilters(filters) {
-    let n = 0;
-    if (filters.types.length > 0) n++;
-    if (filters.status !== 'all') n++;
-    if (filters.dateRange !== 'all') n++;
-    return n;
+/** Signature-compatible wrapper so callers that pass the full filters object still work. */
+export function countActiveFiltersCompat(filters) {
+    return countActiveFilters(filters.types, filters.status, filters.dateRange);
 }
+
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
@@ -71,8 +45,8 @@ export default function AlertFilterPanel({ filters, onChange, onClose }) {
         onClose();
     };
 
-    const activeCount = countActiveFilters(local);
-    const hasFilters = activeCount > 0;
+    const activeCount = countActiveFiltersCompat(local);
+    const hasFilters  = activeCount > 0;
 
     const fmtDate = (iso) => {
         if (!iso) return 'Seleccionar';
@@ -119,11 +93,11 @@ export default function AlertFilterPanel({ filters, onChange, onClose }) {
                             TIPO DE ALERTA
                         </div>
                         <div className="filter-type-grid">
-                            {ALL_TYPES.map((type) => {
+                            {ACTIVE_TYPE_KEYS.map((type) => {
                                 const isActive = local.types.includes(type);
-                                const color = getAlertColor(type);
-                                const iconName = EMERGENCY_TYPES[type]?.icon;
-                                const Icon = LucideIcons[iconName] || LucideIcons.AlertTriangle;
+                                const color    = getAlertColor(type);
+                                const iconName = ACTIVE_ALERT_TYPES[type]?.icon;
+                                const Icon     = LucideIcons[iconName] || LucideIcons.AlertTriangle;
                                 return (
                                     <button
                                         key={type}

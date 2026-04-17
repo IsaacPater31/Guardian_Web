@@ -1,93 +1,126 @@
+/**
+ * alertService.js — Firestore data-access layer for alerts.
+ *
+ * Responsibilities (Single Responsibility per function):
+ *   - Parse raw Firestore documents into typed alert objects.
+ *   - Build and execute Firestore queries.
+ *   - Apply client-side post-filters (type, status).
+ *
+ * Query strategy (no composite indexes):
+ *   The project only has single-field indexes (timestamp DESC, community_id ASC).
+ *   Combining alertType == X  +  timestamp >= Y  +  orderBy(timestamp) would
+ *   require a composite index. Therefore:
+ *     • Server-side : timestamp range only.
+ *     • Client-side : alertType and alertStatus filtering.
+ *
+ * All hardcoded values (collection names, field names, limits) are imported
+ * from the config layer — never written inline here.
+ */
+
 import {
-    collection,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    Timestamp,
-    getDocs,
-    limit,
+    collection, query, where, orderBy,
+    onSnapshot, Timestamp, getDocs, limit,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { Collections }                from '../config/collections';
+import { AlertFields, AlertStatus, QUERY_CONFIG } from '../config/alertTypes';
+import { resolveFilterDates }         from '../utils/dateRangeUtils';
+
+// ─── Document parser ──────────────────────────────────────────────────────────
 
 /**
- * AlertService — mirrors Flutter AlertRepository
- * Reads alerts from the 'alerts' Firestore collection.
- */
-
-/**
- * Parse a Firestore document into an alert object.
+ * Transform a raw Firestore DocumentSnapshot into a plain alert JS object.
+ * This is the only place that knows about Firestore field names.
+ *
+ * @param {import('firebase/firestore').DocumentSnapshot} doc
+ * @returns {AlertObject}
  */
 function parseAlert(doc) {
-    const data = doc.data();
+    const d = doc.data();
     return {
-        id: doc.id,
-        type: data.type || '',
-        alertType: data.alertType || '',
-        description: data.description || null,
-        timestamp: data.timestamp,
-        isAnonymous: data.isAnonymous || false,
-        shareLocation: data.shareLocation || false,
-        location: data.location || null,
-        userId: data.userId || null,
-        userEmail: data.userEmail || null,
-        userName: data.userName || null,
-        imageBase64: data.imageBase64 || null,
-        viewedCount: data.viewedCount || 0,
-        viewedBy: data.viewedBy || [],
-        communityId: data.community_id || null,
-        forwardsCount: data.forwards_count || 0,
-        reportsCount: data.reports_count || 0,
-        reportedBy: data.reported_by || [],
-        alertStatus: data.alert_status || 'pending',
+        id:           doc.id,
+        type:         d[AlertFields.type]          || '',
+        alertType:    d[AlertFields.alertType]     || '',
+        description:  d[AlertFields.description]   ?? null,
+        timestamp:    d[AlertFields.timestamp]     ?? null,
+        isAnonymous:  d[AlertFields.isAnonymous]   ?? false,
+        shareLocation:d[AlertFields.shareLocation] ?? false,
+        location:     d[AlertFields.location]      ?? null,
+        userId:       d[AlertFields.userId]        ?? null,
+        userEmail:    d[AlertFields.userEmail]      ?? null,
+        userName:     d[AlertFields.userName]       ?? null,
+        imageBase64:  d[AlertFields.imageBase64]   ?? null,
+        viewedCount:  d[AlertFields.viewedCount]   ?? 0,
+        viewedBy:     d[AlertFields.viewedBy]      ?? [],
+        communityId:  d[AlertFields.communityId]   ?? null,
+        forwardsCount:d[AlertFields.forwardsCount] ?? 0,
+        reportsCount: d[AlertFields.reportsCount]  ?? 0,
+        reportedBy:   d[AlertFields.reportedBy]    ?? [],
+        alertStatus:  d[AlertFields.alertStatus]   ?? AlertStatus.PENDING,
     };
 }
 
-/** Build a Date range [start, end] from a preset key. */
-function getDateRange(range) {
-    const now = new Date();
-    let start = null;
-    let end = null;
+// ─── Query builder helpers ────────────────────────────────────────────────────
 
-    if (range === 'today') {
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    } else if (range === 'yesterday') {
-        const y = new Date(now);
-        y.setDate(y.getDate() - 1);
-        start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0);
-        end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59);
-    } else if (range === 'week') {
-        // Current week (Monday – today)
-        const day = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mon=0
-        start = new Date(now);
-        start.setDate(now.getDate() - day);
-        start.setHours(0, 0, 0, 0);
-        end = now;
-    } else if (range === '7days') {
-        start = new Date(now);
-        start.setDate(now.getDate() - 6);
-        start.setHours(0, 0, 0, 0);
-        end = now;
-    } else if (range === 'month') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-        end = now;
-    }
+/** @returns {import('firebase/firestore').CollectionReference} */
+const alertsCol = () => collection(db, Collections.ALERTS);
 
-    return { start, end };
+/**
+ * Build timestamp constraints from resolved dates.
+ * Returns an array of Firestore where() clauses (may be empty).
+ *
+ * @param {Date|null} start
+ * @param {Date|null} end
+ * @returns {import('firebase/firestore').QueryConstraint[]}
+ */
+function timestampConstraints(start, end) {
+    const constraints = [];
+    if (start) constraints.push(where(AlertFields.timestamp, '>=', Timestamp.fromDate(start)));
+    if (end)   constraints.push(where(AlertFields.timestamp, '<=', Timestamp.fromDate(end)));
+    return constraints;
 }
 
 /**
- * Get recent alerts (last 24 hours), one-time fetch.
+ * Apply client-side type and status post-filters to an array of alerts.
+ *
+ * @param {AlertObject[]} alerts
+ * @param {string[]} types
+ * @param {string}   status  — 'all' | 'pending' | 'attended'
+ * @returns {AlertObject[]}
+ */
+function applyClientFilters(alerts, types, status) {
+    let result = alerts;
+    if (types.length > 0) {
+        result = result.filter((a) => types.includes(a.alertType));
+    }
+    if (status !== 'all') {
+        const target = status === AlertStatus.ATTENDED
+            ? AlertStatus.ATTENDED
+            : AlertStatus.PENDING;
+        result = result.filter((a) =>
+            status === AlertStatus.ATTENDED
+                ? a.alertStatus === target
+                : a.alertStatus !== AlertStatus.ATTENDED
+        );
+    }
+    return result;
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * One-shot fetch of alerts from the last N hours (configured in QUERY_CONFIG).
+ *
+ * @returns {Promise<AlertObject[]>}
  */
 export async function getRecentAlerts() {
-    const yesterday = new Date();
-    yesterday.setHours(yesterday.getHours() - 24);
+    const since = new Date();
+    since.setHours(since.getHours() - QUERY_CONFIG.recentWindowHours);
 
     const q = query(
-        collection(db, 'alerts'),
-        where('timestamp', '>', Timestamp.fromDate(yesterday)),
-        orderBy('timestamp', 'desc')
+        alertsCol(),
+        where(AlertFields.timestamp, '>', Timestamp.fromDate(since)),
+        orderBy(AlertFields.timestamp, 'desc')
     );
 
     const snapshot = await getDocs(q);
@@ -95,252 +128,196 @@ export async function getRecentAlerts() {
 }
 
 /**
- * Get map alerts (recent with location).
+ * One-shot fetch of alerts that have a location (for initial map load).
+ *
+ * @returns {Promise<AlertObject[]>}
  */
 export async function getMapAlerts() {
     const q = query(
-        collection(db, 'alerts'),
-        orderBy('timestamp', 'desc'),
-        limit(1000)
+        alertsCol(),
+        orderBy(AlertFields.timestamp, 'desc'),
+        limit(QUERY_CONFIG.mapFetchLimit)
     );
 
     const snapshot = await getDocs(q);
     return snapshot.docs
         .map(parseAlert)
-        .filter((alert) => alert.shareLocation && alert.location);
+        .filter((a) => a.shareLocation && a.location);
 }
 
 /**
- * Subscribe to real-time recent alerts (last 24 hours).
- * Returns an unsubscribe function.
+ * Real-time subscription to recent alerts (last N hours).
+ * Used by the Dashboard feed.
+ *
+ * @param {(alerts: AlertObject[]) => void} callback
+ * @returns {() => void} unsubscribe
  */
 export function subscribeToRecentAlerts(callback) {
-    const yesterday = new Date();
-    yesterday.setHours(yesterday.getHours() - 24);
+    const since = new Date();
+    since.setHours(since.getHours() - QUERY_CONFIG.recentWindowHours);
 
     const q = query(
-        collection(db, 'alerts'),
-        where('timestamp', '>', Timestamp.fromDate(yesterday)),
-        orderBy('timestamp', 'desc')
+        alertsCol(),
+        where(AlertFields.timestamp, '>', Timestamp.fromDate(since)),
+        orderBy(AlertFields.timestamp, 'desc')
     );
 
     return onSnapshot(q, (snapshot) => {
-        const alerts = snapshot.docs.map(parseAlert);
-        callback(alerts);
+        callback(snapshot.docs.map(parseAlert));
     });
 }
 
 /**
- * Subscribe to real-time map alerts (recent with location).
+ * Real-time subscription to all map-visible alerts (no date filter).
+ * Used when the map opens without any active filters.
+ *
+ * @param {(alerts: AlertObject[]) => void} callback
+ * @returns {() => void} unsubscribe
  */
 export function subscribeToMapAlerts(callback) {
     const q = query(
-        collection(db, 'alerts'),
-        orderBy('timestamp', 'desc'),
-        limit(1000)
+        alertsCol(),
+        orderBy(AlertFields.timestamp, 'desc'),
+        limit(QUERY_CONFIG.mapFetchLimit)
     );
 
     return onSnapshot(q, (snapshot) => {
-        const alerts = snapshot.docs
-            .map(parseAlert)
-            .filter((alert) => alert.shareLocation && alert.location);
-        callback(alerts);
+        callback(
+            snapshot.docs
+                .map(parseAlert)
+                .filter((a) => a.shareLocation && a.location)
+        );
     });
 }
 
 /**
- * Subscribe to real-time map alerts WITH FILTERS.
+ * Real-time subscription to map alerts WITH active filters.
  *
- * Mirrors Flutter AlertRepository.getMapAlertsStreamFiltered strategy exactly:
- *   - Single type  → where(alertType == X) + timestamp range server-side.
- *   - Multi types  → timestamp range server-side ONLY; types filtered client-side.
- *     (avoids composite index requirement — `in` + orderBy on different field
- *     requires a composite index in Firestore).
- *   - No type      → timestamp range (or recent window) server-side.
- *   - Status       → always client-side.
+ * Server-side: timestamp range (single-field index — no composite index needed).
+ * Client-side: alertType list and alertStatus.
  *
- * Returns an unsubscribe function.
+ * @param {{
+ *   types:       string[],
+ *   status:      string,
+ *   dateRange:   string,
+ *   customStart: Date|string|null,
+ *   customEnd:   Date|string|null,
+ * }} filters
+ * @param {(alerts: AlertObject[]) => void} callback
+ * @returns {() => void} unsubscribe
  */
 export function subscribeToMapAlertsFiltered(filters, callback) {
-    const { types = [], status = 'all', dateRange = 'all', customStart = null, customEnd = null } = filters;
+    const { types = [], status = 'all' } = filters;
+    const { start, end } = resolveFilterDates(filters);
 
-    const hasTypes  = types.length > 0;
-    const hasDate   = dateRange !== 'all';
-    const hasStatus = status !== 'all';
-
-    // Resolve date window — only when the user explicitly picks a date filter
-    let start = null;
-    let end   = null;
-
-    if (hasDate) {
-        if (dateRange === 'custom') {
-            start = customStart instanceof Date ? customStart : (customStart ? new Date(customStart) : null);
-            end   = customEnd   instanceof Date ? customEnd   : (customEnd   ? new Date(customEnd)   : null);
-        } else {
-            ({ start, end } = getDateRange(dateRange));
-        }
-    }
-
-    // ─── Server-side query: ONLY timestamp (single-field index, no composite needed) ───
-    // alertType is ALWAYS filtered client-side to avoid composite index requirements.
-    const constraints = [orderBy('timestamp', 'desc')];
-
-    if (start) constraints.unshift(where('timestamp', '>=', Timestamp.fromDate(start)));
-    if (end)   constraints.unshift(where('timestamp', '<=', Timestamp.fromDate(end)));
-
-    // When no date restriction, cap the fetch to avoid reading the full collection
-    if (!start && !end) constraints.push(limit(1000));
-
-    const q = query(collection(db, 'alerts'), ...constraints);
+    const constraints = [
+        ...timestampConstraints(start, end),
+        orderBy(AlertFields.timestamp, 'desc'),
+        ...(!start && !end ? [limit(QUERY_CONFIG.mapFetchLimit)] : []),
+    ];
 
     return onSnapshot(
-        q,
+        query(alertsCol(), ...constraints),
         (snapshot) => {
-            let alerts = snapshot.docs
+            const base = snapshot.docs
                 .map(parseAlert)
                 .filter((a) => a.shareLocation && a.location);
-
-            // Client-side: type filter (all cases)
-            if (hasTypes) {
-                alerts = alerts.filter((a) => types.includes(a.alertType));
-            }
-
-            // Client-side: status filter
-            if (hasStatus) {
-                alerts = alerts.filter((a) =>
-                    status === 'attended'
-                        ? a.alertStatus === 'attended'
-                        : a.alertStatus !== 'attended'
-                );
-            }
-
-            callback(alerts);
+            callback(applyClientFilters(base, types, status));
         },
         (error) => {
-            console.error('[subscribeToMapAlertsFiltered] Firestore error:', error.message);
+            console.error('[subscribeToMapAlertsFiltered]', error.message);
             callback([]);
         }
     );
 }
 
 /**
- * Subscribe to real-time alerts WITH FILTERS (Alerts page — no shareLocation filter).
+ * Real-time subscription to ALL alerts WITH active filters (Alerts page).
+ * Same query strategy as subscribeToMapAlertsFiltered but without the
+ * shareLocation restriction.
  *
- * Mirrors the exact same query strategy as subscribeToMapAlertsFiltered:
- * - Single type  → equality on alertType + timestamp range server-side.
- * - Multi types  → timestamp range server-side ONLY; type filter client-side.
- * - Status       → always client-side.
- *
- * customStart/customEnd are ISO date strings ('YYYY-MM-DD') from the date inputs.
- *
- * Returns an unsubscribe function.
+ * @param {{
+ *   types:       string[],
+ *   status:      string,
+ *   dateRange:   string,
+ *   customStart: Date|string|null,
+ *   customEnd:   Date|string|null,
+ * }} filters
+ * @param {(alerts: AlertObject[]) => void} callback
+ * @returns {() => void} unsubscribe
  */
 export function subscribeToAlertsFiltered(filters, callback) {
-    const {
-        types = [],
-        status = 'all',
-        dateRange = 'all',
-        customStart = null,
-        customEnd = null,
-    } = filters;
+    const { types = [], status = 'all' } = filters;
+    const { start, end } = resolveFilterDates(filters);
 
-    const hasTypes  = types.length > 0;
-    const hasDate   = dateRange !== 'all';
-    const hasStatus = status !== 'all';
-
-    // Resolve date window — only when the user explicitly picks a date filter
-    let start = null;
-    let end   = null;
-
-    if (hasDate) {
-        if (dateRange === 'custom') {
-            start = customStart ? new Date(customStart + 'T00:00:00') : null;
-            end   = customEnd   ? new Date(customEnd   + 'T23:59:59') : null;
-        } else {
-            ({ start, end } = getDateRange(dateRange));
-        }
-    }
-
-    // ─── Server-side query: ONLY timestamp (single-field index, no composite needed) ───
-    // alertType is ALWAYS filtered client-side to avoid composite index requirements.
-    const constraints = [orderBy('timestamp', 'desc')];
-
-    if (start) constraints.unshift(where('timestamp', '>=', Timestamp.fromDate(start)));
-    if (end)   constraints.unshift(where('timestamp', '<=', Timestamp.fromDate(end)));
-
-    // When no date restriction, cap the fetch to avoid reading the full collection
-    if (!start && !end) constraints.push(limit(500));
-
-    const q = query(collection(db, 'alerts'), ...constraints);
+    const constraints = [
+        ...timestampConstraints(start, end),
+        orderBy(AlertFields.timestamp, 'desc'),
+        ...(!start && !end ? [limit(QUERY_CONFIG.alertsFetchLimit)] : []),
+    ];
 
     return onSnapshot(
-        q,
+        query(alertsCol(), ...constraints),
         (snapshot) => {
-            let alerts = snapshot.docs.map(parseAlert);
-
-            // Client-side: type filter (all cases)
-            if (hasTypes) {
-                alerts = alerts.filter((a) => types.includes(a.alertType));
-            }
-
-            // Client-side: status filter
-            if (hasStatus) {
-                alerts = alerts.filter((a) =>
-                    status === 'attended'
-                        ? a.alertStatus === 'attended'
-                        : a.alertStatus !== 'attended'
-                );
-            }
-
-            callback(alerts);
+            const base = snapshot.docs.map(parseAlert);
+            callback(applyClientFilters(base, types, status));
         },
         (error) => {
-            console.error('[subscribeToAlertsFiltered] Firestore error:', error.message);
+            console.error('[subscribeToAlertsFiltered]', error.message);
             callback([]);
         }
     );
 }
 
 /**
- * Get alerts for a specific community.
+ * One-shot fetch of the most recent alerts for a specific community.
+ *
+ * @param {string} communityId
+ * @returns {Promise<AlertObject[]>}
  */
 export async function getCommunityAlerts(communityId) {
     const q = query(
-        collection(db, 'alerts'),
-        where('community_id', '==', communityId)
+        alertsCol(),
+        where(AlertFields.communityId, '==', communityId)
     );
 
     const snapshot = await getDocs(q);
-    const alerts = snapshot.docs.map(parseAlert);
-    alerts.sort((a, b) => {
-        const tA = a.timestamp?.toDate?.() || new Date(0);
-        const tB = b.timestamp?.toDate?.() || new Date(0);
-        return tB - tA;
-    });
-    return alerts.slice(0, 50);
+    return snapshot.docs
+        .map(parseAlert)
+        .sort((a, b) => {
+            const tA = a.timestamp?.toDate?.() ?? new Date(0);
+            const tB = b.timestamp?.toDate?.() ?? new Date(0);
+            return tB - tA;
+        })
+        .slice(0, QUERY_CONFIG.communityAlertsLimit);
 }
 
 /**
- * Get aggregated statistics.
+ * Compute aggregated statistics from recent alerts.
+ * Derived from the same subscribeToRecentAlerts window.
+ *
+ * @returns {Promise<{
+ *   total: number,
+ *   byType: Record<string, number>,
+ *   totalViews: number,
+ *   totalForwards: number,
+ *   totalReports: number,
+ *   withLocation: number,
+ * }>}
  */
 export async function getAlertStats() {
     const alerts = await getRecentAlerts();
-    const stats = {
-        total: alerts.length,
-        byType: {},
-        totalViews: 0,
-        totalForwards: 0,
-        totalReports: 0,
-        withLocation: 0,
-    };
 
-    for (const alert of alerts) {
-        stats.byType[alert.alertType] = (stats.byType[alert.alertType] || 0) + 1;
-        stats.totalViews += alert.viewedCount;
-        stats.totalForwards += alert.forwardsCount;
-        stats.totalReports += alert.reportsCount;
-        if (alert.shareLocation && alert.location) stats.withLocation++;
-    }
-
-    return stats;
+    return alerts.reduce(
+        (acc, a) => {
+            acc.total++;
+            acc.byType[a.alertType] = (acc.byType[a.alertType] ?? 0) + 1;
+            acc.totalViews    += a.viewedCount;
+            acc.totalForwards += a.forwardsCount;
+            acc.totalReports  += a.reportsCount;
+            if (a.shareLocation && a.location) acc.withLocation++;
+            return acc;
+        },
+        { total: 0, byType: {}, totalViews: 0, totalForwards: 0, totalReports: 0, withLocation: 0 }
+    );
 }

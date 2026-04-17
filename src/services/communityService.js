@@ -1,162 +1,166 @@
+/**
+ * communityService.js — Firestore data-access layer for communities.
+ * Refactored to use the Collections config instead of hardcoded strings.
+ */
+
 import {
-    collection,
-    getDocs,
-    query,
-    where,
-    onSnapshot,
-    documentId,
+    collection, getDocs, query, where,
+    onSnapshot, documentId,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db }          from '../firebase';
+import { Collections } from '../config/collections';
 
-// ─── In-memory name cache: communityId → name ───
-let _nameCache = {};
-let _cacheLoaded = false;
+// ─── In-memory name cache: communityId → name ─────────────────────────────────
+let _nameCache  = {};
+let _cacheReady = false;
 
-async function _loadCache() {
-    if (_cacheLoaded) return;
+async function _warmCache() {
+    if (_cacheReady) return;
     try {
-        const snapshot = await getDocs(collection(db, 'communities'));
+        const snapshot = await getDocs(collection(db, Collections.COMMUNITIES));
         for (const doc of snapshot.docs) {
             _nameCache[doc.id] = doc.data().name || doc.id;
         }
-        _cacheLoaded = true;
-    } catch { /* silent */ }
+        _cacheReady = true;
+    } catch { /* Network unavailable — degrade gracefully */ }
 }
 
 /**
- * Resolve a community ID to its display name.
- * Returns the name (cached after first load) or the raw ID as fallback.
+ * Resolve a community ID to its display name (cached after first call).
+ *
+ * @param {string|null} id
+ * @returns {Promise<string|null>}
  */
 export async function getCommunityName(id) {
     if (!id) return null;
     if (_nameCache[id]) return _nameCache[id];
-    await _loadCache();
-    return _nameCache[id] || 'Comunidad eliminada o inexistente';
+    await _warmCache();
+    return _nameCache[id] ?? 'Comunidad eliminada o inexistente';
 }
 
-// ─── Community Service ───
+// ─── Parsers ──────────────────────────────────────────────────────────────────
 
 function parseCommunity(doc) {
-    const data = doc.data();
+    const d = doc.data();
     return {
-        id: doc.id,
-        name: data.name || '',
-        description: data.description || null,
-        isEntity: data.is_entity || false,
-        createdBy: data.created_by || null,
-        allowForwardToEntities: data.allow_forward_to_entities ?? true,
-        createdAt: data.created_at,
-        iconCodePoint: data.icon_code_point || null,
-        iconColor: data.icon_color || null,
+        id:                     doc.id,
+        name:                   d.name                     || '',
+        description:            d.description              ?? null,
+        isEntity:               d.is_entity                ?? false,
+        createdBy:              d.created_by               ?? null,
+        allowForwardToEntities: d.allow_forward_to_entities ?? true,
+        createdAt:              d.created_at               ?? null,
+        iconCodePoint:          d.icon_code_point          ?? null,
+        iconColor:              d.icon_color               ?? null,
     };
 }
 
-/** Get all communities. */
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/** Fetch all communities (one-shot). */
 export async function getAllCommunities() {
-    const snapshot = await getDocs(collection(db, 'communities'));
+    const snapshot    = await getDocs(collection(db, Collections.COMMUNITIES));
     const communities = snapshot.docs.map(parseCommunity);
-    // Populate cache while we're at it
-    for (const c of communities) {
-        _nameCache[c.id] = c.name;
-    }
-    _cacheLoaded = true;
+    // Keep cache warm
+    for (const c of communities) _nameCache[c.id] = c.name;
+    _cacheReady = true;
     return communities;
 }
 
-/** Get member count for a community. */
+/** Member count for a community. */
 export async function getCommunityMemberCount(communityId) {
-    const q = query(
-        collection(db, 'community_members'),
+    const q        = query(
+        collection(db, Collections.COMMUNITY_MEMBERS),
         where('community_id', '==', communityId)
     );
     const snapshot = await getDocs(q);
     return snapshot.size;
 }
 
-/** Subscribe to communities in real-time. */
+/** Real-time subscription to all communities. */
 export function subscribeToCommunities(callback) {
-    return onSnapshot(collection(db, 'communities'), (snapshot) => {
+    return onSnapshot(collection(db, Collections.COMMUNITIES), (snapshot) => {
         const communities = snapshot.docs.map(parseCommunity);
-        // Keep cache hot
         for (const c of communities) _nameCache[c.id] = c.name;
         callback(communities);
     });
 }
 
 /**
- * Get members of a community.
- * Reads from 'community_members' where community_id == communityId.
+ * Fetch members of a community, enriched with display names from users/alerts.
  *
  * @param {string} communityId
- * @returns {Promise<Array<{ userId, role, joinedAt, displayName, email }>>}
+ * @returns {Promise<Array<{
+ *   id: string, userId: string|null, role: string,
+ *   joinedAt: any, displayName: string|null, email: string|null,
+ * }>>}
  */
 export async function getCommunityMembers(communityId) {
-    const q = query(
-        collection(db, 'community_members'),
+    const q        = query(
+        collection(db, Collections.COMMUNITY_MEMBERS),
         where('community_id', '==', communityId)
     );
     const snapshot = await getDocs(q);
+
     const members = snapshot.docs.map((doc) => {
         const d = doc.data();
         return {
-            id: doc.id,
-            userId: d.user_id || d.userId || null,
-            role: d.role || 'member',
-            joinedAt: d.joined_at || d.joinedAt || null,
+            id:          doc.id,
+            userId:      d.user_id      || d.userId      || null,
+            role:        d.role                          || 'member',
+            joinedAt:    d.joined_at    || d.joinedAt    || null,
             displayName: d.display_name || d.displayName || d.full_name || d.name || null,
-            email: d.email || d.user_email || null,
+            email:       d.email        || d.user_email  || null,
         };
     });
 
     const userIds = [...new Set(members.map((m) => m.userId).filter(Boolean))];
     if (userIds.length === 0) return members;
 
+    // Enrich names from the users collection (batched in groups of 10 — Firestore `in` limit)
     const userMap = new Map();
     try {
         for (let i = 0; i < userIds.length; i += 10) {
-            const batch = userIds.slice(i, i + 10);
-            const usersSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)));
-            usersSnap.forEach((userDoc) => {
-                userMap.set(userDoc.id, userDoc.data());
-            });
+            const batch  = userIds.slice(i, i + 10);
+            const snap   = await getDocs(
+                query(collection(db, Collections.USERS), where(documentId(), 'in', batch))
+            );
+            snap.forEach((d) => userMap.set(d.id, d.data()));
         }
-    } catch {
-        // Some projects don't have a public 'users' collection (names come from Auth).
-    }
+    } catch { /* users collection may not be public */ }
 
-    // Fallback: enrich names from recent alerts (alerts contain userName/userEmail).
-    const alertUserMap = new Map(); // userId -> { userName, userEmail }
+    // Fallback: enrich from alert documents (they store userName/userEmail)
+    const alertUserMap = new Map();
     try {
         for (let i = 0; i < userIds.length; i += 10) {
             const batch = userIds.slice(i, i + 10);
-            const alertsSnap = await getDocs(query(collection(db, 'alerts'), where('userId', 'in', batch)));
-            alertsSnap.forEach((aDoc) => {
-                const d = aDoc.data();
-                const uid = d.userId;
+            const snap  = await getDocs(
+                query(collection(db, Collections.ALERTS), where('userId', 'in', batch))
+            );
+            snap.forEach((d) => {
+                const data = d.data();
+                const uid  = data.userId;
                 if (!uid || alertUserMap.has(uid)) return;
-                alertUserMap.set(uid, { userName: d.userName || null, userEmail: d.userEmail || null });
+                alertUserMap.set(uid, { userName: data.userName ?? null, userEmail: data.userEmail ?? null });
             });
         }
-    } catch {
-        // ignore
-    }
+    } catch { /* ignore */ }
 
-    return members.map((member) => {
-        const u = member.userId ? userMap.get(member.userId) : null;
-        const au = member.userId ? alertUserMap.get(member.userId) : null;
+    return members.map((m) => {
+        const u  = m.userId ? userMap.get(m.userId)      : null;
+        const au = m.userId ? alertUserMap.get(m.userId) : null;
         return {
-            ...member,
+            ...m,
             displayName:
-                member.displayName ||
-                u?.display_name || u?.displayName || u?.full_name || u?.name ||
-                au?.userName ||
+                m.displayName            ||
+                u?.display_name          || u?.displayName || u?.full_name || u?.name ||
+                au?.userName             ||
                 null,
             email:
-                member.email ||
-                u?.email ||
+                m.email      ||
+                u?.email     ||
                 au?.userEmail ||
                 null,
         };
     });
 }
-

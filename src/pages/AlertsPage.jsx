@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { subscribeToAlertsFiltered } from '../services/alertService';
-import { getAlertColor, getAlertLabel } from '../data/emergencyTypes';
+import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
-import AlertFilterPanel, { EMPTY_FILTERS, countActiveFilters } from '../components/AlertFilterPanel';
+import AlertFilterPanel, { EMPTY_FILTERS } from '../components/AlertFilterPanel';
+import { countActiveFilters } from '../config/filterOptions';
 
 // ─── Labels de los filtros activos ────────────────────────────────────────────
 
