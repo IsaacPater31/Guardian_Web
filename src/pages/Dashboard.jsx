@@ -44,8 +44,8 @@ export default function Dashboard() {
         return unsub;
     }, []);
 
-    // Get unique community IDs from alerts
-    const communityIds = new Set(alerts.map((a) => a.communityId).filter(Boolean));
+    // Get unique community IDs from alerts (supports multi-community alerts)
+    const communityIds = new Set(alerts.flatMap((a) => a.communityIds ?? (a.communityId ? [a.communityId] : [])));
 
     const statCards = [
         {

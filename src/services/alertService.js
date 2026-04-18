@@ -37,6 +37,19 @@ import { resolveFilterDates }         from '../utils/dateRangeUtils';
  */
 function parseAlert(doc) {
     const d = doc.data();
+    // ── community_ids normalisation: support both legacy and new format ─────
+    const rawCommunityIds = d[AlertFields.communityIds];  // new: array
+    const rawCommunityId  = d[AlertFields.communityId];   // legacy: string
+
+    let communityIds;
+    if (Array.isArray(rawCommunityIds) && rawCommunityIds.length > 0) {
+        communityIds = rawCommunityIds;
+    } else if (rawCommunityId) {
+        communityIds = [rawCommunityId]; // <- wrap legacy single-string into array
+    } else {
+        communityIds = [];
+    }
+
     return {
         id:           doc.id,
         type:         d[AlertFields.type]          || '',
@@ -52,7 +65,8 @@ function parseAlert(doc) {
         imageBase64:  d[AlertFields.imageBase64]   ?? null,
         viewedCount:  d[AlertFields.viewedCount]   ?? 0,
         viewedBy:     d[AlertFields.viewedBy]      ?? [],
-        communityId:  d[AlertFields.communityId]   ?? null,
+        communityIds,                               // new array (normalised)
+        communityId:  communityIds[0] ?? null,      // convenience: first ID (may be null)
         forwardsCount:d[AlertFields.forwardsCount] ?? 0,
         reportsCount: d[AlertFields.reportsCount]  ?? 0,
         reportedBy:   d[AlertFields.reportedBy]    ?? [],
@@ -278,7 +292,7 @@ export function subscribeToAlertsFiltered(filters, callback) {
 export async function getCommunityAlerts(communityId) {
     const q = query(
         alertsCol(),
-        where(AlertFields.communityId, '==', communityId)
+        where(AlertFields.communityIds, 'array-contains', communityId)
     );
 
     const snapshot = await getDocs(q);

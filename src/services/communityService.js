@@ -38,6 +38,23 @@ export async function getCommunityName(id) {
     return _nameCache[id] ?? 'Comunidad eliminada o inexistente';
 }
 
+/**
+ * Resolve multiple community IDs to their display names in a single pass.
+ * Reuses the same in-memory cache — only warms the cache once even if
+ * called with many IDs.
+ *
+ * @param {string[]} ids
+ * @returns {Promise<{ id: string, name: string }[]>}
+ */
+export async function getCommunityNames(ids) {
+    if (!ids || ids.length === 0) return [];
+    await _warmCache();
+    return ids.map((id) => ({
+        id,
+        name: _nameCache[id] ?? 'Comunidad desconocida',
+    }));
+}
+
 // ─── Parsers ──────────────────────────────────────────────────────────────────
 
 function parseCommunity(doc) {

@@ -206,7 +206,8 @@ export const AlertFields = Object.freeze({
 
     // Stored as snake_case in Firestore (legacy naming from Flutter)
     alertStatus:  'alert_status',
-    communityId:  'community_id',
+    communityId:  'community_id',              // legacy (read-only, backward compat)
+    communityIds: 'community_ids',             // new array field
     forwardsCount:'forwards_count',
     reportsCount: 'reports_count',
     reportedBy:   'reported_by',

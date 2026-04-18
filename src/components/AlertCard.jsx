@@ -1,54 +1,60 @@
 import * as LucideIcons from 'lucide-react';
-import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '../data/emergencyTypes';
-import {
-    MapPin,
-    EyeOff,
-    Eye,
-    Forward,
-    Flag,
-} from 'lucide-react';
+import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo, AlertStatus } from '../config/alertTypes';
+import { MapPin, EyeOff, Eye, Forward, Flag, CheckCircle2, Clock3 } from 'lucide-react';
 
 export default function AlertCard({ alert, onClick }) {
-    const color = getAlertColor(alert.alertType);
-    const iconName = getAlertIcon(alert.alertType);
-    const Icon = LucideIcons[iconName] || LucideIcons.AlertTriangle;
-    const label = getAlertLabel(alert.alertType);
-    const timeAgo = getTimeAgo(alert.timestamp);
-    const isAttended = alert.alertStatus === 'attended';
+    const color      = getAlertColor(alert.alertType);
+    const iconName   = getAlertIcon(alert.alertType);
+    const Icon       = LucideIcons[iconName] || LucideIcons.AlertTriangle;
+    const label      = getAlertLabel(alert.alertType);
+    const timeAgo    = getTimeAgo(alert.timestamp);
+    const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
+
+    // Apple semantic colors
+    const statusColor = isAttended ? '#34C759' : '#FF9F0A';
+    const StatusIcon  = isAttended ? CheckCircle2 : Clock3;
 
     return (
         <div className="alert-card" onClick={() => onClick?.(alert)}>
-            <div
-                className="alert-card-icon"
-                style={{ backgroundColor: color }}
-            >
+            {/* Icon column */}
+            <div className="alert-card-icon" style={{ backgroundColor: color, position: 'relative' }}>
                 <Icon />
-                {/* Indicador de atendida (punto verde) */}
-                {isAttended && (
-                    <span className="alert-card-attended-dot" title="Atendida" />
-                )}
+                {/* Attended dot — subtle secondary indicator */}
+                {isAttended && <span className="alert-card-attended-dot" title="Atendida" />}
             </div>
+
+            {/* Content */}
             <div className="alert-card-content">
                 <div className="alert-card-top">
                     <span className="alert-card-type">{label}</span>
                     <span className="alert-card-time">{timeAgo}</span>
                 </div>
+
                 {alert.description && (
                     <p className="alert-card-desc">{alert.description}</p>
                 )}
+
                 <div className="alert-card-tags">
-                    {/* Badge de estado — siempre visible */}
-                    {isAttended ? (
-                        <span className="tag tag-attended">
-                            <LucideIcons.CheckCircle2 style={{ width: 11, height: 11 }} />
-                            Atendida
-                        </span>
-                    ) : (
-                        <span className="tag tag-pending">
-                            <LucideIcons.Clock style={{ width: 11, height: 11 }} />
-                            No atendida
-                        </span>
-                    )}
+
+                    {/* ── Status badge — always first, Apple-style pill ──────── */}
+                    <span style={{
+                        display:     'inline-flex',
+                        alignItems:  'center',
+                        gap:         4,
+                        padding:     '3px 9px',
+                        borderRadius:'20px',
+                        fontSize:    '11px',
+                        fontWeight:  700,
+                        color:       statusColor,
+                        background:  `${statusColor}14`,
+                        border:      `1.5px solid ${statusColor}44`,
+                        letterSpacing: '0.02em',
+                        flexShrink:  0,
+                    }}>
+                        <StatusIcon style={{ width: 10, height: 10 }} />
+                        {isAttended ? 'Atendida' : 'No atendida'}
+                    </span>
+
                     {alert.shareLocation && alert.location && (
                         <span className="tag tag-location">
                             <MapPin /> Ubicación
