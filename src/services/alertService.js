@@ -125,7 +125,8 @@ function applyClientFilters(alerts, types, status) {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * One-shot fetch of alerts from the last N hours (configured in QUERY_CONFIG).
+ * One-shot fetch of alerts from the last N hours (configured in QUERY_CONFIG),
+ * capped by QUERY_CONFIG.recentAlertsLimit (newest first).
  *
  * @returns {Promise<AlertObject[]>}
  */
@@ -136,7 +137,8 @@ export async function getRecentAlerts() {
     const q = query(
         alertsCol(),
         where(AlertFields.timestamp, '>', Timestamp.fromDate(since)),
-        orderBy(AlertFields.timestamp, 'desc')
+        orderBy(AlertFields.timestamp, 'desc'),
+        limit(QUERY_CONFIG.recentAlertsLimit)
     );
 
     const snapshot = await getDocs(q);
@@ -162,8 +164,8 @@ export async function getMapAlerts() {
 }
 
 /**
- * Real-time subscription to recent alerts (last N hours).
- * Used by the Dashboard feed.
+ * Real-time subscription to recent alerts (last N hours), capped by
+ * QUERY_CONFIG.recentAlertsLimit. Used by the Dashboard feed.
  *
  * @param {(alerts: AlertObject[]) => void} callback
  * @returns {() => void} unsubscribe
@@ -175,7 +177,8 @@ export function subscribeToRecentAlerts(callback) {
     const q = query(
         alertsCol(),
         where(AlertFields.timestamp, '>', Timestamp.fromDate(since)),
-        orderBy(AlertFields.timestamp, 'desc')
+        orderBy(AlertFields.timestamp, 'desc'),
+        limit(QUERY_CONFIG.recentAlertsLimit)
     );
 
     return onSnapshot(q, (snapshot) => {

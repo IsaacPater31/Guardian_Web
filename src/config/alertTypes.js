@@ -233,6 +233,9 @@ export const QUERY_CONFIG = Object.freeze({
     /** Hours window for "recent alerts" feed (Dashboard). */
     recentWindowHours: 24,
 
+    /** Max documents for recent-alerts feed (Firestore reads cap). */
+    recentAlertsLimit: 100,
+
     /** Max documents fetched when no date filter is active on the map. */
     mapFetchLimit: 1000,
 
