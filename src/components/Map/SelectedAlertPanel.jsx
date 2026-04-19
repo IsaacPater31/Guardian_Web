@@ -3,21 +3,28 @@ import * as LucideIcons from 'lucide-react';
 import { Eye, Forward, Flag, EyeOff, User, X, Users } from 'lucide-react';
 import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '../../data/emergencyTypes';
 import { getCommunityNames } from '../../services/communityService';
+import { getSubtypeLabel } from '../../utils/alertSubtype';
 
 export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
     const [communityNames, setCommunityNames] = useState([]);
+    const main = getAlertLabel(alert.alertType);
+    const sub = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
 
     useEffect(() => {
-        let active = true;
+        let cancelled = false;
+        let emptyTimeout;
         if (alert?.communityIds?.length > 0) {
             getCommunityNames(alert.communityIds).then((names) => {
-                if (active) setCommunityNames(names);
+                if (!cancelled) setCommunityNames(names);
             });
         } else {
-            setCommunityNames([]);
+            emptyTimeout = setTimeout(() => {
+                if (!cancelled) setCommunityNames([]);
+            }, 0);
         }
         return () => {
-            active = false;
+            cancelled = true;
+            if (emptyTimeout) clearTimeout(emptyTimeout);
         };
     }, [alert?.communityIds]);
 
@@ -30,7 +37,15 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
                     <Icon />
                 </div>
                 <div className="map-alert-panel-header-info">
-                    <div className="map-alert-panel-header-type">{getAlertLabel(alert.alertType)}</div>
+                    <div className="map-alert-panel-header-type" style={{ lineHeight: 1.2 }}>
+                        <div style={{ fontWeight: 800, fontSize: '1.05rem' }}>{main}</div>
+                        {sub ? (
+                            <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.95, marginTop: 4 }}>
+                                <span style={{ opacity: 0.85 }}>→ </span>
+                                {sub}
+                            </div>
+                        ) : null}
+                    </div>
                     <div className="map-alert-panel-header-time">{getTimeAgo(alert.timestamp)}</div>
                 </div>
                 <button className="map-alert-panel-close" onClick={onClose}><X /></button>

@@ -1,44 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { X, MapPin, Clock, ExternalLink, CheckCircle2, Clock3, Users, Eye, Forward, Flag } from 'lucide-react';
-import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo, AlertStatus } from '../config/alertTypes';
+import { X, MapPin, Clock, ExternalLink, CheckCircle2, Clock3, Users } from 'lucide-react';
+import {
+    getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo, AlertStatus,
+} from '../config/alertTypes';
 import { getCommunityNames } from '../services/communityService';
+import { getSubtypeLabel } from '../utils/alertSubtype';
 
-// ─── Status badge — Apple-inspired pill ───────────────────────────────────────
-function StatusBadge({ isAttended, size = 'md' }) {
-    const color = isAttended ? '#34C759' : '#FF9F0A'; // Apple green / Apple amber
-    const Icon  = isAttended ? CheckCircle2 : Clock3;
-    const label = isAttended ? 'Atendida' : 'No atendida';
-    const sizes = {
-        sm: { padding: '3px 8px',  fontSize: '11px', iconSz: 10 },
-        md: { padding: '5px 12px', fontSize: '12px', iconSz: 12 },
-        lg: { padding: '7px 14px', fontSize: '13px', iconSz: 14 },
-    };
-    const s = sizes[size];
-
-    return (
-        <span style={{
-            display:        'inline-flex',
-            alignItems:     'center',
-            gap:            5,
-            padding:        s.padding,
-            borderRadius:   '20px',
-            fontSize:       s.fontSize,
-            fontWeight:     700,
-            color,
-            background:     `${color}18`,
-            border:         `1.5px solid ${color}55`,
-            letterSpacing:  '0.02em',
-            whiteSpace:     'nowrap',
-        }}>
-            <Icon style={{ width: s.iconSz, height: s.iconSz }} />
-            {label}
-        </span>
-    );
-}
+/** Detalle de alerta en español (producto). */
+const es = (copy) => copy;
 
 // ─── Leaflet mini-map ─────────────────────────────────────────────────────────
-function MiniMap({ lat, lng, color }) {
+function MiniMap({ lat, lng, color, openMapLabel }) {
     const containerRef = useRef(null);
     const mapRef       = useRef(null);
 
@@ -113,14 +86,15 @@ function MiniMap({ lat, lng, color }) {
                 }}
             >
                 <ExternalLink style={{ width: 10, height: 10 }} />
-                Abrir mapa
+                {openMapLabel}
             </a>
         </div>
     );
 }
 
 // ─── Info row — reutilizable ──────────────────────────────────────────────────
-function InfoRow({ icon: Icon, iconColor = 'var(--color-text-tertiary)', label, children, accent }) {
+function InfoRow({ icon, iconColor = 'var(--color-text-tertiary)', label, children, accent }) {
+    const IconComponent = icon;
     return (
         <div style={{
             display: 'flex', gap: 10, alignItems: 'flex-start',
@@ -135,7 +109,7 @@ function InfoRow({ icon: Icon, iconColor = 'var(--color-text-tertiary)', label, 
                 background: accent ? `${accent}15` : 'var(--color-bg)',
                 border: `1px solid ${accent ? `${accent}25` : 'var(--color-border)'}`,
             }}>
-                <Icon style={{ width: 14, height: 14, color: accent || iconColor }} />
+                <IconComponent style={{ width: 14, height: 14, color: accent || iconColor }} />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
@@ -162,11 +136,21 @@ export default function AlertDetailModal({ alert, onClose }) {
     const [communityNames, setCommunityNames] = useState([]);
 
     useEffect(() => {
+        let cancelled = false;
+        let emptyTimeout;
         if (alert?.communityIds?.length > 0) {
-            getCommunityNames(alert.communityIds).then(setCommunityNames);
+            getCommunityNames(alert.communityIds).then((names) => {
+                if (!cancelled) setCommunityNames(names);
+            });
         } else {
-            setCommunityNames([]);
+            emptyTimeout = setTimeout(() => {
+                if (!cancelled) setCommunityNames([]);
+            }, 0);
         }
+        return () => {
+            cancelled = true;
+            if (emptyTimeout) clearTimeout(emptyTimeout);
+        };
     }, [alert?.communityIds]);
 
     if (!alert) return null;
@@ -174,7 +158,8 @@ export default function AlertDetailModal({ alert, onClose }) {
     const color     = getAlertColor(alert.alertType);
     const iconName  = getAlertIcon(alert.alertType);
     const Icon      = LucideIcons[iconName] || LucideIcons.AlertTriangle;
-    const label     = getAlertLabel(alert.alertType);
+    const mainLabel = getAlertLabel(alert.alertType);
+    const subLabel  = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo   = getTimeAgo(alert.timestamp);
     const isAttended= alert.alertStatus === AlertStatus.ATTENDED;
 
@@ -183,6 +168,7 @@ export default function AlertDetailModal({ alert, onClose }) {
         : new Date(alert.timestamp);
 
     const hasLocation = alert.shareLocation && alert.location;
+    const dateLocale = 'es-CO';
 
     return (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -194,10 +180,36 @@ export default function AlertDetailModal({ alert, onClose }) {
                         <Icon />
                     </div>
                     <div className="modal-header-info">
-                        <div className="modal-header-type">{label}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                        <div className="modal-header-type" style={{ lineHeight: 1.22 }}>
+                            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>{mainLabel}</div>
+                            {subLabel ? (
+                                <div style={{
+                                    fontSize: '1.1rem', fontWeight: 800, marginTop: 8, color: 'white',
+                                    letterSpacing: '0.01em',
+                                }}>
+                                    <span style={{ opacity: 0.88, fontWeight: 700 }}>→ </span>
+                                    {subLabel}
+                                </div>
+                            ) : null}
+                        </div>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            marginTop: 10, flexWrap: 'wrap',
+                        }}>
+                            <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '3px 10px', borderRadius: '20px',
+                                fontSize: '10px', fontWeight: 800, letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                color: 'rgba(255,255,255,0.95)',
+                                background: alert.isAnonymous ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.22)',
+                                border: '1.5px solid rgba(255,255,255,0.35)',
+                            }}>
+                                {alert.isAnonymous ? es('Anónima') : es('Identificada')}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                             <span className="modal-header-time">{timeAgo}</span>
-                            {/* Status badge — on colored header, white-tinted version */}
                             <span style={{
                                 display:     'inline-flex',
                                 alignItems:  'center',
@@ -216,7 +228,7 @@ export default function AlertDetailModal({ alert, onClose }) {
                                     ? <CheckCircle2 style={{ width: 11, height: 11 }} />
                                     : <Clock3       style={{ width: 11, height: 11 }} />
                                 }
-                                {isAttended ? 'Atendida' : 'No atendida'}
+                                {isAttended ? es('Atendida') : es('No atendida')}
                             </span>
                         </div>
                     </div>
@@ -253,82 +265,24 @@ export default function AlertDetailModal({ alert, onClose }) {
                                     color: isAttended ? '#34C759AA' : '#FF9F0AAA',
                                     textTransform: 'uppercase', marginBottom: 3,
                                 }}>
-                                    Estado de la alerta
+                                    {es('Estado de la alerta')}
                                 </div>
                                 <div style={{ fontSize: '15px', fontWeight: 700, color: isAttended ? '#34C759' : '#FF9F0A' }}>
-                                    {isAttended ? 'Atendida' : 'No atendida'}
+                                    {isAttended ? es('Atendida') : es('No atendida')}
                                 </div>
                                 <div style={{
                                     fontSize: '12px', color: isAttended ? '#34C759AA' : '#FF9F0AAA',
                                     marginTop: 2, lineHeight: 1.3,
                                 }}>
                                     {isAttended
-                                        ? 'Esta alerta fue marcada como atendida.'
-                                        : 'Esta alerta está pendiente de atención.'
-                                    }
+                                        ? es('Esta alerta fue marcada como atendida.')
+                                        : es('Esta alerta está pendiente de atención.')}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Stats Row */}
-                    <div className="modal-section">
-                        <div className="modal-stats">
-                            <div className="modal-stat">
-                                <div className="modal-stat-value" style={{ color: '#007AFF' }}>{alert.viewedCount}</div>
-                                <div className="modal-stat-label">Vistas</div>
-                            </div>
-                            <div className="modal-stat">
-                                <div className="modal-stat-value" style={{ color: '#6366F1' }}>{alert.forwardsCount}</div>
-                                <div className="modal-stat-label">Reenvíos</div>
-                            </div>
-                            <div className="modal-stat">
-                                <div className="modal-stat-value" style={{ color: '#FF3B30' }}>{alert.reportsCount}</div>
-                                <div className="modal-stat-label">Reportes</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Mini Map */}
-                    {hasLocation && (
-                        <div className="modal-section">
-                            <div className="modal-section-label">Ubicación</div>
-                            <MiniMap
-                                lat={alert.location.latitude}
-                                lng={alert.location.longitude}
-                                color={color}
-                            />
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                marginTop: 8, fontSize: 'var(--font-size-sm)',
-                                color: 'var(--color-text-secondary)',
-                            }}>
-                                <MapPin style={{ width: 12, height: 12, color: '#34C759' }} />
-                                {alert.location.latitude?.toFixed(6)}, {alert.location.longitude?.toFixed(6)}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Reported by */}
-                    <div className="modal-section">
-                        <InfoRow
-                            icon={alert.isAnonymous ? LucideIcons.EyeOff : LucideIcons.User}
-                            label="Reportado por"
-                        >
-                            {alert.isAnonymous ? 'Reporte anónimo' : (alert.userName || 'Usuario desconocido')}
-                        </InfoRow>
-                    </div>
-
-                    {/* Description */}
-                    {alert.description && (
-                        <div className="modal-section">
-                            <InfoRow icon={LucideIcons.FileText} label="Descripción">
-                                {alert.description}
-                            </InfoRow>
-                        </div>
-                    )}
-
-                    {/* Community of origin — multi-community chips */}
+                    {/* Comunidades */}
                     {communityNames.length > 0 && (
                         <div className="modal-section">
                             <div style={{
@@ -346,10 +300,11 @@ export default function AlertDetailModal({ alert, onClose }) {
                                 </span>
                                 <div>
                                     <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: '#007AFFAA', textTransform: 'uppercase' }}>
-                                        Comunidades
+                                        {es('Comunidades')}
                                     </div>
                                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#007AFF' }}>
-                                        {communityNames.length} {communityNames.length === 1 ? 'comunidad' : 'comunidades'}
+                                        {communityNames.length}{' '}
+                                        {communityNames.length === 1 ? es('comunidad') : es('comunidades')}
                                     </div>
                                 </div>
                             </div>
@@ -375,44 +330,124 @@ export default function AlertDetailModal({ alert, onClose }) {
                         </div>
                     )}
 
-                    {/* Timestamp */}
+                    {/* Tipo principal + detalle / subtipo */}
                     <div className="modal-section">
-                        <InfoRow icon={Clock} label="Fecha y hora">
-                            {timestamp.toLocaleDateString('es-CO', {
-                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                            })}
-                            {' — '}
-                            {timestamp.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                        </InfoRow>
-                    </div>
-
-                    {/* Alert type tags */}
-                    <div className="modal-section">
-                        <div className="modal-section-label">Tipo</div>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 6 }}>
-                            <span className="tag" style={{
-                                background: `${color}15`, color,
-                                padding: '4px 12px', fontSize: '13px',
-                            }}>
-                                {alert.alertType}
-                            </span>
-                            <span className="tag tag-type" style={{ padding: '4px 12px', fontSize: '13px' }}>
-                                {alert.type?.toUpperCase()}
-                            </span>
+                        <div style={{
+                            padding: '14px 16px',
+                            borderRadius: 'var(--radius-lg)',
+                            background: `${color}10`,
+                            border: `1.5px solid ${color}33`,
+                        }}>
+                            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: `${color}AA`, textTransform: 'uppercase', marginBottom: 6 }}>
+                                {es('Tipo principal')}
+                            </div>
+                            <div style={{ fontSize: '18px', fontWeight: 800, color, marginBottom: 14 }}>
+                                {mainLabel}
+                            </div>
+                            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: 'var(--color-text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
+                                {es('Detalle / subtipo')}
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1.3 }}>
+                                {subLabel || es('Sin detalle específico')}
+                            </div>
+                            {alert.type ? (
+                                <div style={{
+                                    fontSize: 11, color: 'var(--color-text-tertiary)', fontWeight: 600,
+                                    letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: 10,
+                                }}>
+                                    {es('Canal')}: {String(alert.type).toUpperCase()}
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 
-                    {/* Images */}
+                    {/* Anonimato */}
+                    <div className="modal-section">
+                        <div style={{
+                            padding: '14px 16px',
+                            borderRadius: 'var(--radius-lg)',
+                            background: alert.isAnonymous ? 'rgba(255,149,0,0.08)' : 'rgba(52,199,89,0.08)',
+                            border: `1.5px solid ${alert.isAnonymous ? 'rgba(255,149,0,0.35)' : 'rgba(52,199,89,0.35)'}`,
+                        }}>
+                            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: 'var(--color-text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+                                {es('Anonimato')}
+                            </div>
+                            <div style={{ fontSize: '15px', fontWeight: 800, color: alert.isAnonymous ? '#b45309' : '#1b7f3a' }}>
+                                {alert.isAnonymous ? es('Reporte anónimo') : es('Reporte identificado')}
+                            </div>
+                            {!alert.isAnonymous && (alert.userName || '').trim() ? (
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', marginTop: 8 }}>
+                                    {`${es('Reportado por')}: ${alert.userName}`}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    {/* Fecha y hora */}
+                    <div className="modal-section">
+                        <InfoRow icon={Clock} label={es('Fecha y hora')}>
+                            {timestamp.toLocaleDateString(dateLocale, {
+                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                            })}
+                            {' — '}
+                            {timestamp.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
+                        </InfoRow>
+                    </div>
+
+                    {/* Mensaje */}
+                    {alert.description ? (
+                        <div className="modal-section">
+                            <InfoRow icon={LucideIcons.MessageSquareText} label={es('Mensaje')}>
+                                {alert.description}
+                            </InfoRow>
+                        </div>
+                    ) : null}
+
+                    {/* Stats Row */}
+                    <div className="modal-section">
+                        <div className="modal-stats">
+                            <div className="modal-stat">
+                                <div className="modal-stat-value" style={{ color: '#007AFF' }}>{alert.viewedCount}</div>
+                                <div className="modal-stat-label">{es('Vistas')}</div>
+                            </div>
+                            <div className="modal-stat">
+                                <div className="modal-stat-value" style={{ color: '#6366F1' }}>{alert.forwardsCount}</div>
+                                <div className="modal-stat-label">{es('Reenvíos')}</div>
+                            </div>
+                            <div className="modal-stat">
+                                <div className="modal-stat-value" style={{ color: '#FF3B30' }}>{alert.reportsCount}</div>
+                                <div className="modal-stat-label">{es('Reportes')}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Mini Map */}
+                    {hasLocation && (
+                        <div className="modal-section">
+                            <div className="modal-section-label">{es('Ubicación')}</div>
+                            <MiniMap
+                                lat={alert.location.latitude}
+                                lng={alert.location.longitude}
+                                color={color}
+                                openMapLabel={es('Abrir mapa')}
+                            />
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                marginTop: 8, fontSize: 'var(--font-size-sm)',
+                                color: 'var(--color-text-secondary)',
+                            }}>
+                                <MapPin style={{ width: 12, height: 12, color: '#34C759' }} />
+                                {alert.location.latitude?.toFixed(6)}, {alert.location.longitude?.toFixed(6)}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Imágenes: desactivado en cliente; estructura lista para futuro */}
                     {alert.imageBase64 && alert.imageBase64.length > 0 && (
                         <div className="modal-section">
-                            <div className="modal-section-label">Imágenes adjuntas</div>
-                            <div className="modal-images">
-                                {alert.imageBase64.map((img, idx) => (
-                                    <div className="modal-image" key={idx}>
-                                        <img src={`data:image/jpeg;base64,${img}`} alt={`Imagen ${idx + 1}`} />
-                                    </div>
-                                ))}
-                            </div>
+                            <InfoRow icon={LucideIcons.Image} label={es('Imágenes adjuntas')}>
+                                {es('Hay material gráfico asociado. La vista previa estará disponible próximamente.')}
+                            </InfoRow>
                         </div>
                     )}
                 </div>

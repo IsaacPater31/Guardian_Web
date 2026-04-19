@@ -203,6 +203,8 @@ export const AlertFields = Object.freeze({
     viewedBy:     'viewedBy',
     description:  'description',
     type:         'type',
+    subtype:      'subtype',
+    customDetail: 'custom_detail',
 
     // Stored as snake_case in Firestore (legacy naming from Flutter)
     alertStatus:  'alert_status',
@@ -256,6 +258,11 @@ export function getAlertIcon(alertType) {
 /** Returns the Spanish display label for a given alertType key. */
 export function getAlertLabel(alertType) {
     return ALERT_TYPES[alertType]?.labelEs ?? alertType;
+}
+
+/** English label for alert type (for non-ES UIs). */
+export function getAlertLabelEn(alertType) {
+    return ALERT_TYPES[alertType]?.label ?? alertType;
 }
 
 /**

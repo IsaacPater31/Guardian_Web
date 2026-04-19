@@ -55,6 +55,8 @@ function parseAlert(doc) {
         type:         d[AlertFields.type]          || '',
         alertType:    d[AlertFields.alertType]     || '',
         description:  d[AlertFields.description]   ?? null,
+        subtype:      d[AlertFields.subtype]       ?? null,
+        customDetail: d[AlertFields.customDetail]  ?? null,
         timestamp:    d[AlertFields.timestamp]     ?? null,
         isAnonymous:  d[AlertFields.isAnonymous]   ?? false,
         shareLocation:d[AlertFields.shareLocation] ?? false,

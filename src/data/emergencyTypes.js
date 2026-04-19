@@ -16,5 +16,6 @@ export {
     getAlertColor,
     getAlertIcon,
     getAlertLabel,
+    getAlertLabelEn,
     getTimeAgo,
 } from '../config/alertTypes';

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Users, Building2, ArrowLeft, AlertTriangle, ShieldCheck, ChevronRight } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
@@ -6,6 +6,7 @@ import { getAllCommunities, getCommunityMembers } from '../services/communitySer
 import { getCommunityAlerts } from '../services/alertService';
 import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '../data/emergencyTypes';
 import AlertDetailModal from '../components/AlertDetailModal';
+import { getSubtypeLabel } from '../utils/alertSubtype';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const ROLE_CONFIG = {
@@ -48,7 +49,8 @@ function AlertRow({ alert, onClick }) {
     const color = getAlertColor(alert.alertType);
     const iconName = getAlertIcon(alert.alertType);
     const Icon = LucideIcons[iconName] || LucideIcons.AlertTriangle;
-    const label = getAlertLabel(alert.alertType);
+    const main = getAlertLabel(alert.alertType);
+    const sub = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
 
     return (
         <div
@@ -73,30 +75,48 @@ function AlertRow({ alert, onClick }) {
 
             {/* Content */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--color-text-primary)' }}>{label}</span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{
+                            display: 'block', fontWeight: 700, fontSize: 14.5,
+                            color: 'var(--color-text-primary)', letterSpacing: '-0.02em',
+                        }}>{main}</span>
+                        {sub ? (
+                            <span style={{
+                                display: 'block', fontSize: 12, fontWeight: 700,
+                                color: 'var(--color-text-primary)', marginTop: 4,
+                            }}>
+                                <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 700 }}>→ </span>
+                                {sub}
+                            </span>
+                        ) : null}
+                    </div>
                     <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', flexShrink: 0 }}>{getTimeAgo(alert.timestamp)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                    <span style={{
+                        fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                        padding: '2px 8px', borderRadius: 999,
+                        background: alert.isAnonymous ? 'rgba(0,0,0,0.06)' : 'rgba(52,199,89,0.12)',
+                        color: alert.isAnonymous ? 'var(--color-text-secondary)' : '#1a7f37',
+                        border: `1px solid ${alert.isAnonymous ? 'var(--color-border)' : 'rgba(52,199,89,0.35)'}`,
+                    }}>
+                        {alert.isAnonymous ? 'Anónima' : 'Identificada'}
+                    </span>
                 </div>
                 {alert.description ? (
                     <p style={{
-                        fontSize: 12.5, color: 'var(--color-text-secondary)', margin: '3px 0 0',
+                        fontSize: 12.5, color: 'var(--color-text-secondary)', margin: '6px 0 0',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{alert.description}</p>
                 ) : (
-                    <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '3px 0 0', fontStyle: 'italic' }}>
-                        {alert.isAnonymous ? 'Reporte anónimo' : alert.userName || 'Usuario'}
+                    <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '6px 0 0', fontStyle: 'italic' }}>
+                        {alert.isAnonymous ? 'Reporte anónimo' : (alert.userName || 'Usuario')}
                     </p>
                 )}
             </div>
 
-            {/* Type pill + chevron */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    padding: '3px 9px', borderRadius: 'var(--radius-full)',
-                    background: `${color}15`, color,
-                    letterSpacing: '0.02em',
-                }}>{alert.type?.toUpperCase() || 'ALERTA'}</span>
                 <ChevronRight style={{ width: 15, height: 15, color: 'var(--color-text-tertiary)' }} />
             </div>
         </div>
@@ -164,7 +184,8 @@ function MemberRow({ member, iconColor, compact = false }) {
 }
 
 // ─── Empty State ───────────────────────────────────────────────────────────────
-function EmptyState({ icon: Icon, title, desc }) {
+function EmptyState({ icon, title, desc }) {
+    const IconComponent = icon;
     return (
         <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -175,7 +196,7 @@ function EmptyState({ icon: Icon, title, desc }) {
                 background: 'var(--color-bg)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-                <Icon style={{ width: 26, height: 26, color: 'var(--color-text-tertiary)' }} />
+                <IconComponent style={{ width: 26, height: 26, color: 'var(--color-text-tertiary)' }} />
             </div>
             <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>{title}</span>
             <span style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', maxWidth: 280 }}>{desc}</span>
@@ -195,6 +216,15 @@ export default function CommunityDetailPage() {
     const [loading, setLoading] = useState(true);
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [isCompact, setIsCompact] = useState(window.matchMedia('(max-width: 480px)').matches);
+    const alertsScrollRef = useRef(null);
+    const displayAlerts = useMemo(
+        () => [...alerts].sort((a, b) => {
+            const tA = a.timestamp?.toDate?.() ?? new Date(0);
+            const tB = b.timestamp?.toDate?.() ?? new Date(0);
+            return tA - tB;
+        }),
+        [alerts],
+    );
 
     const load = useCallback(async () => {
         try {
@@ -214,6 +244,14 @@ export default function CommunityDetailPage() {
     }, [id]);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        if (activeTab !== 'alerts') return;
+        const el = alertsScrollRef.current;
+        if (!el) return;
+        el.scrollTop = el.scrollHeight;
+    }, [activeTab, displayAlerts]);
+
     useEffect(() => {
         const media = window.matchMedia('(max-width: 480px)');
         const handler = (e) => setIsCompact(e.matches);
@@ -358,7 +396,20 @@ export default function CommunityDetailPage() {
                 {activeTab === 'alerts' && (
                     alerts.length === 0
                         ? <EmptyState icon={AlertTriangle} title="Sin alertas" desc="Esta comunidad aún no tiene alertas registradas." />
-                        : <div>{alerts.map(a => <AlertRow key={a.id} alert={a} onClick={setSelectedAlert} />)}</div>
+                        : (
+                            <div
+                                ref={alertsScrollRef}
+                                style={{
+                                    maxHeight: 'min(560px, 58vh)',
+                                    overflowY: 'auto',
+                                    scrollBehavior: 'auto',
+                                }}
+                            >
+                                {displayAlerts.map(a => (
+                                    <AlertRow key={a.id} alert={a} onClick={setSelectedAlert} />
+                                ))}
+                            </div>
+                        )
                 )}
 
                 {/* ── Members tab ── */}
