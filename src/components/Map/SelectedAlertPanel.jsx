@@ -1,8 +1,26 @@
+import { useEffect, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { Eye, Forward, Flag, EyeOff, User, X } from 'lucide-react';
+import { Eye, Forward, Flag, EyeOff, User, X, Users } from 'lucide-react';
 import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '../../data/emergencyTypes';
+import { getCommunityNames } from '../../services/communityService';
 
 export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
+    const [communityNames, setCommunityNames] = useState([]);
+
+    useEffect(() => {
+        let active = true;
+        if (alert?.communityIds?.length > 0) {
+            getCommunityNames(alert.communityIds).then((names) => {
+                if (active) setCommunityNames(names);
+            });
+        } else {
+            setCommunityNames([]);
+        }
+        return () => {
+            active = false;
+        };
+    }, [alert?.communityIds]);
+
     const Icon = LucideIcons[getAlertIcon(alert.alertType)] || LucideIcons.AlertTriangle;
 
     return (
@@ -48,6 +66,47 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
                         <span className="tag tag-reports"><Flag /> {alert.reportsCount} reportes</span>
                     )}
                 </div>
+
+                {communityNames.length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            marginBottom: 8,
+                            color: '#007AFF',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            letterSpacing: '0.05em',
+                            textTransform: 'uppercase',
+                        }}>
+                            <Users style={{ width: 13, height: 13 }} />
+                            Comunidades ({communityNames.length})
+                        </div>
+                        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                            {communityNames.map(({ id, name }) => (
+                                <span
+                                    key={id}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        padding: '4px 10px',
+                                        borderRadius: 999,
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: '#007AFF',
+                                        background: 'rgba(0,122,255,0.08)',
+                                        border: '1px solid rgba(0,122,255,0.25)',
+                                    }}
+                                >
+                                    <Users style={{ width: 10, height: 10 }} />
+                                    {name}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <button onClick={onShowDetail} style={{
                     marginTop: 16, width: '100%', padding: '10px',
