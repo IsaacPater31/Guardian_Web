@@ -81,6 +81,10 @@ const ES = {
         DISABILITY_SUPPORT: 'Personas con discapacidad',
         [OTHER]: 'Otro',
     },
+    HARASSMENT: {
+        HARASSMENT: 'Acoso',
+        [OTHER]: 'Otro',
+    },
 };
 
 const EN = {
@@ -158,6 +162,10 @@ const EN = {
         MISSING: 'Missing',
         MINOR_CARE: 'Child care',
         DISABILITY_SUPPORT: 'Disability support',
+        [OTHER]: 'Other',
+    },
+    HARASSMENT: {
+        HARASSMENT: 'Harassment',
         [OTHER]: 'Other',
     },
 };

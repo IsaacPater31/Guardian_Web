@@ -99,6 +99,23 @@ export const ALERT_TYPES = Object.freeze({
         category: 'Traffic',
         active:   true,
     },
+    HARASSMENT: {
+        color:    '#EC407A',
+        icon:     'ShieldAlert',
+        label:    'Harassment',
+        labelEs:  'Acoso',
+        category: 'Security',
+        active:   true,
+    },
+    /** One-tap quick alert (mobile center / configured entity destinations). */
+    URGENCY: {
+        color:    '#F44336',
+        icon:     'Siren',
+        label:    'Urgency',
+        labelEs:  'Urgencia',
+        category: 'Emergency',
+        active:   true,
+    },
 
     // ── Legacy types (historical display only — not shown in filters) ─────────
     ROBBERY: {

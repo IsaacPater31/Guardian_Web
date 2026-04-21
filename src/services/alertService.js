@@ -50,10 +50,17 @@ function parseAlert(doc) {
         communityIds = [];
     }
 
+    // Legacy quick alerts used HEALTH; they are now formally URGENCY everywhere.
+    let alertType = d[AlertFields.alertType] || '';
+    const flowType = d[AlertFields.type] || '';
+    if (flowType === 'quick' && alertType === 'HEALTH') {
+        alertType = 'URGENCY';
+    }
+
     return {
         id:           doc.id,
-        type:         d[AlertFields.type]          || '',
-        alertType:    d[AlertFields.alertType]     || '',
+        type:         flowType,
+        alertType,
         description:  d[AlertFields.description]   ?? null,
         subtype:      d[AlertFields.subtype]       ?? null,
         customDetail: d[AlertFields.customDetail]  ?? null,
