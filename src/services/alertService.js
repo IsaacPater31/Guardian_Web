@@ -50,7 +50,7 @@ function parseAlert(doc) {
         communityIds = [];
     }
 
-    // Legacy quick alerts used HEALTH; they are now formally URGENCY everywhere.
+    // Same rule as Guardian `AlertModel.fromFirestore`: legacy quick alerts stored HEALTH → URGENCY.
     let alertType = d[AlertFields.alertType] || '';
     const flowType = d[AlertFields.type] || '';
     if (flowType === 'quick' && alertType === 'HEALTH') {

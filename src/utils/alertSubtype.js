@@ -1,10 +1,13 @@
 /**
- * Subtype labels aligned with the mobile AlertDetailCatalog (ES / EN).
+ * Subtype labels aligned with Guardian `AlertDetailCatalog` (ES / EN).
+ * Types without subtypes in Firestore use an empty map (e.g. URGENCY); unknown IDs still humanize().
  */
 
 const OTHER = 'OTHER';
 
 const ES = {
+    /** Mobile quick alert type; Firestore usually has no subtype. */
+    URGENCY: {},
     POLICE: {
         ROBBERY: 'Robo',
         SUSPICIOUS_ACTIVITY: 'Actividad sospechosa',
@@ -88,6 +91,7 @@ const ES = {
 };
 
 const EN = {
+    URGENCY: {},
     POLICE: {
         ROBBERY: 'Theft / robbery',
         SUSPICIOUS_ACTIVITY: 'Suspicious activity',

@@ -42,7 +42,9 @@
  * }>}
  */
 export const ALERT_TYPES = Object.freeze({
-    // ── Active types (radial menu in mobile app) ──────────────────────────────
+    // ── Active types ───────────────────────────────────────────────────────────
+    // Mirrors Guardian: `AlertDetailCatalog.supportedAlertTypes` (swipe) plus
+    // `EmergencyTypes.quickAlertType` → URGENCY (one-tap quick alert, no subtype).
     HEALTH: {
         color:    '#26C6DA',
         icon:     'Cross',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, Info } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import { EMERGENCY_TYPES, CATEGORIES, getAlertLabel } from '../data/emergencyTypes';
+import { EMERGENCY_TYPES } from '../data/emergencyTypes';
 
 export default function MapLegend() {
     const [isExpanded, setIsExpanded] = useState(() => {
