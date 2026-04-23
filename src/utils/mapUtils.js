@@ -26,91 +26,46 @@ export function haversineM(lat1, lng1, lat2, lng2) {
 }
 
 /**
- * Group alerts by geographic proximity then assign non-overlapping pixel
- * positions via a golden-angle spiral.
+ * Apply Flutter-like geographic offsets:
+ * - detect overlap by real distance (meters)
+ * - apply a small lat/lng offset ring
+ * This keeps separation visually stable across zoom levels.
  *
- * @param {Array} alerts  - Alert objects with a `location` field.
- * @param {Object|null} map - Leaflet map instance (null → no offset, just raw coords).
+ * @param {Array} alerts
  * @returns {Array<{ alert, lat, lng, hasOffset, offsetLevel }>}
  */
-export function computeOffsets(alerts, map) {
-    if (!map) {
-        return alerts
-            .filter(a => a.location)
-            .map(a => ({
-                alert: a,
-                lat: a.location.latitude ?? a.location.lat,
-                lng: a.location.longitude ?? a.location.lng,
-                hasOffset: false,
-                offsetLevel: 0,
-            }));
-    }
+export function computeOffsets(alerts) {
+    const OVERLAP_THRESHOLD_M = 50;
+    const OFFSET_DISTANCE_DEG = 0.0001;
+    const result = [];
 
-    // Step 1: geographic grouping
-    const groups = [];
     for (const alert of alerts) {
         if (!alert.location) continue;
-        const lat = alert.location.latitude ?? alert.location.lat;
-        const lng = alert.location.longitude ?? alert.location.lng;
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-        let matched = false;
-        for (const g of groups) {
-            if (haversineM(lat, lng, g.cLat, g.cLng) <= GEO_THRESHOLD_M) {
-                g.alerts.push(alert);
-                g.cLat = g.alerts.reduce((s, a) => s + (a.location.latitude ?? a.location.lat), 0) / g.alerts.length;
-                g.cLng = g.alerts.reduce((s, a) => s + (a.location.longitude ?? a.location.lng), 0) / g.alerts.length;
-                matched = true;
-                break;
+        const baseLat = alert.location.latitude ?? alert.location.lat;
+        const baseLng = alert.location.longitude ?? alert.location.lng;
+        if (!Number.isFinite(baseLat) || !Number.isFinite(baseLng)) continue;
+
+        let lat = baseLat;
+        let lng = baseLng;
+        let offsetLevel = 0;
+
+        for (const existing of result) {
+            if (haversineM(baseLat, baseLng, existing.lat, existing.lng) < OVERLAP_THRESHOLD_M) {
+                offsetLevel += 1;
+                const angle = (offsetLevel * 2 * Math.PI) / 8;
+                const radius = OFFSET_DISTANCE_DEG * offsetLevel;
+                lat = baseLat + radius * Math.cos(angle);
+                lng = baseLng + radius * Math.sin(angle);
             }
         }
-        if (!matched) groups.push({ cLat: lat, cLng: lng, alerts: [alert] });
-    }
 
-    // Step 2: assign spiral pixel positions, checking all placed markers
-    // Uses plain {x,y} objects — no Leaflet L.point import needed
-    const result = [];
-    const placed = []; // { x, y } screen pixels of every finalised marker
-    const STEP = MARKER_PX + SPIRAL_GAP_PX;
-
-    for (const group of groups) {
-        const centerPt = map.latLngToContainerPoint([group.cLat, group.cLng]);
-
-        for (let i = 0; i < group.alerts.length; i++) {
-            const alert = group.alerts[i];
-            let finalPt = { x: centerPt.x, y: centerPt.y };
-            let iteration = 0;
-
-            for (let step = 0; step < 200; step++) {
-                const angle = step * 2.3998; // golden angle ~137.5°
-                const r = step === 0 ? 0 : STEP * Math.sqrt(step);
-                const candidate = {
-                    x: centerPt.x + r * Math.cos(angle),
-                    y: centerPt.y + r * Math.sin(angle),
-                };
-
-                const clear = placed.every(p => {
-                    const dist = Math.sqrt((candidate.x - p.x) ** 2 + (candidate.y - p.y) ** 2);
-                    return dist >= MARKER_PX;
-                });
-
-                if (clear) {
-                    finalPt = candidate;
-                    iteration = step;
-                    break;
-                }
-            }
-
-            placed.push({ x: finalPt.x, y: finalPt.y });
-            const finalLL = map.containerPointToLatLng(finalPt);
-
-            result.push({
-                alert,
-                lat: finalLL.lat,
-                lng: finalLL.lng,
-                hasOffset: iteration > 0,
-                offsetLevel: iteration,
-            });
-        }
+        result.push({
+            alert,
+            lat,
+            lng,
+            hasOffset: offsetLevel > 0,
+            offsetLevel,
+        });
     }
 
     return result;
