@@ -65,12 +65,18 @@ export default function MapPage() {
                 <MapContainer
                     center={userPosition || DEFAULT_CENTER}
                     zoom={DEFAULT_ZOOM}
+                    minZoom={2}
+                    maxZoom={20}
+                    worldCopyJump={false}
                     style={{ width: '100%', height: '100%' }}
                     zoomControl={true}
                 >
                     <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        minZoom={2}
+                        maxZoom={20}
+                        noWrap={true}
                     />
 
                     {/* User's GPS position — blue pulsing dot */}

@@ -32,14 +32,25 @@ export function haversineM(lat1, lng1, lat2, lng2) {
  * This keeps separation visually stable across zoom levels.
  *
  * @param {Array} alerts
+ * @param {Object|null} map
  * @returns {Array<{ alert, lat, lng, hasOffset, offsetLevel }>}
  */
-export function computeOffsets(alerts) {
+export function computeOffsets(alerts, map = null) {
     const OVERLAP_THRESHOLD_M = 50;
-    const OFFSET_DISTANCE_DEG = 0.0001;
+    const BASE_OFFSET_DISTANCE_DEG = 0.00008;
+    const MAX_OFFSET_LEVEL = 5;
+    const zoom = typeof map?.getZoom === 'function' ? map.getZoom() : DEFAULT_ZOOM;
+    const zoomFactor = Math.min(1.7, Math.max(0.8, 0.8 + ((zoom - 11) * 0.09)));
+    const offsetStepDeg = BASE_OFFSET_DISTANCE_DEG * zoomFactor;
     const result = [];
+    const stableAlerts = [...alerts].sort((a, b) => {
+        const at = a?.timestamp?.toDate?.()?.getTime?.() ?? a?.timestamp?.getTime?.() ?? 0;
+        const bt = b?.timestamp?.toDate?.()?.getTime?.() ?? b?.timestamp?.getTime?.() ?? 0;
+        if (at !== bt) return bt - at;
+        return String(a?.id ?? '').localeCompare(String(b?.id ?? ''));
+    });
 
-    for (const alert of alerts) {
+    for (const alert of stableAlerts) {
         if (!alert.location) continue;
         const baseLat = alert.location.latitude ?? alert.location.lat;
         const baseLng = alert.location.longitude ?? alert.location.lng;
@@ -48,19 +59,33 @@ export function computeOffsets(alerts) {
         let lat = baseLat;
         let lng = baseLng;
         let offsetLevel = 0;
+        let overlapCount = 0;
 
         for (const existing of result) {
-            if (haversineM(baseLat, baseLng, existing.lat, existing.lng) < OVERLAP_THRESHOLD_M) {
-                offsetLevel += 1;
-                const angle = (offsetLevel * 2 * Math.PI) / 8;
-                const radius = OFFSET_DISTANCE_DEG * offsetLevel;
-                lat = baseLat + radius * Math.cos(angle);
-                lng = baseLng + radius * Math.sin(angle);
+            if (haversineM(baseLat, baseLng, existing.baseLat, existing.baseLng) < OVERLAP_THRESHOLD_M) {
+                overlapCount += 1;
             }
+        }
+
+        if (overlapCount > 0) {
+            const slotCount = zoom >= 17 ? 14 : (zoom >= 15 ? 12 : 10);
+            const ring = Math.min(MAX_OFFSET_LEVEL, Math.floor((overlapCount - 1) / slotCount) + 1);
+            const slot = (overlapCount - 1) % slotCount;
+            const angle = (2 * Math.PI * slot) / slotCount;
+
+            // Add a mild zoom boost so close-up markers are clearly distinguishable.
+            const closeBoost = zoom >= 18 ? 1.5 : (zoom >= 16 ? 1.3 : 1.1);
+            const radius = offsetStepDeg * ring * closeBoost;
+
+            lat = baseLat + radius * Math.cos(angle);
+            lng = baseLng + radius * Math.sin(angle);
+            offsetLevel = ring;
         }
 
         result.push({
             alert,
+            baseLat,
+            baseLng,
             lat,
             lng,
             hasOffset: offsetLevel > 0,
