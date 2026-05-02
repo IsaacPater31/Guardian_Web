@@ -6,15 +6,17 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 
 const pageTitles = {
-    '/': { title: 'Dashboard', subtitle: 'Vista general de alertas y actividad' },
-    '/map': { title: 'Mapa Interactivo', subtitle: 'Alertas en tiempo real geolocalizadas' },
-    '/alerts': { title: 'Alertas', subtitle: 'Histórico completo de alertas recibidas' },
-    '/communities': { title: 'Comunidades', subtitle: 'Comunidades activas en Guardian' },
+    '/': { title: 'Dashboard', subtitle: 'Analítica, usuarios y actividad de alertas' },
+    '/map': { title: 'Mapa', subtitle: 'Alertas geolocalizadas' },
+    '/alerts': { title: 'Alertas', subtitle: 'Histórico y filtros' },
+    '/communities': { title: 'Comunidades', subtitle: 'Crear, editar y gestionar comunidades' },
 };
 
 function getPageInfo(pathname) {
     if (pageTitles[pathname]) return pageTitles[pathname];
-    if (pathname.startsWith('/communities/')) return { title: 'Detalle de Comunidad', subtitle: 'Alertas y miembros' };
+    if (pathname.startsWith('/communities/')) {
+        return { title: 'Miembros', subtitle: 'Roles y participantes en la comunidad' };
+    }
     return pageTitles['/'];
 }
 

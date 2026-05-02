@@ -111,7 +111,7 @@ export default function AlertsPage() {
 
     return (
         <>
-            {/* ── Barra de herramientas de filtros ── */}
+            <div className="alerts-toolbar-card">
             <div className="filter-toolbar">
                 {/* Botón principal de filtros */}
                 <button
@@ -158,17 +158,23 @@ export default function AlertsPage() {
                     </span>
                 )}
             </div>
+            </div>
 
             {/* ── Sección de alertas ── */}
-            <div className="section">
+            <div className="section section--dash">
                 <div className="section-header">
                     <div className="section-header-left">
                         <div className="section-icon" style={{ background: 'rgba(255, 59, 48, 0.08)' }}>
                             <LucideIcons.AlertTriangle style={{ color: '#FF3B30' }} />
                         </div>
-                        <h3 className="section-title">
-                            {hasFilters ? 'Alertas filtradas' : 'Todas las alertas'}
-                        </h3>
+                        <div>
+                            <h3 className="section-title">
+                                {hasFilters ? 'Alertas filtradas' : 'Todas las alertas'}
+                            </h3>
+                            <p className="section-subtitle">
+                                Listado en vivo según tus filtros
+                            </p>
+                        </div>
                     </div>
                     <span
                         className="section-badge"
@@ -178,7 +184,7 @@ export default function AlertsPage() {
                     </span>
                 </div>
 
-                <div className="section-body">
+                <div className="section-body section-body--flush">
                     {alerts.length === 0 ? (
                         <div className="empty-state">
                             <div className="empty-state-icon">
@@ -209,13 +215,15 @@ export default function AlertsPage() {
                             )}
                         </div>
                     ) : (
-                        alerts.map((alert) => (
-                            <AlertCard
-                                key={alert.id}
-                                alert={alert}
-                                onClick={setSelectedAlert}
-                            />
-                        ))
+                        <div className="alerts-feed-grid">
+                            {alerts.map((alert) => (
+                                <AlertCard
+                                    key={alert.id}
+                                    alert={alert}
+                                    onClick={setSelectedAlert}
+                                />
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>

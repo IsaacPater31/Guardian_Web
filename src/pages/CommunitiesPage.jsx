@@ -1,37 +1,110 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, Shield, Building2, Calendar, ChevronRight } from 'lucide-react';
-import { getAllCommunities, getCommunityMemberCount } from '../services/communityService';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Users, Building2 } from 'lucide-react';
+import { getAllCommunities } from '../services/communityService';
+import {
+    adminCreateCommunity,
+    adminUpdateCommunity,
+    adminDeleteCommunityCascade,
+} from '../services/adminCrudService';
+
+const emptyForm = {
+    name: '',
+    description: '',
+    isEntity: false,
+    allowForwardToEntities: true,
+};
 
 export default function CommunitiesPage() {
-    const [communities, setCommunities] = useState([]);
+    const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [memberCounts, setMemberCounts] = useState({});
-    const navigate = useNavigate();
+    const [modal, setModal] = useState(null);
+    const [form, setForm] = useState({ ...emptyForm });
+    const [saving, setSaving] = useState(false);
+    const [err, setErr] = useState('');
 
-    useEffect(() => {
-        loadCommunities();
-    }, []);
-
-    async function loadCommunities() {
+    async function refresh() {
+        setLoading(true);
         try {
             const data = await getAllCommunities();
-            setCommunities(data);
-            setLoading(false);
-
-            // Load member counts in background
-            const counts = {};
-            for (const c of data) {
-                try {
-                    counts[c.id] = await getCommunityMemberCount(c.id);
-                } catch {
-                    counts[c.id] = 0;
-                }
-            }
-            setMemberCounts(counts);
+            data.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            setList(data);
         } catch (e) {
-            console.error('Error loading communities:', e);
+            console.error(e);
+            setList([]);
+        } finally {
             setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        refresh();
+    }, []);
+
+    function openCreate() {
+        setErr('');
+        setForm({ ...emptyForm });
+        setModal('create');
+    }
+
+    function openEdit(c) {
+        setErr('');
+        setForm({
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            isEntity: !!c.isEntity,
+            allowForwardToEntities: c.allowForwardToEntities !== false,
+        });
+        setModal('edit');
+    }
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setSaving(true);
+        setErr('');
+        try {
+            if (modal === 'create') {
+                await adminCreateCommunity({
+                    name: form.name,
+                    description: form.description || null,
+                    isEntity: form.isEntity,
+                    allowForwardToEntities: form.allowForwardToEntities,
+                    createdByUid: null,
+                });
+            } else if (modal === 'edit' && form.id) {
+                await adminUpdateCommunity(form.id, {
+                    name: form.name,
+                    description: form.description || null,
+                    isEntity: form.isEntity,
+                    allowForwardToEntities: form.allowForwardToEntities,
+                });
+            }
+            setModal(null);
+            await refresh();
+        } catch (e) {
+            setErr(e?.message || 'Error al guardar');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleDelete(c) {
+        if (
+            !window.confirm(
+                `¿Eliminar la comunidad "${c.name}" y todos sus vínculos de miembros? Esta acción no se puede deshacer.`
+            )
+        ) {
+            return;
+        }
+        setSaving(true);
+        try {
+            await adminDeleteCommunityCascade(c.id);
+            await refresh();
+        } catch (e) {
+            alert(e?.message || 'No se pudo eliminar');
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -43,147 +116,143 @@ export default function CommunitiesPage() {
         );
     }
 
-    // Separate entities from regular communities
-    const entities = communities.filter((c) => c.isEntity);
-    const regularCommunities = communities.filter((c) => !c.isEntity);
-
     return (
         <>
-            {/* Entities Section */}
-            {entities.length > 0 && (
-                <>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        marginBottom: 'var(--space-4)',
-                    }}>
-                        <Building2 style={{ width: 18, height: 18, color: 'var(--color-text-tertiary)' }} />
-                        <h3 style={{
-                            fontSize: 'var(--font-size-lg)',
-                            fontWeight: 700,
-                            color: 'var(--color-text-primary)',
-                        }}>
-                            Entidades Oficiales
-                        </h3>
-                        <span style={{
-                            padding: '2px 10px',
-                            borderRadius: 'var(--radius-full)',
-                            background: 'rgba(99, 102, 241, 0.1)',
-                            color: '#6366F1',
-                            fontSize: 'var(--font-size-xs)',
-                            fontWeight: 700,
-                        }}>
-                            {entities.length}
-                        </span>
+            <section className="section section--dash" style={{ marginBottom: 'var(--space-5)' }}>
+                <div className="section-header">
+                    <div className="section-header-left">
+                        <div
+                            className="section-icon"
+                            style={{ background: 'rgba(63, 81, 181, 0.1)' }}
+                        >
+                            <Building2 size={18} style={{ color: 'var(--color-accent)' }} />
+                        </div>
+                        <div>
+                            <h2 className="section-title">Comunidades</h2>
+                            <p className="section-subtitle">Directorio, entidades oficiales y permisos</p>
+                        </div>
                     </div>
-                    <div className="communities-grid" style={{ marginBottom: 'var(--space-8)' }}>
-                        {entities.map((c) => (
-                            <CommunityCard key={c.id} community={c} memberCount={memberCounts[c.id]} onClick={() => navigate(`/communities/${c.id}`)} />
-                        ))}
-                    </div>
-                </>
-            )}
+                    <button type="button" className="admin-btn-primary" onClick={openCreate}>
+                        <Plus size={18} /> Nueva comunidad
+                    </button>
+                </div>
+            </section>
 
-            {/* Regular Communities */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: 'var(--space-4)',
-            }}>
-                <Users style={{ width: 18, height: 18, color: 'var(--color-text-tertiary)' }} />
-                <h3 style={{
-                    fontSize: 'var(--font-size-lg)',
-                    fontWeight: 700,
-                    color: 'var(--color-text-primary)',
-                }}>
-                    Comunidades
-                </h3>
-                <span style={{
-                    padding: '2px 10px',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'rgba(52, 199, 89, 0.1)',
-                    color: '#34C759',
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 700,
-                }}>
-                    {regularCommunities.length}
-                </span>
+            <div className="section section--dash section-body--table">
+                <div className="admin-table-scroll">
+                    <table className="admin-table admin-table--users admin-table-wide">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Reenvío a entidades</th>
+                            <th className="admin-th-actions">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {list.map((c) => (
+                            <tr key={c.id}>
+                                <td>
+                                    <strong>{c.name}</strong>
+                                    {c.description && (
+                                        <div className="admin-muted admin-desc">{c.description}</div>
+                                    )}
+                                </td>
+                                <td>{c.isEntity ? 'Entidad oficial' : 'Normal'}</td>
+                                <td>{c.allowForwardToEntities ? 'Sí' : 'No'}</td>
+                                <td>
+                                    <div className="admin-row-actions">
+                                        <Link
+                                            to={`/communities/${c.id}`}
+                                            className="admin-icon-btn"
+                                            title="Miembros"
+                                        >
+                                            <Users size={18} />
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            className="admin-icon-btn"
+                                            onClick={() => openEdit(c)}
+                                            title="Editar"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="admin-icon-btn danger"
+                                            onClick={() => handleDelete(c)}
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                </div>
             </div>
 
-            {regularCommunities.length === 0 ? (
-                <div className="empty-state">
-                    <div className="empty-state-icon">
-                        <Users />
+            {modal && (
+                <div className="admin-modal-overlay" role="dialog">
+                    <div className="admin-modal">
+                        <h3 className="admin-modal-title">
+                            {modal === 'create' ? 'Nueva comunidad' : 'Editar comunidad'}
+                        </h3>
+                        <form onSubmit={handleSubmit} className="admin-modal-form">
+                            <label className="login-label">
+                                Nombre
+                                <input
+                                    className="login-input"
+                                    value={form.name}
+                                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                                    required
+                                />
+                            </label>
+                            <label className="login-label">
+                                Descripción
+                                <textarea
+                                    className="login-input admin-textarea"
+                                    rows={3}
+                                    value={form.description}
+                                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                                />
+                            </label>
+                            <label className="admin-check">
+                                <input
+                                    type="checkbox"
+                                    checked={form.isEntity}
+                                    onChange={(e) => setForm((f) => ({ ...f, isEntity: e.target.checked }))}
+                                />
+                                Entidad oficial (Ambiental / Policía / …)
+                            </label>
+                            <label className="admin-check">
+                                <input
+                                    type="checkbox"
+                                    checked={form.allowForwardToEntities}
+                                    onChange={(e) =>
+                                        setForm((f) => ({
+                                            ...f,
+                                            allowForwardToEntities: e.target.checked,
+                                        }))
+                                    }
+                                />
+                                Permitir reenvío a entidades oficiales
+                            </label>
+                            {err && <div className="login-error">{err}</div>}
+                            <div className="admin-modal-actions">
+                                <button type="button" className="admin-btn-ghost" onClick={() => setModal(null)}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="admin-btn-primary" disabled={saving}>
+                                    {saving ? 'Guardando…' : 'Guardar'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <div className="empty-state-title">Sin comunidades</div>
-                    <div className="empty-state-desc">
-                        Aún no hay comunidades registradas.
-                    </div>
-                </div>
-            ) : (
-                <div className="communities-grid">
-                    {regularCommunities.map((c) => (
-                        <CommunityCard key={c.id} community={c} memberCount={memberCounts[c.id]} onClick={() => navigate(`/communities/${c.id}`)} />
-                    ))}
                 </div>
             )}
         </>
-    );
-}
-
-function CommunityCard({ community, memberCount, onClick }) {
-    const iconColor = community.iconColor || '#6366F1';
-    const createdDate = community.createdAt?.toDate
-        ? community.createdAt.toDate()
-        : new Date(community.createdAt);
-
-    return (
-        <div className="community-card" onClick={onClick} style={{ cursor: 'pointer' }}>
-            <div className="community-card-header">
-                <div
-                    className="community-card-icon"
-                    style={{ background: iconColor }}
-                >
-                    {community.isEntity ? (
-                        <Building2 style={{ width: 22, height: 22, color: 'white' }} />
-                    ) : (
-                        <Users style={{ width: 22, height: 22, color: 'white' }} />
-                    )}
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div className="community-card-name">{community.name}</div>
-                    {community.isEntity && (
-                        <span style={{
-                            fontSize: 'var(--font-size-xs)',
-                            color: '#6366F1',
-                            fontWeight: 600,
-                            background: 'rgba(99, 102, 241, 0.1)',
-                            padding: '1px 8px',
-                            borderRadius: 'var(--radius-full)',
-                        }}>
-                            Entidad oficial
-                        </span>
-                    )}
-                </div>
-                <ChevronRight style={{ width: 16, height: 16, color: 'var(--color-text-tertiary)' }} />
-            </div>
-            {community.description && (
-                <p className="community-card-desc">{community.description}</p>
-            )}
-            <div className="community-card-footer">
-                <Users style={{ width: 14, height: 14 }} />
-                <span>{memberCount ?? '—'} miembros</span>
-                <span style={{ margin: '0 4px' }}>·</span>
-                <Calendar style={{ width: 14, height: 14 }} />
-                <span>
-                    {createdDate.toLocaleDateString('es-CO', {
-                        month: 'short',
-                        year: 'numeric',
-                    })}
-                </span>
-            </div>
-        </div>
     );
 }

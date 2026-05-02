@@ -21,6 +21,7 @@ import {
     collection, query, where, orderBy,
     onSnapshot, Timestamp, getDocs, limit,
 } from 'firebase/firestore';
+
 import { db } from '../firebase';
 import { Collections }                from '../config/collections';
 import { AlertFields, AlertStatus, QUERY_CONFIG } from '../config/alertTypes';
@@ -35,7 +36,8 @@ import { resolveFilterDates }         from '../utils/dateRangeUtils';
  * @param {import('firebase/firestore').DocumentSnapshot} doc
  * @returns {AlertObject}
  */
-function parseAlert(doc) {
+/** Exported for admin analytics — single parser for Firestore alert docs. */
+export function parseAlert(doc) {
     const d = doc.data();
     // ── community_ids normalisation: support both legacy and new format ─────
     const rawCommunityIds = d[AlertFields.communityIds];  // new: array
@@ -346,4 +348,37 @@ export async function getAlertStats() {
         },
         { total: 0, byType: {}, totalViews: 0, totalForwards: 0, totalReports: 0, withLocation: 0 }
     );
+}
+
+/**
+ * Alertas en un rango de fechas (panel admin / analítica).
+ * Si falla la consulta compuesta, reintenta solo con límite inferior.
+ */
+export async function fetchAlertsInDateRange(start, end, maxDocs = 2000) {
+    const tryQuery = async (constraints) => {
+        const q = query(alertsCol(), ...constraints);
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(parseAlert);
+    };
+
+    try {
+        return await tryQuery([
+            where(AlertFields.timestamp, '>=', Timestamp.fromDate(start)),
+            where(AlertFields.timestamp, '<=', Timestamp.fromDate(end)),
+            orderBy(AlertFields.timestamp, 'desc'),
+            limit(maxDocs),
+        ]);
+    } catch (e) {
+        console.warn('[fetchAlertsInDateRange] fallback:', e?.message);
+        return tryQuery([
+            where(AlertFields.timestamp, '>=', Timestamp.fromDate(start)),
+            orderBy(AlertFields.timestamp, 'desc'),
+            limit(maxDocs),
+        ]).then((alerts) =>
+            alerts.filter((a) => {
+                const t = a.timestamp?.toDate?.() ?? new Date(0);
+                return t <= end;
+            })
+        );
+    }
 }

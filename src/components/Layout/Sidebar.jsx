@@ -16,7 +16,6 @@ export default function Sidebar({ isOpen, onClose, collapsed }) {
             )}
             <aside className={`sidebar${isOpen ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}>
 
-                {/* Brand */}
                 <div className="sidebar-brand">
                     <img
                         src="/guardian_logo.png"
@@ -26,12 +25,11 @@ export default function Sidebar({ isOpen, onClose, collapsed }) {
                     {!collapsed && (
                         <div className="sidebar-brand-text-block">
                             <span className="sidebar-brand-name">Guardian</span>
-                            <span className="sidebar-brand-sub">Monitor de alertas</span>
+                            <span className="sidebar-brand-sub">Panel administrativo</span>
                         </div>
                     )}
                 </div>
 
-                {/* Nav */}
                 <nav className="sidebar-nav">
                     {!collapsed && (
                         <div className="sidebar-section-label">Navegación</div>
@@ -51,9 +49,7 @@ export default function Sidebar({ isOpen, onClose, collapsed }) {
                     ))}
                 </nav>
 
-                {/* Footer */}
                 <div className={`sidebar-footer${collapsed ? ' collapsed' : ''}`}>
-                    {/* Status dot */}
                     {!collapsed && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div className="sidebar-status-dot" />
