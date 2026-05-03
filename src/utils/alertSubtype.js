@@ -3,6 +3,8 @@
  * Types without subtypes in Firestore use an empty map (e.g. URGENCY); unknown IDs still humanize().
  */
 
+import { normalizeAlertType } from '../config/alertTypes';
+
 const OTHER = 'OTHER';
 
 const ES = {
@@ -61,6 +63,14 @@ const ES = {
         RUN_OVER: 'Atropello',
         MEDICAL_ASSISTANCE: 'Asistencia médica',
         DOCUMENTS_OR_TOOLS: 'Documentos o herramientas',
+        [OTHER]: 'Otro',
+    },
+    SECURITY_BREACH: {
+        UNAUTHORIZED_ACCESS: 'Acceso no autorizado / intrusión',
+        PERIMETER_BREACH: 'Brecha en perímetro o cerramiento',
+        ALARM_OR_SURVEILLANCE: 'Falla de alarma o videovigilancia',
+        SENSITIVE_ASSET: 'Activo o información sensible expuesta',
+        CYBER_OR_SYSTEMS: 'Incidente en sistemas o ciberseguridad',
         [OTHER]: 'Otro',
     },
     ENVIRONMENTAL: {
@@ -147,6 +157,14 @@ const EN = {
         DOCUMENTS_OR_TOOLS: 'Documents or tools',
         [OTHER]: 'Other',
     },
+    SECURITY_BREACH: {
+        UNAUTHORIZED_ACCESS: 'Unauthorized access / intrusion',
+        PERIMETER_BREACH: 'Perimeter / enclosure breach',
+        ALARM_OR_SURVEILLANCE: 'Alarm or CCTV failure',
+        SENSITIVE_ASSET: 'Sensitive asset or information exposed',
+        CYBER_OR_SYSTEMS: 'Systems / cybersecurity incident',
+        [OTHER]: 'Other',
+    },
     ENVIRONMENTAL: {
         NOISE_POLLUTION: 'Noise pollution',
         ILLEGAL_DUMPS: 'Illegal dumping',
@@ -193,8 +211,9 @@ function humanize(id) {
 export function getSubtypeLabel(alertType, subtype, customDetail, useEs = true) {
     if (!subtype) return '';
     if (subtype === OTHER) return (customDetail || '').trim();
+    const canonical = normalizeAlertType(alertType);
     const table = useEs ? ES : EN;
-    return table[alertType]?.[subtype] || humanize(subtype);
+    return table[canonical]?.[subtype] ?? table[alertType]?.[subtype] ?? humanize(subtype);
 }
 
 /**

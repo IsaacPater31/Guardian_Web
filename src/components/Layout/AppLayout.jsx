@@ -10,6 +10,7 @@ const pageTitles = {
     '/map': { title: 'Mapa', subtitle: 'Alertas geolocalizadas' },
     '/alerts': { title: 'Alertas', subtitle: 'Histórico y filtros' },
     '/communities': { title: 'Comunidades', subtitle: 'Crear, editar y gestionar comunidades' },
+    '/admin': { title: 'Módulo admin', subtitle: 'Usuarios, comunidades y cruces' },
 };
 
 function getPageInfo(pathname) {
@@ -37,6 +38,7 @@ export default function AppLayout() {
     // On mobile: close sidebar whenever route changes.
     useEffect(() => {
         if (window.matchMedia('(max-width: 768px)').matches) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- sync UI to route; intentional
             setSidebarOpen(false);
         }
     }, [location.pathname]);

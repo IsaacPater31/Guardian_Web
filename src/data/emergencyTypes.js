@@ -18,4 +18,6 @@ export {
     getAlertLabel,
     getAlertLabelEn,
     getTimeAgo,
+    normalizeAlertType,
+    LEGACY_ALERT_TYPE_ALIASES,
 } from '../config/alertTypes';

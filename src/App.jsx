@@ -5,6 +5,7 @@ import MapPage from './pages/MapPage';
 import AlertsPage from './pages/AlertsPage';
 import CommunitiesPage from './pages/CommunitiesPage';
 import CommunityDetailPage from './pages/CommunityDetailPage';
+import AdminModulePage from './pages/AdminModulePage';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/communities" element={<CommunitiesPage />} />
           <Route path="/communities/:id" element={<CommunityDetailPage />} />
+          <Route path="/admin" element={<AdminModulePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

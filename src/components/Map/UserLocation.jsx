@@ -32,6 +32,7 @@ export function AutoCenterOnUser({ position }) {
         if (!position || centered) return;
         // First center must be instant to avoid "jump from Bogotá" perception.
         map.setView(position, DEFAULT_ZOOM, { animate: false });
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot flag after centering map
         setCentered(true);
     }, [position, centered, map]);
 

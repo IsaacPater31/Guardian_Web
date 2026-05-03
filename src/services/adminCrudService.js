@@ -20,6 +20,7 @@ import {
 import { db } from '../firebase';
 import { Collections } from '../config/collections';
 import { CommunityFields, MemberFields, UserFields } from '../config/firestoreFields';
+import { extractUserProfileFields } from '../utils/userDocParse';
 
 const communitiesCol = () => collection(db, Collections.COMMUNITIES);
 const membersCol = () => collection(db, Collections.COMMUNITY_MEMBERS);
@@ -117,10 +118,11 @@ export async function adminUpdateMemberRole(memberDocId, role) {
 
 /** @param {import('firebase/firestore').DocumentSnapshot} docSnap */
 function parseUserDoc(docSnap) {
-    const d = docSnap.data();
-    const ts = d[UserFields.createdAt] ?? d.created_at;
+    const d = docSnap.data() || {};
+    const { displayName, email, createdAt, platformAdmin } = extractUserProfileFields(d);
     let createdAtMs = 0;
     let createdDisplay = '—';
+    const ts = createdAt;
     if (ts?.toDate) {
         const dt = ts.toDate();
         createdAtMs = dt.getTime();
@@ -131,11 +133,11 @@ function parseUserDoc(docSnap) {
     }
     return {
         id: docSnap.id,
-        email: d.email ?? null,
-        displayName: d.displayName ?? d.full_name ?? d.name ?? null,
+        email,
+        displayName,
         createdDisplay,
         createdAtMs,
-        platformAdmin: d[UserFields.platformAdmin] === true,
+        platformAdmin,
     };
 }
 

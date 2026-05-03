@@ -17,7 +17,10 @@ export default function DynamicMarkers({ alerts, onMarkerClick }) {
         setMarkers(computeOffsets(alerts, map));
     }, [alerts, map]);
 
-    useEffect(() => { recalc(); }, [recalc]);
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- marker layout depends on map size/zoom
+        recalc();
+    }, [recalc]);
     useMapEvents({ zoomend: recalc, moveend: recalc });
 
     return (

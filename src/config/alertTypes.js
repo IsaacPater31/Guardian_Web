@@ -77,6 +77,15 @@ export const ALERT_TYPES = Object.freeze({
         category: 'Emergency',
         active:   true,
     },
+    /** Guardian `AlertDetailCatalog.securityBreach` — mismo `alertType` que la app móvil. */
+    SECURITY_BREACH: {
+        color:    '#C62828',
+        icon:     'LockKeyhole',
+        label:    'Security breach',
+        labelEs:  'Brecha de seguridad',
+        category: 'Security',
+        active:   true,
+    },
     ACCOMPANIMENT: {
         color:    '#8E24AA',
         icon:     'Users',
@@ -194,6 +203,21 @@ export const ALERT_TYPES = Object.freeze({
     },
 });
 
+/**
+ * Valores históricos en Firestore que deben mostrarse como el tipo canónico de Guardian.
+ * Claves = texto exacto guardado en `alertType`.
+ */
+export const LEGACY_ALERT_TYPE_ALIASES = Object.freeze({
+    'VIAL EMERGENCY': 'ROAD_EMERGENCY',
+});
+
+/** Resuelve etiquetas/colores al mismo tipo que usa la app Flutter (`alert_detail_catalog`). */
+export function normalizeAlertType(alertType) {
+    if (alertType == null || alertType === '') return alertType;
+    const mapped = LEGACY_ALERT_TYPE_ALIASES[alertType];
+    return mapped ?? alertType;
+}
+
 /** Only the currently active types — used by filter UIs. */
 export const ACTIVE_ALERT_TYPES = Object.freeze(
     Object.fromEntries(
@@ -269,22 +293,26 @@ export const QUERY_CONFIG = Object.freeze({
 
 /** Returns the hex color for a given alertType key, or a neutral grey fallback. */
 export function getAlertColor(alertType) {
-    return ALERT_TYPES[alertType]?.color ?? '#9E9E9E';
+    const key = normalizeAlertType(alertType);
+    return ALERT_TYPES[key]?.color ?? ALERT_TYPES[alertType]?.color ?? '#9E9E9E';
 }
 
 /** Returns the Lucide icon name for a given alertType key. */
 export function getAlertIcon(alertType) {
-    return ALERT_TYPES[alertType]?.icon ?? 'AlertTriangle';
+    const key = normalizeAlertType(alertType);
+    return ALERT_TYPES[key]?.icon ?? ALERT_TYPES[alertType]?.icon ?? 'AlertTriangle';
 }
 
 /** Returns the Spanish display label for a given alertType key. */
 export function getAlertLabel(alertType) {
-    return ALERT_TYPES[alertType]?.labelEs ?? alertType;
+    const key = normalizeAlertType(alertType);
+    return ALERT_TYPES[key]?.labelEs ?? ALERT_TYPES[alertType]?.labelEs ?? alertType;
 }
 
 /** English label for alert type (for non-ES UIs). */
 export function getAlertLabelEn(alertType) {
-    return ALERT_TYPES[alertType]?.label ?? alertType;
+    const key = normalizeAlertType(alertType);
+    return ALERT_TYPES[key]?.label ?? ALERT_TYPES[alertType]?.label ?? alertType;
 }
 
 /**

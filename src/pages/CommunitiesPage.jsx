@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Users, Building2 } from 'lucide-react';
-import { getAllCommunities } from '../services/communityService';
+import { Plus, Pencil, Trash2, Users, Building2, Info } from 'lucide-react';
+import { getAllCommunities, getCommunityMemberCount } from '../services/communityService';
 import {
     adminCreateCommunity,
     adminUpdateCommunity,
@@ -15,6 +15,23 @@ const emptyForm = {
     allowForwardToEntities: true,
 };
 
+function formatFirestoreDate(val) {
+    if (val == null) return '—';
+    try {
+        const d = typeof val?.toDate === 'function' ? val.toDate() : val instanceof Date ? val : null;
+        if (!d || Number.isNaN(d.getTime())) return '—';
+        return d.toLocaleString('es-CO', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return '—';
+    }
+}
+
 export default function CommunitiesPage() {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,6 +39,8 @@ export default function CommunitiesPage() {
     const [form, setForm] = useState({ ...emptyForm });
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState('');
+    const [infoCommunity, setInfoCommunity] = useState(null);
+    const [infoMemberCount, setInfoMemberCount] = useState(null);
 
     async function refresh() {
         setLoading(true);
@@ -40,6 +59,26 @@ export default function CommunitiesPage() {
     useEffect(() => {
         refresh();
     }, []);
+
+    useEffect(() => {
+        if (!infoCommunity) {
+            setInfoMemberCount(null);
+            return;
+        }
+        let cancelled = false;
+        setInfoMemberCount('loading');
+        (async () => {
+            try {
+                const n = await getCommunityMemberCount(infoCommunity.id);
+                if (!cancelled) setInfoMemberCount(n);
+            } catch {
+                if (!cancelled) setInfoMemberCount(null);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [infoCommunity]);
 
     function openCreate() {
         setErr('');
@@ -143,6 +182,7 @@ export default function CommunitiesPage() {
                     <table className="admin-table admin-table--users admin-table-wide">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Nombre</th>
                             <th>Tipo</th>
                             <th>Reenvío a entidades</th>
@@ -152,6 +192,7 @@ export default function CommunitiesPage() {
                     <tbody>
                         {list.map((c) => (
                             <tr key={c.id}>
+                                <td className="admin-td-mono admin-td-id">{c.id}</td>
                                 <td>
                                     <strong>{c.name}</strong>
                                     {c.description && (
@@ -162,6 +203,14 @@ export default function CommunitiesPage() {
                                 <td>{c.allowForwardToEntities ? 'Sí' : 'No'}</td>
                                 <td>
                                     <div className="admin-row-actions">
+                                        <button
+                                            type="button"
+                                            className="admin-icon-btn"
+                                            title="Ver toda la información"
+                                            onClick={() => setInfoCommunity(c)}
+                                        >
+                                            <Info size={18} />
+                                        </button>
                                         <Link
                                             to={`/communities/${c.id}`}
                                             className="admin-icon-btn"
@@ -193,6 +242,74 @@ export default function CommunitiesPage() {
                 </table>
                 </div>
             </div>
+
+            {infoCommunity && (
+                <div
+                    className="admin-modal-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="community-info-title"
+                    onClick={() => setInfoCommunity(null)}
+                >
+                    <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-modal-head-row">
+                            <h3 className="admin-modal-title" id="community-info-title">
+                                Información de la comunidad
+                            </h3>
+                            <button
+                                type="button"
+                                className="admin-icon-btn"
+                                onClick={() => setInfoCommunity(null)}
+                                aria-label="Cerrar"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <dl className="community-info-dl">
+                            <dt>ID documento</dt>
+                            <dd className="mono">{infoCommunity.id}</dd>
+                            <dt>Nombre</dt>
+                            <dd>{infoCommunity.name || '—'}</dd>
+                            <dt>Descripción</dt>
+                            <dd>{infoCommunity.description || '—'}</dd>
+                            <dt>Tipo</dt>
+                            <dd>{infoCommunity.isEntity ? 'Entidad oficial' : 'Normal'}</dd>
+                            <dt>Reenvío a entidades oficiales</dt>
+                            <dd>{infoCommunity.allowForwardToEntities !== false ? 'Sí' : 'No'}</dd>
+                            <dt>Creado por (UID)</dt>
+                            <dd className="mono">{infoCommunity.createdBy ?? '—'}</dd>
+                            <dt>Fecha de creación</dt>
+                            <dd>{formatFirestoreDate(infoCommunity.createdAt)}</dd>
+                            <dt>Icono (code point / color)</dt>
+                            <dd>
+                                {infoCommunity.iconCodePoint != null || infoCommunity.iconColor
+                                    ? `${infoCommunity.iconCodePoint ?? '—'} / ${infoCommunity.iconColor ?? '—'}`
+                                    : '—'}
+                            </dd>
+                            <dt>Miembros</dt>
+                            <dd>
+                                {infoMemberCount === 'loading'
+                                    ? 'Cargando…'
+                                    : infoMemberCount != null
+                                      ? infoMemberCount.toLocaleString('es-CO')
+                                      : '—'}
+                            </dd>
+                        </dl>
+                        <div className="admin-modal-actions admin-modal-actions--start">
+                            <Link
+                                to={`/communities/${infoCommunity.id}`}
+                                className="admin-btn-primary"
+                                onClick={() => setInfoCommunity(null)}
+                            >
+                                Ir a miembros
+                            </Link>
+                            <button type="button" className="admin-btn-ghost" onClick={() => setInfoCommunity(null)}>
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {modal && (
                 <div className="admin-modal-overlay" role="dialog">

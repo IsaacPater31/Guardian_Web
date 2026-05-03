@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle } from 'lucide-react';
 import { ACTIVE_ALERT_TYPES } from '../../config/alertTypes';

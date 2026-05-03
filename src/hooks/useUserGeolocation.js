@@ -76,6 +76,7 @@ export default function useUserGeolocation() {
     // el mapa se centre rápido en la ubicación actual (asumiendo que
     // el navegador ya permite geolocalización para el sitio).
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- initial geolocation on mount
         request();
     }, [request]);
 

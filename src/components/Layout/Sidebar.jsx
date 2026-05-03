@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Map, Bell, Users, LayoutDashboard } from 'lucide-react';
+import { Map, Bell, Users, LayoutDashboard, LayoutGrid } from 'lucide-react';
 
 const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -7,6 +7,8 @@ const navItems = [
     { path: '/alerts', icon: Bell, label: 'Alertas' },
     { path: '/communities', icon: Users, label: 'Comunidades' },
 ];
+
+const moduleNavItems = [{ path: '/admin', icon: LayoutGrid, label: 'Módulo admin' }];
 
 export default function Sidebar({ isOpen, onClose, collapsed }) {
     return (
@@ -41,6 +43,21 @@ export default function Sidebar({ isOpen, onClose, collapsed }) {
                             className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}${collapsed ? ' collapsed' : ''}`}
                             onClick={onClose}
                             end={item.path === '/'}
+                            title={collapsed ? item.label : undefined}
+                        >
+                            <item.icon className="sidebar-link-icon" />
+                            {!collapsed && <span className="sidebar-link-label">{item.label}</span>}
+                        </NavLink>
+                    ))}
+                    {!collapsed && (
+                        <div className="sidebar-section-label sidebar-section-label--spaced">Módulo</div>
+                    )}
+                    {moduleNavItems.map((item) => (
+                        <NavLink
+                            key={item.path}
+                            to={item.path}
+                            className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}${collapsed ? ' collapsed' : ''}`}
+                            onClick={onClose}
                             title={collapsed ? item.label : undefined}
                         >
                             <item.icon className="sidebar-link-icon" />

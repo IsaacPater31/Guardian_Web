@@ -4,8 +4,8 @@ import { subscribeToAlertsFiltered } from '../services/alertService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
-import AlertFilterPanel, { EMPTY_FILTERS } from '../components/AlertFilterPanel';
-import { countActiveFilters } from '../config/filterOptions';
+import AlertFilterPanel from '../components/AlertFilterPanel';
+import { EMPTY_FILTERS, countActiveFilters } from '../config/filterOptions';
 
 // ─── Labels de los filtros activos ────────────────────────────────────────────
 
@@ -43,6 +43,7 @@ export default function AlertsPage() {
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Firestore listener wires loading/alerts
         const unsub = subscribe(filters);
         return unsub;
     }, [filters, subscribe]);

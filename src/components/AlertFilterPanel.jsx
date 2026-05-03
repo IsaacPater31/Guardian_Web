@@ -3,14 +3,10 @@ import * as LucideIcons from 'lucide-react';
 import { ACTIVE_ALERT_TYPES, getAlertColor, getAlertLabel } from '../config/alertTypes';
 import { STATUS_OPTIONS, DATE_OPTIONS, DEFAULT_FILTERS, countActiveFilters } from '../config/filterOptions';
 
-// Re-export for consumers that use EMPTY_FILTERS from this module
-export { DEFAULT_FILTERS as EMPTY_FILTERS };
-
 // Active type keys derived from config — no hardcoding
 const ACTIVE_TYPE_KEYS = Object.keys(ACTIVE_ALERT_TYPES);
 
-/** Signature-compatible wrapper so callers that pass the full filters object still work. */
-export function countActiveFiltersCompat(filters) {
+function countActiveFiltersCompat(filters) {
     return countActiveFilters(filters.types, filters.status, filters.dateRange);
 }
 
@@ -38,7 +34,7 @@ export default function AlertFilterPanel({ filters, onChange, onClose }) {
             ...(dateRange !== 'custom' ? { customStart: null, customEnd: null } : {}),
         }));
 
-    const clearAll = () => setLocal({ ...EMPTY_FILTERS });
+    const clearAll = () => setLocal({ ...DEFAULT_FILTERS });
 
     const apply = () => {
         onChange(local);
@@ -47,12 +43,6 @@ export default function AlertFilterPanel({ filters, onChange, onClose }) {
 
     const activeCount = countActiveFiltersCompat(local);
     const hasFilters  = activeCount > 0;
-
-    const fmtDate = (iso) => {
-        if (!iso) return 'Seleccionar';
-        const d = new Date(iso + 'T00:00:00');
-        return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
 
     return (
         <div className="filter-panel-overlay" onClick={onClose}>

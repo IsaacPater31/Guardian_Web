@@ -37,6 +37,9 @@ export const DEFAULT_FILTERS = Object.freeze({
     customEnd:   null,
 });
 
+/** Alias histórico — mismo objeto que `DEFAULT_FILTERS`. */
+export const EMPTY_FILTERS = DEFAULT_FILTERS;
+
 /**
  * Returns the number of non-default filter dimensions.
  * Used by both filter panels to display the active-filter badge.

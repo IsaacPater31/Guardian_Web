@@ -33,6 +33,7 @@ export default function MapPage() {
             unsubRef.current = null;
         }
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- map subscription loading gate
         setAlertsLoading(true);
 
         const unsub = subscribeToMapAlertsFiltered(filters, (data) => {

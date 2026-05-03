@@ -28,5 +28,7 @@ export const UserFields = Object.freeze({
     name: 'name',
     email: 'email',
     createdAt: 'created_at',
+    /** Misma clave que `UserProfileRepository.mergeProfile` (Guardian). */
+    updatedAt: 'updated_at',
     platformAdmin: 'platform_admin',
 });

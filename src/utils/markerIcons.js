@@ -10,7 +10,7 @@
  */
 
 import L from 'leaflet';
-import { getAlertColor } from '../config/alertTypes';
+import { getAlertColor, normalizeAlertType } from '../config/alertTypes';
 
 export const MARKER_PX = 36;
 
@@ -30,6 +30,8 @@ const SVG_PATHS = Object.freeze({
     HOME_HELP:      '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
     POLICE:         '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
     FIRE:           '<path d="M12 12c2-2.96 0-7-1-8 0 3.038-1.773 4.741-3 6-1.226 1.26-2 3.24-2 5a6 6 0 1 0 12 0c0-1.532-1.056-3.94-2-5-1.786 3-2.791 3-4 2z"/>',
+    SECURITY_BREACH:
+        '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
     ACCOMPANIMENT:  '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     ENVIRONMENTAL:  '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
     ROAD_EMERGENCY: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2-4H8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
@@ -56,8 +58,9 @@ const SVG_PATHS = Object.freeze({
  * @returns {L.DivIcon}
  */
 export function createAlertIcon(alertType, hasOffset) {
-    const color   = getAlertColor(alertType);
-    const svgPath = SVG_PATHS[alertType] ?? FALLBACK_SVG;
+    const color = getAlertColor(alertType);
+    const canon = normalizeAlertType(alertType);
+    const svgPath = SVG_PATHS[canon] ?? SVG_PATHS[alertType] ?? FALLBACK_SVG;
     const border  = hasOffset
         ? '2.5px solid #FFD600'
         : '2px solid rgba(255,255,255,0.9)';
