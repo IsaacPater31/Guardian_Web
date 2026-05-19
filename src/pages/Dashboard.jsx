@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { fetchAlertsInDateRange } from '../services/alertService';
 import { adminListUsersInCreatedRange } from '../services/adminCrudService';
-import { getAlertColor, getAlertLabel } from '../data/emergencyTypes';
+import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
 

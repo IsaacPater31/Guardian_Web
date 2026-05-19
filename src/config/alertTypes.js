@@ -1,50 +1,28 @@
 /**
  * alertTypes.js — Single source of truth for alert type configuration.
  *
- * Covers:
- *   - ALERT_TYPES: all type definitions (active + legacy)
- *   - AlertFields: Firestore field names (documents the camelCase ↔ snake_case mapping)
- *   - AlertStatus: allowed status values
- *   - QUERY_CONFIG: all volatile numeric constants used in queries
- *   - Derived exports: ACTIVE_ALERT_TYPES, helper functions
+ * Paridad con Guardian móvil (`lib/core/alert_detail_catalog.dart`):
+ * tipos de swipe en Firestore usan nombres cortos: casa, seguridad, vial,
+ * acoso, ambiental, policial (+ HEALTH, FIRE, ACCOMPANIMENT, URGENCY).
  *
- * Principles applied:
- *   - Open/Closed (SOLID): add a new type here; zero component changes needed.
- *   - Information Expert (GRASP): this module owns alert-type knowledge.
- *   - Single Responsibility: volatile config lives here, not scattered in services.
- *
- * ──────────────────────────────────────────────────────────────────────────────
- * HOW TO ADD A NEW ALERT TYPE
- * ──────────────────────────────────────────────────────────────────────────────
- *   1. Add an entry to ALERT_TYPES with `active: true`.
- *   2. Pick an existing Lucide icon name for the `icon` field.
- *   3. Done — filters, cards and map markers will pick it up automatically.
- *
- * HOW TO DEPRECATE A TYPE
- *   Set `active: false`. Historical alerts still display correctly; the type
- *   simply disappears from the filter selector.
- * ──────────────────────────────────────────────────────────────────────────────
+ * `LEGACY_ALERT_TYPE_ALIASES` mapea claves antiguas (HOME_HELP, POLICE, …)
+ * al canónico para lectura, filtros y UI.
  */
 
 // ─── Type definitions ─────────────────────────────────────────────────────────
 
 /**
- * Full registry of alert types.
- * Keys are the exact strings stored in Firestore `alertType` field.
- *
  * @type {Record<string, {
  *   color: string,
- *   icon: string,         // Lucide icon component name
- *   label: string,        // English label
- *   labelEs: string,      // Spanish label (UI display)
+ *   icon: string,
+ *   label: string,
+ *   labelEs: string,
  *   category: string,
- *   active: boolean,      // false = legacy (display only, not in filters)
+ *   active: boolean,
  * }>}
  */
 export const ALERT_TYPES = Object.freeze({
-    // ── Active types ───────────────────────────────────────────────────────────
-    // Mirrors Guardian: `AlertDetailCatalog.supportedAlertTypes` (swipe) plus
-    // `EmergencyTypes.quickAlertType` → URGENCY (one-tap quick alert, no subtype).
+    // ── Active (canónico — mismo valor que Firestore en app nueva) ─────────────
     HEALTH: {
         color:    '#26C6DA',
         icon:     'Cross',
@@ -53,19 +31,19 @@ export const ALERT_TYPES = Object.freeze({
         category: 'Health',
         active:   true,
     },
-    HOME_HELP: {
+    casa: {
         color:    '#66BB6A',
         icon:     'Home',
-        label:    'Home Help',
-        labelEs:  'Ayuda en Casa',
+        label:    'Home',
+        labelEs:  'Casa',
         category: 'Assistance',
         active:   true,
     },
-    POLICE: {
+    policial: {
         color:    '#1565C0',
         icon:     'ShieldCheck',
         label:    'Police',
-        labelEs:  'Policía',
+        labelEs:  'Policial',
         category: 'Security',
         active:   true,
     },
@@ -77,12 +55,11 @@ export const ALERT_TYPES = Object.freeze({
         category: 'Emergency',
         active:   true,
     },
-    /** Guardian `AlertDetailCatalog.securityBreach` — mismo `alertType` que la app móvil. */
-    SECURITY_BREACH: {
+    seguridad: {
         color:    '#C62828',
-        icon:     'LockKeyhole',
-        label:    'Security breach',
-        labelEs:  'Brecha de seguridad',
+        icon:     'Shield',
+        label:    'Security',
+        labelEs:  'Seguridad',
         category: 'Security',
         active:   true,
     },
@@ -94,31 +71,30 @@ export const ALERT_TYPES = Object.freeze({
         category: 'Assistance',
         active:   true,
     },
-    ENVIRONMENTAL: {
+    ambiental: {
         color:    '#43A047',
-        icon:     'Leaf',
+        icon:     'CloudLightning',
         label:    'Environmental',
         labelEs:  'Ambiental',
         category: 'Environment',
         active:   true,
     },
-    ROAD_EMERGENCY: {
+    vial: {
         color:    '#FF7043',
-        icon:     'Car',
-        label:    'Road Emergency',
-        labelEs:  'Emergencia Vial',
+        icon:     'CarFront',
+        label:    'Road',
+        labelEs:  'Vial',
         category: 'Traffic',
         active:   true,
     },
-    HARASSMENT: {
-        color:    '#EC407A',
-        icon:     'ShieldAlert',
+    acoso: {
+        color:    '#7B1FA2',
+        icon:     'Hand',
         label:    'Harassment',
         labelEs:  'Acoso',
         category: 'Security',
         active:   true,
     },
-    /** One-tap quick alert (mobile center / configured entity destinations). */
     URGENCY: {
         color:    '#F44336',
         icon:     'Siren',
@@ -128,7 +104,55 @@ export const ALERT_TYPES = Object.freeze({
         active:   true,
     },
 
-    // ── Legacy types (historical display only — not shown in filters) ─────────
+    // ── Legacy alertType keys (solo visualización / datos históricos) ─────────
+    HOME_HELP: {
+        color:    '#66BB6A',
+        icon:     'Home',
+        label:    'Home Help',
+        labelEs:  'Casa',
+        category: 'Assistance',
+        active:   false,
+    },
+    POLICE: {
+        color:    '#1565C0',
+        icon:     'ShieldCheck',
+        label:    'Police',
+        labelEs:  'Policial',
+        category: 'Security',
+        active:   false,
+    },
+    SECURITY_BREACH: {
+        color:    '#C62828',
+        icon:     'Shield',
+        label:    'Security breach',
+        labelEs:  'Seguridad',
+        category: 'Security',
+        active:   false,
+    },
+    ENVIRONMENTAL: {
+        color:    '#43A047',
+        icon:     'Leaf',
+        label:    'Environmental',
+        labelEs:  'Ambiental',
+        category: 'Environment',
+        active:   false,
+    },
+    ROAD_EMERGENCY: {
+        color:    '#FF7043',
+        icon:     'Car',
+        label:    'Road Emergency',
+        labelEs:  'Vial',
+        category: 'Traffic',
+        active:   false,
+    },
+    HARASSMENT: {
+        color:    '#7B1FA2',
+        icon:     'Hand',
+        label:    'Harassment',
+        labelEs:  'Acoso',
+        category: 'Security',
+        active:   false,
+    },
     ROBBERY: {
         color:    '#9C27B0',
         icon:     'UserX',
@@ -178,10 +202,10 @@ export const ALERT_TYPES = Object.freeze({
         active:   false,
     },
     'VIAL EMERGENCY': {
-        color:    '#00BCD4',
+        color:    '#FF7043',
         icon:     'Car',
         label:    'Traffic Emergency',
-        labelEs:  'Emergencia Vial',
+        labelEs:  'Vial',
         category: 'Traffic',
         active:   false,
     },
@@ -204,21 +228,54 @@ export const ALERT_TYPES = Object.freeze({
 });
 
 /**
- * Valores históricos en Firestore que deben mostrarse como el tipo canónico de Guardian.
+ * Valores históricos en Firestore → clave canónica (Guardian móvil / web nuevos).
  * Claves = texto exacto guardado en `alertType`.
  */
 export const LEGACY_ALERT_TYPE_ALIASES = Object.freeze({
-    'VIAL EMERGENCY': 'ROAD_EMERGENCY',
+    HOME_HELP:         'casa',
+    SECURITY_BREACH:   'seguridad',
+    ROAD_EMERGENCY:    'vial',
+    HARASSMENT:        'acoso',
+    ENVIRONMENTAL:     'ambiental',
+    POLICE:            'policial',
+    'VIAL EMERGENCY':  'vial',
 });
 
-/** Resuelve etiquetas/colores al mismo tipo que usa la app Flutter (`alert_detail_catalog`). */
-export function normalizeAlertType(alertType) {
-    if (alertType == null || alertType === '') return alertType;
-    const mapped = LEGACY_ALERT_TYPE_ALIASES[alertType];
-    return mapped ?? alertType;
+/** Tipos activos del swipe radial + inferiores (paridad `AlertDetailCatalog.supportedAlertTypes`). */
+export const GUARDIAN_SWIPE_ALERT_TYPES = Object.freeze([
+    'HEALTH',
+    'casa',
+    'policial',
+    'FIRE',
+    'seguridad',
+    'vial',
+    'ambiental',
+    'ACCOMPANIMENT',
+    'acoso',
+]);
+
+/**
+ * Normaliza `alertType` al canónico (alias legacy + quick HEALTH → URGENCY).
+ *
+ * @param {string|null|undefined} alertType
+ * @param {string} [flowType] — valor Firestore `type` (`quick`, `detailed`, …)
+ */
+export function normalizeAlertType(alertType, flowType = '') {
+    if (alertType == null || alertType === '') return alertType ?? '';
+    let t = String(alertType).trim();
+    if (flowType === 'quick' && t === 'HEALTH') {
+        t = 'URGENCY';
+    }
+    return LEGACY_ALERT_TYPE_ALIASES[t] ?? t;
 }
 
-/** Only the currently active types — used by filter UIs. */
+/** Normaliza lista de filtros UI → claves canónicas para queries y chips. */
+export function normalizeFilterTypes(types) {
+    if (!types?.length) return [];
+    return [...new Set(types.map((t) => normalizeAlertType(t)).filter(Boolean))];
+}
+
+/** Solo tipos activos — selectores de filtro. */
 export const ACTIVE_ALERT_TYPES = Object.freeze(
     Object.fromEntries(
         Object.entries(ALERT_TYPES).filter(([, v]) => v.active)
@@ -227,12 +284,7 @@ export const ACTIVE_ALERT_TYPES = Object.freeze(
 
 // ─── Firestore field names ────────────────────────────────────────────────────
 
-/**
- * Canonical mapping of Firestore document field names.
- * Documents the intentional camelCase (JS) ↔ snake_case (Firestore) asymmetry.
- */
 export const AlertFields = Object.freeze({
-    // Stored as camelCase in Firestore
     alertType:    'alertType',
     timestamp:    'timestamp',
     isAnonymous:  'isAnonymous',
@@ -248,80 +300,47 @@ export const AlertFields = Object.freeze({
     type:         'type',
     subtype:      'subtype',
     customDetail: 'custom_detail',
-
-    // Stored as snake_case in Firestore (legacy naming from Flutter)
     alertStatus:  'alert_status',
-    communityId:  'community_id',              // legacy (read-only, backward compat)
-    communityIds: 'community_ids',             // new array field
+    communityId:  'community_id',
+    communityIds: 'community_ids',
     forwardsCount:'forwards_count',
     reportsCount: 'reports_count',
     reportedBy:   'reported_by',
 });
 
-// ─── Status values ────────────────────────────────────────────────────────────
-
-/** Valid values for the `alert_status` Firestore field. */
 export const AlertStatus = Object.freeze({
     PENDING:  'pending',
     ATTENDED: 'attended',
 });
 
-// ─── Query configuration ──────────────────────────────────────────────────────
-
-/**
- * Volatile numeric constants for Firestore queries.
- * Change a value here and every query in alertService picks it up.
- */
 export const QUERY_CONFIG = Object.freeze({
-    /** Hours window for "recent alerts" feed (Dashboard). */
     recentWindowHours: 24,
-
-    /** Max documents for recent-alerts feed (Firestore reads cap). */
     recentAlertsLimit: 100,
-
-    /** Max documents fetched when no date filter is active on the map. */
     mapFetchLimit: 1000,
-
-    /** Max documents fetched when no date filter is active on the Alerts page. */
     alertsFetchLimit: 500,
-
-    /** Max alerts returned per community. */
     communityAlertsLimit: 50,
 });
 
-// ─── Helper functions ─────────────────────────────────────────────────────────
-
-/** Returns the hex color for a given alertType key, or a neutral grey fallback. */
 export function getAlertColor(alertType) {
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.color ?? ALERT_TYPES[alertType]?.color ?? '#9E9E9E';
 }
 
-/** Returns the Lucide icon name for a given alertType key. */
 export function getAlertIcon(alertType) {
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.icon ?? ALERT_TYPES[alertType]?.icon ?? 'AlertTriangle';
 }
 
-/** Returns the Spanish display label for a given alertType key. */
 export function getAlertLabel(alertType) {
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.labelEs ?? ALERT_TYPES[alertType]?.labelEs ?? alertType;
 }
 
-/** English label for alert type (for non-ES UIs). */
 export function getAlertLabelEn(alertType) {
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.label ?? ALERT_TYPES[alertType]?.label ?? alertType;
 }
 
-/**
- * Human-readable elapsed time from a Firestore Timestamp or Date.
- * Kept here so all time formatting is in one place.
- *
- * @param {import('firebase/firestore').Timestamp|Date|null} timestamp
- * @returns {string}
- */
 export function getTimeAgo(timestamp) {
     if (!timestamp) return '';
     const date     = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);

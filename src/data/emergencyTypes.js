@@ -11,8 +11,9 @@
  */
 
 export {
-    ALERT_TYPES       as EMERGENCY_TYPES,
+    ACTIVE_ALERT_TYPES as EMERGENCY_TYPES,
     ACTIVE_ALERT_TYPES as ACTIVE_EMERGENCY_TYPES,
+    ALERT_TYPES,
     getAlertColor,
     getAlertIcon,
     getAlertLabel,

@@ -10,19 +10,18 @@ const OTHER = 'OTHER';
 const ES = {
     /** Mobile quick alert type; Firestore usually has no subtype. */
     URGENCY: {},
-    POLICE: {
+    policial: {
+        THEFTS: 'Hurtos',
+        EXTORTION_KIDNAPPING: 'Extorsión y secuestro',
+        INJURIES_THREATS: 'Lesiones y amenazas',
+        PUBLIC_CONSUMPTION: 'Consumo en espacio público',
+        FIGHTS: 'Riñas y confrontaciones',
+        VANDALISM: 'Vandalismo',
+        SUSPICIOUS_PRESENCE: 'Presencia de sospechosos',
+        MINOR_AT_RISK: 'Menor en riesgo',
+        MISSING_PERSON: 'Persona desaparecida',
         ROBBERY: 'Robo',
         SUSPICIOUS_ACTIVITY: 'Actividad sospechosa',
-        GENDER_VIOLENCE: 'Violencia de género',
-        PUBLIC_ORDER: 'Orden público',
-        EXTORTION: 'Extorsión',
-        SICARIATO: 'Sicariato',
-        FLETEO: 'Fleteo',
-        KIDNAPPING: 'Secuestro',
-        ANIMAL_ABUSE: 'Maltrato animal',
-        PREVENTIVE_PATROL: 'Patrullaje preventivo',
-        MISSING_PERSONS: 'Personas perdidas',
-        NOISE: 'Ruido',
         [OTHER]: 'Otro',
     },
     FIRE: {
@@ -46,7 +45,7 @@ const ES = {
         NEED_DOCTOR: 'Necesito médico',
         [OTHER]: 'Otro',
     },
-    HOME_HELP: {
+    casa: {
         GAS_LEAK: 'Fuga de gas',
         FIRE: 'Incendio',
         VIOLENCE: 'Violencia',
@@ -56,7 +55,7 @@ const ES = {
         DEPENDENT_SUPPORT: 'Dependiente',
         [OTHER]: 'Otro',
     },
-    ROAD_EMERGENCY: {
+    vial: {
         ACCIDENT: 'Accidente',
         BLOCKAGE: 'Bloqueo',
         POOR_SIGNALING: 'Mala señalización',
@@ -65,7 +64,7 @@ const ES = {
         DOCUMENTS_OR_TOOLS: 'Documentos o herramientas',
         [OTHER]: 'Otro',
     },
-    SECURITY_BREACH: {
+    seguridad: {
         UNAUTHORIZED_ACCESS: 'Acceso no autorizado / intrusión',
         PERIMETER_BREACH: 'Brecha en perímetro o cerramiento',
         ALARM_OR_SURVEILLANCE: 'Falla de alarma o videovigilancia',
@@ -73,16 +72,16 @@ const ES = {
         CYBER_OR_SYSTEMS: 'Incidente en sistemas o ciberseguridad',
         [OTHER]: 'Otro',
     },
-    ENVIRONMENTAL: {
-        NOISE_POLLUTION: 'Contaminación auditiva',
-        ILLEGAL_DUMPS: 'Basureros satélites',
-        TREE_LOGGING: 'Tala de árboles',
-        WATER_POLLUTION: 'Contaminación hídrica',
-        INVASIVE_SPECIES: 'Especies invasoras',
-        HAZARDOUS_WASTE: 'Residuos peligrosos',
-        DANGEROUS_ANIMALS: 'Animales peligrosos',
-        ANIMAL_IN_DANGER: 'Animal en peligro',
-        AIR_POLLUTION: 'Contaminación del aire',
+    ambiental: {
+        ILLEGAL_GARBAGE_DUMP: 'Acopio ilegal de basura',
+        WATER_SOURCE_POLLUTION: 'Contaminación de fuentes hídricas',
+        HAZARDOUS_SPILL: 'Derrame de sustancias peligrosas',
+        WILDLIFE_RISK: 'Riesgos con fauna',
+        OFFENSIVE_ODORS: 'Olores ofensivos',
+        FIRES_AIR_QUALITY: 'Incendios y calidad del aire',
+        NOISE_POLLUTION: 'Ruido',
+        NATURAL_DISASTERS: 'Desastres naturales',
+        FLORA_RISK: 'Riesgo con flora',
         [OTHER]: 'Otro',
     },
     ACCOMPANIMENT: {
@@ -94,7 +93,7 @@ const ES = {
         DISABILITY_SUPPORT: 'Personas con discapacidad',
         [OTHER]: 'Otro',
     },
-    HARASSMENT: {
+    acoso: {
         HARASSMENT: 'Acoso',
         [OTHER]: 'Otro',
     },
@@ -102,19 +101,17 @@ const ES = {
 
 const EN = {
     URGENCY: {},
-    POLICE: {
+    policial: {
+        THEFTS: 'Theft',
+        EXTORTION_KIDNAPPING: 'Extortion and kidnapping',
+        INJURIES_THREATS: 'Injuries and threats',
+        PUBLIC_CONSUMPTION: 'Public consumption',
+        FIGHTS: 'Fights and confrontations',
+        VANDALISM: 'Vandalism',
+        SUSPICIOUS_PRESENCE: 'Suspicious presence',
+        MINOR_AT_RISK: 'Minor at risk',
+        MISSING_PERSON: 'Missing person',
         ROBBERY: 'Theft / robbery',
-        SUSPICIOUS_ACTIVITY: 'Suspicious activity',
-        GENDER_VIOLENCE: 'Gender-based violence',
-        PUBLIC_ORDER: 'Public order',
-        EXTORTION: 'Extortion',
-        SICARIATO: 'Contract killing',
-        FLETEO: 'Express kidnapping',
-        KIDNAPPING: 'Kidnapping',
-        ANIMAL_ABUSE: 'Animal abuse',
-        PREVENTIVE_PATROL: 'Preventive patrol',
-        MISSING_PERSONS: 'Missing persons',
-        NOISE: 'Noise',
         [OTHER]: 'Other',
     },
     FIRE: {
@@ -138,7 +135,7 @@ const EN = {
         NEED_DOCTOR: 'Need a doctor',
         [OTHER]: 'Other',
     },
-    HOME_HELP: {
+    casa: {
         GAS_LEAK: 'Gas leak',
         FIRE: 'Fire',
         VIOLENCE: 'Violence',
@@ -148,7 +145,7 @@ const EN = {
         DEPENDENT_SUPPORT: 'Dependent care',
         [OTHER]: 'Other',
     },
-    ROAD_EMERGENCY: {
+    vial: {
         ACCIDENT: 'Accident',
         BLOCKAGE: 'Blockage',
         POOR_SIGNALING: 'Poor signage',
@@ -157,7 +154,7 @@ const EN = {
         DOCUMENTS_OR_TOOLS: 'Documents or tools',
         [OTHER]: 'Other',
     },
-    SECURITY_BREACH: {
+    seguridad: {
         UNAUTHORIZED_ACCESS: 'Unauthorized access / intrusion',
         PERIMETER_BREACH: 'Perimeter / enclosure breach',
         ALARM_OR_SURVEILLANCE: 'Alarm or CCTV failure',
@@ -165,16 +162,16 @@ const EN = {
         CYBER_OR_SYSTEMS: 'Systems / cybersecurity incident',
         [OTHER]: 'Other',
     },
-    ENVIRONMENTAL: {
+    ambiental: {
+        ILLEGAL_GARBAGE_DUMP: 'Illegal garbage dump',
+        WATER_SOURCE_POLLUTION: 'Water source pollution',
+        HAZARDOUS_SPILL: 'Hazardous spill',
+        WILDLIFE_RISK: 'Wildlife risk',
+        OFFENSIVE_ODORS: 'Offensive odors',
+        FIRES_AIR_QUALITY: 'Fires and air quality',
         NOISE_POLLUTION: 'Noise pollution',
-        ILLEGAL_DUMPS: 'Illegal dumping',
-        TREE_LOGGING: 'Illegal logging',
-        WATER_POLLUTION: 'Water pollution',
-        INVASIVE_SPECIES: 'Invasive species',
-        HAZARDOUS_WASTE: 'Hazardous waste',
-        DANGEROUS_ANIMALS: 'Dangerous animals',
-        ANIMAL_IN_DANGER: 'Animal in danger',
-        AIR_POLLUTION: 'Air pollution',
+        NATURAL_DISASTERS: 'Natural disasters',
+        FLORA_RISK: 'Flora risk',
         [OTHER]: 'Other',
     },
     ACCOMPANIMENT: {
@@ -186,7 +183,7 @@ const EN = {
         DISABILITY_SUPPORT: 'Disability support',
         [OTHER]: 'Other',
     },
-    HARASSMENT: {
+    acoso: {
         HARASSMENT: 'Harassment',
         [OTHER]: 'Other',
     },

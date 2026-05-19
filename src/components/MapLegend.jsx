@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, Info } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import { EMERGENCY_TYPES } from '../data/emergencyTypes';
+import { ACTIVE_ALERT_TYPES } from '../config/alertTypes';
 
 export default function MapLegend() {
     const [isExpanded, setIsExpanded] = useState(() => {
@@ -21,7 +21,7 @@ export default function MapLegend() {
 
     // Group types by category
     const grouped = {};
-    for (const [type, config] of Object.entries(EMERGENCY_TYPES)) {
+    for (const [type, config] of Object.entries(ACTIVE_ALERT_TYPES)) {
         const cat = config.category;
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push({ type, ...config });
