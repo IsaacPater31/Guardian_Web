@@ -26,7 +26,7 @@ export const ALERT_TYPES = Object.freeze({
     HEALTH: {
         color:    '#26C6DA',
         icon:     'Cross',
-        label:    'Health Emergency',
+        label:    'Health',
         labelEs:  'Sanitaria',
         category: 'Health',
         active:   true,
