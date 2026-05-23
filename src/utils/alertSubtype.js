@@ -33,8 +33,8 @@ const ES = {
         ANIMAL_RESCUE: 'Rescate animal',
         FLOOD: 'Inundación',
         DANGEROUS_FAUNA: 'Fauna peligrosa',
-        LANDSLIDE: 'Derrumbe',
-        TREE_OR_STRUCTURE_FALL: 'Árbol o estructura caída',
+        LANDSLIDE: 'Derrumbes',
+        TREE_OR_STRUCTURE_FALL: 'Árboles o estructuras caídas',
         [OTHER]: 'Otro',
     },
     HEALTH: {
@@ -123,8 +123,8 @@ const EN = {
         ANIMAL_RESCUE: 'Animal rescue',
         FLOOD: 'Flood',
         DANGEROUS_FAUNA: 'Dangerous fauna',
-        LANDSLIDE: 'Landslide',
-        TREE_OR_STRUCTURE_FALL: 'Fallen tree or structure',
+        LANDSLIDE: 'Landslides',
+        TREE_OR_STRUCTURE_FALL: 'Fallen trees or structures',
         [OTHER]: 'Other',
     },
     HEALTH: {
