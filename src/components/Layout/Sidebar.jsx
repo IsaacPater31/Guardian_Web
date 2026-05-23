@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { Map, Bell, Users, LayoutDashboard, LayoutGrid } from 'lucide-react';
+import { Bell, Users, House, Compass, LayoutGrid } from 'lucide-react';
 
 const navItems = [
-    { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/map', icon: Map, label: 'Mapa' },
+    { path: '/', icon: House, label: 'Inicio' },
+    { path: '/dashboard', icon: Compass, label: 'Dashboard' },
     { path: '/alerts', icon: Bell, label: 'Alertas' },
     { path: '/communities', icon: Users, label: 'Comunidades' },
 ];

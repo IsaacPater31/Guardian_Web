@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/Layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import MapPage from './pages/MapPage';
@@ -12,8 +12,9 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/map" element={<MapPage />} />
+          <Route path="/" element={<MapPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/map" element={<Navigate to="/" replace />} />
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/communities" element={<CommunitiesPage />} />
           <Route path="/communities/:id" element={<CommunityDetailPage />} />

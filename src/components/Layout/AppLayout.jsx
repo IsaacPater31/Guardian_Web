@@ -6,8 +6,8 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 
 const pageTitles = {
-    '/': { title: 'Dashboard', subtitle: 'Analítica, usuarios y actividad de alertas' },
-    '/map': { title: 'Mapa', subtitle: 'Alertas geolocalizadas' },
+    '/': { title: 'Casa', subtitle: 'Mapa principal de monitoreo en tiempo real' },
+    '/dashboard': { title: 'Dashboard', subtitle: 'Analítica, usuarios y actividad de alertas' },
     '/alerts': { title: 'Alertas', subtitle: 'Histórico y filtros' },
     '/communities': { title: 'Comunidades', subtitle: 'Crear, editar y gestionar comunidades' },
     '/admin': { title: 'Módulo admin', subtitle: 'Usuarios, comunidades y cruces' },

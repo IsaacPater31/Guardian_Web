@@ -164,6 +164,12 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-normal);
+}
+
+.app-main.sidebar-collapsed {
+  margin-left: var(--sidebar-collapsed);
 }
 
 .app-content {
@@ -183,7 +189,9 @@ body {
   flex-shrink: 0;
   transition: width var(--transition-normal);
   z-index: 100;
-  position: relative;
+  position: fixed;
+  left: 0;
+  top: 0;
   overflow: hidden;
 }
 
@@ -1768,6 +1776,11 @@ body {
 }
 
 @media (max-width: 768px) {
+  .app-main,
+  .app-main.sidebar-collapsed {
+    margin-left: 0;
+  }
+
   .sidebar {
     position: fixed;
     left: 0;
