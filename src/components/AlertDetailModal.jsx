@@ -162,6 +162,10 @@ export default function AlertDetailModal({ alert, onClose }) {
     const subLabel  = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo   = getTimeAgo(alert.timestamp);
     const isAttended= alert.alertStatus === AlertStatus.ATTENDED;
+    const reporterName = alert.isAnonymous
+        ? es('Anónimo')
+        : (alert.userName || '').trim() || es('Usuario desconocido');
+    const headline = subLabel ? `${mainLabel} → ${subLabel}` : mainLabel;
 
     const timestamp = alert.timestamp?.toDate
         ? alert.timestamp.toDate()
@@ -181,32 +185,16 @@ export default function AlertDetailModal({ alert, onClose }) {
                     </div>
                     <div className="modal-header-info">
                         <div className="modal-header-type" style={{ lineHeight: 1.22 }}>
-                            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>{mainLabel}</div>
-                            {subLabel ? (
-                                <div style={{
-                                    fontSize: '1.1rem', fontWeight: 800, marginTop: 8, color: 'white',
-                                    letterSpacing: '0.01em',
-                                }}>
-                                    <span style={{ opacity: 0.88, fontWeight: 700 }}>→ </span>
-                                    {subLabel}
-                                </div>
-                            ) : null}
-                        </div>
-                        <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            marginTop: 10, flexWrap: 'wrap',
-                        }}>
-                            <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                padding: '3px 10px', borderRadius: '20px',
-                                fontSize: '10px', fontWeight: 800, letterSpacing: '0.06em',
-                                textTransform: 'uppercase',
-                                color: 'rgba(255,255,255,0.95)',
-                                background: alert.isAnonymous ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.22)',
-                                border: '1.5px solid rgba(255,255,255,0.35)',
+                            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'white' }}>{reporterName}</div>
+                            <div style={{
+                                fontSize: '0.95rem',
+                                fontWeight: 600,
+                                marginTop: 6,
+                                color: 'rgba(255,255,255,0.94)',
+                                letterSpacing: '0.01em',
                             }}>
-                                {alert.isAnonymous ? es('Anónima') : es('Identificada')}
-                            </span>
+                                {headline}
+                            </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                             <span className="modal-header-time">{timeAgo}</span>
@@ -330,59 +318,6 @@ export default function AlertDetailModal({ alert, onClose }) {
                         </div>
                     )}
 
-                    {/* Tipo principal + detalle / subtipo */}
-                    <div className="modal-section">
-                        <div style={{
-                            padding: '14px 16px',
-                            borderRadius: 'var(--radius-lg)',
-                            background: `${color}10`,
-                            border: `1.5px solid ${color}33`,
-                        }}>
-                            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: `${color}AA`, textTransform: 'uppercase', marginBottom: 6 }}>
-                                {es('Tipo principal')}
-                            </div>
-                            <div style={{ fontSize: '18px', fontWeight: 800, color, marginBottom: 14 }}>
-                                {mainLabel}
-                            </div>
-                            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: 'var(--color-text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
-                                {es('Detalle / subtipo')}
-                            </div>
-                            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', lineHeight: 1.3 }}>
-                                {subLabel || es('Sin detalle específico')}
-                            </div>
-                            {alert.type ? (
-                                <div style={{
-                                    fontSize: 11, color: 'var(--color-text-tertiary)', fontWeight: 600,
-                                    letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: 10,
-                                }}>
-                                    {es('Canal')}: {String(alert.type).toUpperCase()}
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    {/* Anonimato */}
-                    <div className="modal-section">
-                        <div style={{
-                            padding: '14px 16px',
-                            borderRadius: 'var(--radius-lg)',
-                            background: alert.isAnonymous ? 'rgba(255,149,0,0.08)' : 'rgba(52,199,89,0.08)',
-                            border: `1.5px solid ${alert.isAnonymous ? 'rgba(255,149,0,0.35)' : 'rgba(52,199,89,0.35)'}`,
-                        }}>
-                            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: 'var(--color-text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
-                                {es('Anonimato')}
-                            </div>
-                            <div style={{ fontSize: '15px', fontWeight: 800, color: alert.isAnonymous ? '#b45309' : '#1b7f3a' }}>
-                                {alert.isAnonymous ? es('Reporte anónimo') : es('Reporte identificado')}
-                            </div>
-                            {!alert.isAnonymous && (alert.userName || '').trim() ? (
-                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', marginTop: 8 }}>
-                                    {`${es('Reportado por')}: ${alert.userName}`}
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-
                     {/* Fecha y hora */}
                     <div className="modal-section">
                         <InfoRow icon={Clock} label={es('Fecha y hora')}>
@@ -442,12 +377,76 @@ export default function AlertDetailModal({ alert, onClose }) {
                         </div>
                     )}
 
-                    {/* Imágenes: desactivado en cliente; estructura lista para futuro */}
+                    {/* Imágenes */}
                     {alert.imageBase64 && alert.imageBase64.length > 0 && (
                         <div className="modal-section">
-                            <InfoRow icon={LucideIcons.Image} label={es('Imágenes adjuntas')}>
-                                {es('Hay material gráfico asociado. La vista previa estará disponible próximamente.')}
-                            </InfoRow>
+                            <div style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                letterSpacing: '0.07em',
+                                color: 'var(--color-text-tertiary)',
+                                textTransform: 'uppercase',
+                                marginBottom: 10,
+                            }}>
+                                {es('Imágenes')}
+                            </div>
+                            <div style={{
+                                display: 'grid',
+                                gap: 10,
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                            }}>
+                                {alert.imageBase64.map((img, idx) => (
+                                    <a
+                                        key={`img-${idx}`}
+                                        href={`data:image/jpeg;base64,${img}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            display: 'block',
+                                            borderRadius: '12px',
+                                            overflow: 'hidden',
+                                            border: '1px solid var(--color-border)',
+                                            background: 'var(--color-bg-secondary)',
+                                            aspectRatio: '1 / 1',
+                                        }}
+                                    >
+                                        <img
+                                            src={`data:image/jpeg;base64,${img}`}
+                                            alt={`${es('Adjunto')} ${idx + 1}`}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Audio */}
+                    {alert.audioBase64 && (
+                        <div className="modal-section">
+                            <div style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                letterSpacing: '0.07em',
+                                color: 'var(--color-text-tertiary)',
+                                textTransform: 'uppercase',
+                                marginBottom: 10,
+                            }}>
+                                {es('Audio')}
+                            </div>
+                            <div style={{
+                                padding: '10px 12px',
+                                borderRadius: '12px',
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-bg-secondary)',
+                            }}>
+                                <audio
+                                    controls
+                                    preload="none"
+                                    style={{ width: '100%' }}
+                                    src={`data:audio/mp4;base64,${alert.audioBase64}`}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
