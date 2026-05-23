@@ -20,10 +20,13 @@ export default function MapPage() {
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
+    const [latestContextAlertId, setLatestContextAlertId] = useState(null);
+    const [recentlyUpdatedIds, setRecentlyUpdatedIds] = useState([]);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
     // Keep a ref to the current unsubscribe fn so we can cancel it when filters change
     const unsubRef = useRef(null);
+    const updateTimersRef = useRef(new Map());
 
     // Re-subscribe every time filters change
     useEffect(() => {
@@ -36,9 +39,28 @@ export default function MapPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- map subscription loading gate
         setAlertsLoading(true);
 
-        const unsub = subscribeToMapAlertsFiltered(filters, (data) => {
+        const unsub = subscribeToMapAlertsFiltered(filters, (data, meta = {}) => {
             setAlerts(data);
             setAlertsLoading(false);
+            setLatestContextAlertId(meta.latestContextAlertId ?? null);
+
+            if (Array.isArray(meta.changedIds) && meta.changedIds.length > 0) {
+                setRecentlyUpdatedIds((prev) => {
+                    const merged = new Set(prev);
+                    meta.changedIds.forEach((id) => merged.add(id));
+                    return [...merged];
+                });
+
+                meta.changedIds.forEach((id) => {
+                    const activeTimer = updateTimersRef.current.get(id);
+                    if (activeTimer) clearTimeout(activeTimer);
+                    const timeoutId = setTimeout(() => {
+                        setRecentlyUpdatedIds((prev) => prev.filter((x) => x !== id));
+                        updateTimersRef.current.delete(id);
+                    }, 4200);
+                    updateTimersRef.current.set(id, timeoutId);
+                });
+            }
         });
 
         unsubRef.current = unsub;
@@ -50,6 +72,11 @@ export default function MapPage() {
             }
         };
     }, [filters]);
+
+    useEffect(() => () => {
+        updateTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+        updateTimersRef.current.clear();
+    }, []);
 
     const handleFiltersChange = useCallback((newFilters) => {
         setFilters(newFilters);
@@ -95,7 +122,12 @@ export default function MapPage() {
                     />
 
                     {/* Alert markers with spiral de-overlap */}
-                    <DynamicMarkers alerts={alerts} onMarkerClick={setSelectedAlert} />
+                    <DynamicMarkers
+                        alerts={alerts}
+                        onMarkerClick={setSelectedAlert}
+                        highlightedAlertId={latestContextAlertId}
+                        updatedAlertIds={recentlyUpdatedIds}
+                    />
                 </MapContainer>
 
                 {/* ── Filter Panel (replaces old MapLegend) ── */}

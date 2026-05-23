@@ -7,9 +7,19 @@ import { createAlertIcon } from '../../utils/markerIcons';
  * DynamicMarkers — recalculates spiral-offset marker positions on every
  * zoomend / moveend so markers never overlap regardless of zoom level.
  *
- * @param {{ alerts: Array, onMarkerClick: Function }} props
+ * @param {{
+ * alerts: Array,
+ * onMarkerClick: Function,
+ * highlightedAlertId?: string|null,
+ * updatedAlertIds?: string[],
+ * }} props
  */
-export default function DynamicMarkers({ alerts, onMarkerClick }) {
+export default function DynamicMarkers({
+    alerts,
+    onMarkerClick,
+    highlightedAlertId = null,
+    updatedAlertIds = [],
+}) {
     const map = useMap();
     const [markers, setMarkers] = useState([]);
 
@@ -29,7 +39,10 @@ export default function DynamicMarkers({ alerts, onMarkerClick }) {
                 <Marker
                     key={alert.id}
                     position={[lat, lng]}
-                    icon={createAlertIcon(alert.alertType, hasOffset)}
+                    icon={createAlertIcon(alert.alertType, hasOffset, {
+                        isHighlighted: alert.id === highlightedAlertId,
+                        isUpdated: updatedAlertIds.includes(alert.id),
+                    })}
                     eventHandlers={{ click: () => onMarkerClick(alert) }}
                 />
             ))}

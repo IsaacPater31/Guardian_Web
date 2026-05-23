@@ -149,6 +149,21 @@ function applyClientFilters(alerts, types, status) {
 }
 
 /**
+ * Resolve alert timestamp (Firestore Timestamp | Date | number) to millis.
+ *
+ * @param {AlertObject} alert
+ * @returns {number}
+ */
+function alertTimeMs(alert) {
+    const raw = alert?.timestamp;
+    if (!raw) return 0;
+    if (typeof raw.toDate === 'function') return raw.toDate().getTime();
+    if (raw instanceof Date) return raw.getTime();
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+/**
  * Suscripción con filtros; intenta `alertType` en servidor (nombres canónicos).
  * Si falla el índice compuesto, reintenta sin filtro de tipo y filtra en cliente.
  *
@@ -185,7 +200,20 @@ function subscribeAlertsFiltered(filters, callback, options = {}) {
                 if (options.mapOnly) {
                     base = base.filter((a) => a.shareLocation && a.location);
                 }
-                callback(applyClientFilters(base, types, status));
+                const filtered = applyClientFilters(base, types, status);
+                const latestContextAlertId = filtered.length > 0
+                    ? filtered.reduce(
+                        (latest, current) =>
+                            alertTimeMs(current) > alertTimeMs(latest) ? current : latest,
+                        filtered[0]
+                    ).id
+                    : null;
+                const changedIds = snapshot
+                    .docChanges()
+                    .filter((change) => change.type === 'added' || change.type === 'modified')
+                    .map((change) => change.doc.id);
+
+                callback(filtered, { latestContextAlertId, changedIds });
             },
             (error) => {
                 if (useServerTypeFilter && canonicalTypes.length > 0 && !serverTypeFilterFailed) {
@@ -433,4 +461,63 @@ export async function fetchAlertsInDateRange(start, end, maxDocs = 2000) {
             })
         );
     }
+}
+
+/**
+ * Real-time subscription for alerts in an arbitrary date range.
+ * Compatible with Spark: uses only client Firestore listeners.
+ *
+ * @param {Date} start
+ * @param {Date} end
+ * @param {(alerts: AlertObject[], meta: { latestContextAlertId: string|null, changedIds: string[] }) => void} callback
+ * @param {number} [maxDocs=2000]
+ * @returns {() => void}
+ */
+export function subscribeToAlertsInDateRange(start, end, callback, maxDocs = 2000) {
+    const build = ({ withUpperBound }) => {
+        const constraints = [
+            where(AlertFields.timestamp, '>=', Timestamp.fromDate(start)),
+            orderBy(AlertFields.timestamp, 'desc'),
+            limit(maxDocs),
+        ];
+        if (withUpperBound) {
+            constraints.splice(1, 0, where(AlertFields.timestamp, '<=', Timestamp.fromDate(end)));
+        }
+        return query(alertsCol(), ...constraints);
+    };
+
+    let unsub = () => {};
+    let fallbackApplied = false;
+
+    const attach = (withUpperBound) => {
+        unsub();
+        unsub = onSnapshot(
+            build({ withUpperBound }),
+            (snapshot) => {
+                let alerts = snapshot.docs.map(parseAlert);
+                if (!withUpperBound) {
+                    alerts = alerts.filter((a) => alertTimeMs(a) <= end.getTime());
+                }
+                const latestContextAlertId = alerts.length > 0 ? alerts[0].id : null;
+                const changedIds = snapshot
+                    .docChanges()
+                    .filter((change) => change.type === 'added' || change.type === 'modified')
+                    .map((change) => change.doc.id);
+                callback(alerts, { latestContextAlertId, changedIds });
+            },
+            (error) => {
+                if (withUpperBound && !fallbackApplied) {
+                    fallbackApplied = true;
+                    console.warn('[alertService] subscribeToAlertsInDateRange fallback:', error.message);
+                    attach(false);
+                    return;
+                }
+                console.error('[alertService] subscribeToAlertsInDateRange', error.message);
+                callback([], { latestContextAlertId: null, changedIds: [] });
+            }
+        );
+    };
+
+    attach(true);
+    return () => unsub();
 }

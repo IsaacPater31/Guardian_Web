@@ -689,6 +689,44 @@ body {
   transform: translateX(2px);
 }
 
+.alert-card--context-highlight {
+  border-color: rgba(0, 122, 255, 0.45);
+  box-shadow:
+    0 10px 26px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(0, 122, 255, 0.15),
+    0 0 18px rgba(0, 122, 255, 0.16);
+  animation: alertContextFadeIn 280ms ease-out;
+}
+
+.alert-card--realtime-updated {
+  animation: alertSoftPulse 2200ms ease-in-out 2;
+}
+
+@keyframes alertContextFadeIn {
+  from {
+    opacity: 0.9;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes alertSoftPulse {
+  0%, 100% {
+    box-shadow:
+      0 8px 22px rgba(15, 23, 42, 0.06),
+      0 0 0 1px rgba(0, 122, 255, 0.09);
+  }
+  50% {
+    box-shadow:
+      0 12px 30px rgba(15, 23, 42, 0.11),
+      0 0 0 1px rgba(0, 122, 255, 0.2),
+      0 0 22px rgba(0, 122, 255, 0.16);
+  }
+}
+
 .alert-card-icon {
   width: 40px;
   height: 40px;

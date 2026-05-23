@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { subscribeToAlertsFiltered } from '../services/alertService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
@@ -29,14 +29,38 @@ export default function AlertsPage() {
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [filters, setFilters]             = useState(EMPTY_FILTERS);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
+    const [latestContextAlertId, setLatestContextAlertId] = useState(null);
+    const [recentlyUpdatedIds, setRecentlyUpdatedIds] = useState([]);
+    const updateTimersRef = useRef(new Map());
 
     // Suscripción reactiva con filtros
     const subscribe = useCallback((activeFilters) => {
         setLoading(true);
 
-        const unsub = subscribeToAlertsFiltered(activeFilters, (data) => {
+        const unsub = subscribeToAlertsFiltered(activeFilters, (data, meta = {}) => {
             setAlerts(data);
             setLoading(false);
+            setLatestContextAlertId(meta.latestContextAlertId ?? null);
+
+            if (Array.isArray(meta.changedIds) && meta.changedIds.length > 0) {
+                setRecentlyUpdatedIds((prev) => {
+                    const merged = new Set(prev);
+                    meta.changedIds.forEach((id) => merged.add(id));
+                    return [...merged];
+                });
+
+                meta.changedIds.forEach((id) => {
+                    const activeTimer = updateTimersRef.current.get(id);
+                    if (activeTimer) {
+                        clearTimeout(activeTimer);
+                    }
+                    const timeoutId = setTimeout(() => {
+                        setRecentlyUpdatedIds((prev) => prev.filter((x) => x !== id));
+                        updateTimersRef.current.delete(id);
+                    }, 4200);
+                    updateTimersRef.current.set(id, timeoutId);
+                });
+            }
         });
 
         return unsub;
@@ -48,13 +72,18 @@ export default function AlertsPage() {
         return unsub;
     }, [filters, subscribe]);
 
+    useEffect(() => () => {
+        updateTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+        updateTimersRef.current.clear();
+    }, []);
+
     const applyFilters = (newFilters) => {
         setFilters(newFilters);
     };
 
     const clearFilters = () => setFilters(EMPTY_FILTERS);
 
-    const activeCount = countActiveFilters(filters);
+    const activeCount = countActiveFilters(filters.types, filters.status, filters.dateRange);
     const hasFilters  = activeCount > 0;
 
     // ─── Chips de filtros activos ─────────────────────────────────────────────
@@ -222,6 +251,8 @@ export default function AlertsPage() {
                                     key={alert.id}
                                     alert={alert}
                                     onClick={setSelectedAlert}
+                                    isContextHighlight={alert.id === latestContextAlertId}
+                                    isRealtimeUpdated={recentlyUpdatedIds.includes(alert.id)}
                                 />
                             ))}
                         </div>

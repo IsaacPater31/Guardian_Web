@@ -5,7 +5,12 @@ import {
 import { MapPin, EyeOff, Eye, Forward, Flag, CheckCircle2, Clock3 } from 'lucide-react';
 import { getSubtypeLabel } from '../utils/alertSubtype';
 
-export default function AlertCard({ alert, onClick }) {
+export default function AlertCard({
+    alert,
+    onClick,
+    isContextHighlight = false,
+    isRealtimeUpdated = false,
+}) {
     const color      = getAlertColor(alert.alertType);
     const iconName   = getAlertIcon(alert.alertType);
     const Icon       = LucideIcons[iconName] || LucideIcons.AlertTriangle;
@@ -19,7 +24,10 @@ export default function AlertCard({ alert, onClick }) {
     const StatusIcon  = isAttended ? CheckCircle2 : Clock3;
 
     return (
-        <div className="alert-card" onClick={() => onClick?.(alert)}>
+        <div
+            className={`alert-card${isContextHighlight ? ' alert-card--context-highlight' : ''}${isRealtimeUpdated ? ' alert-card--realtime-updated' : ''}`}
+            onClick={() => onClick?.(alert)}
+        >
             {/* Icon column */}
             <div className="alert-card-icon" style={{ backgroundColor: color, position: 'relative' }}>
                 <Icon />

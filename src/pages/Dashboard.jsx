@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Area,
     AreaChart,
@@ -21,7 +21,7 @@ import {
     BarChart3,
     Users,
 } from 'lucide-react';
-import { fetchAlertsInDateRange } from '../services/alertService';
+import { subscribeToAlertsInDateRange } from '../services/alertService';
 import { adminListUsersInCreatedRange } from '../services/adminCrudService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
@@ -187,6 +187,11 @@ export default function Dashboard() {
     const [alerts, setAlerts] = useState([]);
     const [newUsers, setNewUsers] = useState([]);
     const [selectedAlert, setSelectedAlert] = useState(null);
+    const [latestContextAlertId, setLatestContextAlertId] = useState(null);
+    const [recentlyUpdatedIds, setRecentlyUpdatedIds] = useState([]);
+    const [manualRefreshKey, setManualRefreshKey] = useState(0);
+    const updateTimersRef = useRef(new Map());
+    const hasBootstrappedRef = useRef(false);
     const [chartH, setChartH] = useState(320);
     useEffect(() => {
         const update = () => {
@@ -202,28 +207,65 @@ export default function Dashboard() {
         [rangeMode, presetDays, customStart, customEnd],
     );
 
-    const load = useCallback(async () => {
+    const loadUsers = useCallback(async () => {
         setLoading(true);
         try {
-            const [alData, users] = await Promise.all([
-                fetchAlertsInDateRange(rangeStart, rangeEnd, 2500),
-                adminListUsersInCreatedRange(rangeStart, rangeEnd, 120),
-            ]);
-            setAlerts(alData);
+            const users = await adminListUsersInCreatedRange(rangeStart, rangeEnd, 120);
             setNewUsers(users);
         } catch (e) {
             console.error(e);
-            setAlerts([]);
             setNewUsers([]);
         } finally {
-            setLoading(false);
-            setBootstrapping(false);
+            if (hasBootstrappedRef.current) {
+                setLoading(false);
+            }
         }
     }, [rangeStart, rangeEnd]);
 
     useEffect(() => {
-        load();
-    }, [load]);
+        loadUsers();
+    }, [loadUsers, manualRefreshKey]);
+
+    useEffect(() => {
+        if (hasBootstrappedRef.current) {
+            setLoading(true);
+        }
+        const unsub = subscribeToAlertsInDateRange(rangeStart, rangeEnd, (alData, meta = {}) => {
+            setAlerts(alData);
+            setLatestContextAlertId(meta.latestContextAlertId ?? null);
+
+            if (Array.isArray(meta.changedIds) && meta.changedIds.length > 0) {
+                setRecentlyUpdatedIds((prev) => {
+                    const merged = new Set(prev);
+                    meta.changedIds.forEach((id) => merged.add(id));
+                    return [...merged];
+                });
+
+                meta.changedIds.forEach((id) => {
+                    const activeTimer = updateTimersRef.current.get(id);
+                    if (activeTimer) clearTimeout(activeTimer);
+                    const timeoutId = setTimeout(() => {
+                        setRecentlyUpdatedIds((prev) => prev.filter((x) => x !== id));
+                        updateTimersRef.current.delete(id);
+                    }, 4200);
+                    updateTimersRef.current.set(id, timeoutId);
+                });
+            }
+
+            if (!hasBootstrappedRef.current) {
+                hasBootstrappedRef.current = true;
+                setBootstrapping(false);
+            }
+            setLoading(false);
+        }, 2500);
+
+        return unsub;
+    }, [rangeStart, rangeEnd, manualRefreshKey]);
+
+    useEffect(() => () => {
+        updateTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+        updateTimersRef.current.clear();
+    }, []);
 
     const stats = useMemo(() => {
         const byType = {};
@@ -309,7 +351,7 @@ export default function Dashboard() {
                     <button
                         type="button"
                         className={`dash-refresh-btn${isRefreshing ? ' dash-refresh-btn--busy' : ''}`}
-                        onClick={load}
+                        onClick={() => setManualRefreshKey((v) => v + 1)}
                         disabled={loading}
                     >
                         {loading ? 'Actualizando…' : 'Actualizar'}
@@ -720,7 +762,13 @@ export default function Dashboard() {
                             <p className="admin-muted">Sin alertas en este periodo.</p>
                         ) : (
                             alerts.slice(0, 12).map((a) => (
-                                <AlertCard key={a.id} alert={a} onClick={setSelectedAlert} />
+                                <AlertCard
+                                    key={a.id}
+                                    alert={a}
+                                    onClick={setSelectedAlert}
+                                    isContextHighlight={a.id === latestContextAlertId}
+                                    isRealtimeUpdated={recentlyUpdatedIds.includes(a.id)}
+                                />
                             ))
                         )}
                     </div>

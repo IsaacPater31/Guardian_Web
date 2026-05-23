@@ -62,15 +62,21 @@ const SVG_PATHS = Object.freeze({
  *
  * @param {string}  alertType
  * @param {boolean} hasOffset  — true if the marker was displaced from its geo-centre
+ * @param {{ isHighlighted?: boolean, isUpdated?: boolean }} [options]
  * @returns {L.DivIcon}
  */
-export function createAlertIcon(alertType, hasOffset) {
+export function createAlertIcon(alertType, hasOffset, options = {}) {
+    const { isHighlighted = false, isUpdated = false } = options;
     const color = getAlertColor(alertType);
     const canon = normalizeAlertType(alertType);
     const svgPath = SVG_PATHS[canon] ?? SVG_PATHS[alertType] ?? FALLBACK_SVG;
     const border  = hasOffset
         ? '2.5px solid #FFD600'
         : '2px solid rgba(255,255,255,0.9)';
+    const glow = isHighlighted
+        ? `0 4px 14px rgba(0,0,0,0.32),0 0 0 3px ${color}3A,0 0 18px ${color}80`
+        : `0 2px 10px rgba(0,0,0,0.3),0 0 0 3px ${color}28`;
+    const pulseAnimation = isUpdated ? 'animation: marker-soft-pulse 2.4s ease-in-out 2;' : '';
 
     return L.divIcon({
         className: '',
@@ -80,16 +86,25 @@ export function createAlertIcon(alertType, hasOffset) {
             width:${MARKER_PX}px;height:${MARKER_PX}px;border-radius:50%;
             background:${color};
             border:${border};
-            box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 0 3px ${color}28;
+            box-shadow:${glow};
             display:flex;align-items:center;justify-content:center;
             cursor:pointer;
+            transition: box-shadow 260ms ease, transform 260ms ease;
+            ${pulseAnimation}
         ">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
                 fill="none" stroke="white" stroke-width="2.2"
                 stroke-linecap="round" stroke-linejoin="round">
                 ${svgPath}
             </svg>
-        </div>`,
+        </div>
+        <style>
+            @keyframes marker-soft-pulse {
+                0%   { transform: scale(1); }
+                50%  { transform: scale(1.07); }
+                100% { transform: scale(1); }
+            }
+        </style>`,
     });
 }
 
