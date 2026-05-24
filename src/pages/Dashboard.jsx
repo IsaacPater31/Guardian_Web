@@ -188,9 +188,7 @@ export default function Dashboard() {
     const [newUsers, setNewUsers] = useState([]);
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
-    const [recentlyUpdatedIds, setRecentlyUpdatedIds] = useState([]);
     const [manualRefreshKey, setManualRefreshKey] = useState(0);
-    const updateTimersRef = useRef(new Map());
     const hasBootstrappedRef = useRef(false);
     const [chartH, setChartH] = useState(320);
     useEffect(() => {
@@ -234,24 +232,6 @@ export default function Dashboard() {
             setAlerts(alData);
             setLatestContextAlertId(meta.latestContextAlertId ?? null);
 
-            if (Array.isArray(meta.changedIds) && meta.changedIds.length > 0) {
-                setRecentlyUpdatedIds((prev) => {
-                    const merged = new Set(prev);
-                    meta.changedIds.forEach((id) => merged.add(id));
-                    return [...merged];
-                });
-
-                meta.changedIds.forEach((id) => {
-                    const activeTimer = updateTimersRef.current.get(id);
-                    if (activeTimer) clearTimeout(activeTimer);
-                    const timeoutId = setTimeout(() => {
-                        setRecentlyUpdatedIds((prev) => prev.filter((x) => x !== id));
-                        updateTimersRef.current.delete(id);
-                    }, 4200);
-                    updateTimersRef.current.set(id, timeoutId);
-                });
-            }
-
             if (!hasBootstrappedRef.current) {
                 hasBootstrappedRef.current = true;
                 setBootstrapping(false);
@@ -261,11 +241,6 @@ export default function Dashboard() {
 
         return unsub;
     }, [rangeStart, rangeEnd, manualRefreshKey]);
-
-    useEffect(() => () => {
-        updateTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-        updateTimersRef.current.clear();
-    }, []);
 
     const stats = useMemo(() => {
         const byType = {};
@@ -761,15 +736,27 @@ export default function Dashboard() {
                         {alerts.length === 0 ? (
                             <p className="admin-muted">Sin alertas en este periodo.</p>
                         ) : (
-                            alerts.slice(0, 12).map((a) => (
-                                <AlertCard
-                                    key={a.id}
-                                    alert={a}
-                                    onClick={setSelectedAlert}
-                                    isContextHighlight={a.id === latestContextAlertId}
-                                    isRealtimeUpdated={recentlyUpdatedIds.includes(a.id)}
-                                />
-                            ))
+                            alerts.slice(0, 12).map((a, index) => {
+                                const hasLatest = Boolean(latestContextAlertId);
+                                const isLatest = hasLatest && a.id === latestContextAlertId;
+                                const isRecent = hasLatest && !isLatest && index <= 3;
+                                const priorityLevel = isLatest
+                                    ? 'latest'
+                                    : isRecent
+                                        ? 'recent'
+                                        : hasLatest
+                                            ? 'historical'
+                                            : 'normal';
+
+                                return (
+                                    <AlertCard
+                                        key={a.id}
+                                        alert={a}
+                                        onClick={setSelectedAlert}
+                                        priorityLevel={priorityLevel}
+                                    />
+                                );
+                            })
                         )}
                     </div>
                 </section>

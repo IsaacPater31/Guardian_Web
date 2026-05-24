@@ -8,8 +8,7 @@ import { getSubtypeLabel } from '../utils/alertSubtype';
 export default function AlertCard({
     alert,
     onClick,
-    isContextHighlight = false,
-    isRealtimeUpdated = false,
+    priorityLevel = 'normal',
 }) {
     const color      = getAlertColor(alert.alertType);
     const iconName   = getAlertIcon(alert.alertType);
@@ -18,6 +17,9 @@ export default function AlertCard({
     const sub        = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo    = getTimeAgo(alert.timestamp);
     const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
+    const isLatest = priorityLevel === 'latest';
+    const isRecent = priorityLevel === 'recent';
+    const isHistorical = priorityLevel === 'historical';
 
     // Apple semantic colors
     const statusColor = isAttended ? '#34C759' : '#FF9F0A';
@@ -25,7 +27,7 @@ export default function AlertCard({
 
     return (
         <div
-            className={`alert-card${isContextHighlight ? ' alert-card--context-highlight' : ''}${isRealtimeUpdated ? ' alert-card--realtime-updated' : ''}`}
+            className={`alert-card${isLatest ? ' alert-card--latest' : ''}${isRecent ? ' alert-card--recent' : ''}${isHistorical ? ' alert-card--historical' : ''}`}
             onClick={() => onClick?.(alert)}
         >
             {/* Icon column */}
@@ -50,7 +52,20 @@ export default function AlertCard({
                             </div>
                         ) : null}
                     </div>
-                    <span className="alert-card-time">{timeAgo}</span>
+                    <div className="alert-card-time-wrap">
+                        {isLatest && (
+                            <span className="alert-card-recent-badge alert-card-recent-badge--latest">
+                                <span className="alert-card-recent-dot" aria-hidden />
+                                Urgente ahora
+                            </span>
+                        )}
+                        {isRecent && (
+                            <span className="alert-card-recent-badge">
+                                Reciente
+                            </span>
+                        )}
+                        <span className="alert-card-time">{timeAgo}</span>
+                    </div>
                 </div>
 
                 {alert.description && (

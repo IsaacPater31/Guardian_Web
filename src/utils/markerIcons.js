@@ -62,36 +62,61 @@ const SVG_PATHS = Object.freeze({
  *
  * @param {string}  alertType
  * @param {boolean} hasOffset  — true if the marker was displaced from its geo-centre
- * @param {{ isHighlighted?: boolean, isUpdated?: boolean }} [options]
+ * @param {{ isHighlighted?: boolean }} [options]
  * @returns {L.DivIcon}
  */
 export function createAlertIcon(alertType, hasOffset, options = {}) {
-    const { isHighlighted = false, isUpdated = false } = options;
+    const { isHighlighted = false } = options;
     const color = getAlertColor(alertType);
     const canon = normalizeAlertType(alertType);
     const svgPath = SVG_PATHS[canon] ?? SVG_PATHS[alertType] ?? FALLBACK_SVG;
+    const markerPx = MARKER_PX;
     const border  = hasOffset
         ? '2.5px solid #FFD600'
         : '2px solid rgba(255,255,255,0.9)';
     const glow = isHighlighted
-        ? `0 4px 14px rgba(0,0,0,0.32),0 0 0 3px ${color}3A,0 0 18px ${color}80`
+        ? `0 12px 26px rgba(10, 16, 28, 0.46),0 0 0 4px ${color}92,0 0 42px ${color}F0`
         : `0 2px 10px rgba(0,0,0,0.3),0 0 0 3px ${color}28`;
-    const pulseAnimation = isUpdated ? 'animation: marker-soft-pulse 2.4s ease-in-out 2;' : '';
 
     return L.divIcon({
         className: '',
-        iconSize:   [MARKER_PX, MARKER_PX],
-        iconAnchor: [MARKER_PX / 2, MARKER_PX / 2],
+        iconSize:   [markerPx, markerPx],
+        iconAnchor: [markerPx / 2, markerPx / 2],
         html: `<div style="
-            width:${MARKER_PX}px;height:${MARKER_PX}px;border-radius:50%;
+            width:${markerPx}px;height:${markerPx}px;border-radius:50%;
             background:${color};
             border:${border};
             box-shadow:${glow};
             display:flex;align-items:center;justify-content:center;
             cursor:pointer;
+            position:relative;
             transition: box-shadow 260ms ease, transform 260ms ease;
-            ${pulseAnimation}
+            transform:none;
+            ${isHighlighted ? 'animation: marker-urgent-flash 0.55s steps(2, end) infinite;' : ''}
         ">
+            ${isHighlighted
+        ? `<span style="
+                    position:absolute;
+                    inset:-8px;
+                    border-radius:50%;
+                    border:2px solid ${color}9A;
+                    animation: marker-focus-ring 0.62s ease-in-out infinite;
+                "></span>
+                <span style="
+                    position:absolute;
+                    inset:-14px;
+                    border-radius:50%;
+                    border:2px solid ${color}4A;
+                    animation: marker-focus-ring-outer 0.9s ease-out infinite;
+                "></span>
+                <span style="
+                    position:absolute;
+                    inset:-3px;
+                    border-radius:50%;
+                    background: radial-gradient(circle, transparent 45%, ${color}40 72%, transparent 100%);
+                    animation: marker-core-urgency 0.55s ease-in-out infinite;
+                "></span>`
+        : ''}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
                 fill="none" stroke="white" stroke-width="2.2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -99,10 +124,22 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             </svg>
         </div>
         <style>
-            @keyframes marker-soft-pulse {
-                0%   { transform: scale(1); }
-                50%  { transform: scale(1.07); }
-                100% { transform: scale(1); }
+            @keyframes marker-focus-ring {
+                0%, 100% { transform: scale(1); opacity: 0.95; }
+                50% { transform: scale(1.2); opacity: 0.12; }
+            }
+            @keyframes marker-focus-ring-outer {
+                0% { transform: scale(0.96); opacity: 0.45; }
+                70% { transform: scale(1.34); opacity: 0.2; }
+                100% { transform: scale(1.42); opacity: 0; }
+            }
+            @keyframes marker-core-urgency {
+                0%, 100% { opacity: 0.45; filter: brightness(1); }
+                50% { opacity: 1; filter: brightness(1.6); }
+            }
+            @keyframes marker-urgent-flash {
+                0%, 100% { filter: saturate(1) brightness(1); }
+                50% { filter: saturate(1.35) brightness(1.14); }
             }
         </style>`,
     });

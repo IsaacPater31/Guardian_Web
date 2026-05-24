@@ -11,14 +11,12 @@ import { createAlertIcon } from '../../utils/markerIcons';
  * alerts: Array,
  * onMarkerClick: Function,
  * highlightedAlertId?: string|null,
- * updatedAlertIds?: string[],
  * }} props
  */
 export default function DynamicMarkers({
     alerts,
     onMarkerClick,
     highlightedAlertId = null,
-    updatedAlertIds = [],
 }) {
     const map = useMap();
     const [markers, setMarkers] = useState([]);
@@ -41,8 +39,8 @@ export default function DynamicMarkers({
                     position={[lat, lng]}
                     icon={createAlertIcon(alert.alertType, hasOffset, {
                         isHighlighted: alert.id === highlightedAlertId,
-                        isUpdated: updatedAlertIds.includes(alert.id),
                     })}
+                    zIndexOffset={alert.id === highlightedAlertId ? 1200 : 0}
                     eventHandlers={{ click: () => onMarkerClick(alert) }}
                 />
             ))}
