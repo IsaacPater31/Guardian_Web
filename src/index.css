@@ -37,36 +37,36 @@
 
   /* ─── Typography ─── */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-  --font-size-xs: 0.6875rem;
-  /* 11px */
-  --font-size-sm: 0.75rem;
-  /* 12px */
-  --font-size-base: 0.8125rem;
-  /* 13px */
-  --font-size-md: 0.875rem;
-  /* 14px */
-  --font-size-lg: 1rem;
-  /* 16px */
-  --font-size-xl: 1.25rem;
-  /* 20px */
-  --font-size-2xl: 1.5rem;
-  /* 24px */
-  --font-size-3xl: 1.875rem;
-  /* 30px */
-  --font-size-4xl: 2.25rem;
-  /* 36px */
+  --font-size-xs: clamp(0.6875rem, 0.66rem + 0.08vw, 0.78rem);
+  /* 11px → 12.5px */
+  --font-size-sm: clamp(0.75rem, 0.72rem + 0.1vw, 0.875rem);
+  /* 12px → 14px */
+  --font-size-base: clamp(0.8125rem, 0.78rem + 0.12vw, 0.9375rem);
+  /* 13px → 15px */
+  --font-size-md: clamp(0.875rem, 0.84rem + 0.14vw, 1rem);
+  /* 14px → 16px */
+  --font-size-lg: clamp(1rem, 0.95rem + 0.24vw, 1.1875rem);
+  /* 16px → 19px */
+  --font-size-xl: clamp(1.25rem, 1.16rem + 0.42vw, 1.625rem);
+  /* 20px → 26px */
+  --font-size-2xl: clamp(1.5rem, 1.36rem + 0.62vw, 2rem);
+  /* 24px → 32px */
+  --font-size-3xl: clamp(1.875rem, 1.72rem + 0.9vw, 2.6rem);
+  /* 30px → 41.6px */
+  --font-size-4xl: clamp(2.25rem, 2rem + 1.2vw, 3.125rem);
+  /* 36px → 50px */
   --letter-spacing: -0.022em;
 
   /* ─── Spacing ─── */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
+  --space-1: clamp(4px, 0.18vw, 6px);
+  --space-2: clamp(8px, 0.34vw, 10px);
+  --space-3: clamp(12px, 0.6vw, 16px);
+  --space-4: clamp(16px, 0.9vw, 22px);
+  --space-5: clamp(20px, 1.2vw, 28px);
+  --space-6: clamp(24px, 1.45vw, 34px);
+  --space-8: clamp(32px, 1.95vw, 48px);
+  --space-10: clamp(40px, 2.35vw, 62px);
+  --space-12: clamp(48px, 2.9vw, 76px);
 
   /* ─── Border Radius ─── */
   --radius-sm: 6px;
@@ -90,9 +90,10 @@
   --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ─── Layout ─── */
-  --sidebar-width: 260px;
+  --sidebar-width: clamp(248px, 15vw, 320px);
   --sidebar-collapsed: 72px;
-  --header-height: 64px;
+  --header-height: clamp(60px, 3.2vw, 72px);
+  --content-gutter: clamp(12px, 1.1vw, 30px);
 }
 
 /* ─── Global Reset ─── */
@@ -176,7 +177,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--space-6);
+  padding: var(--content-gutter);
 }
 
 /* ─── Sidebar ─── */
@@ -474,7 +475,7 @@ body {
 /* ─── Stats Cards ─── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(190px, 22vw, 290px), 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -1152,7 +1153,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  margin: calc(-1 * var(--space-6));
+  margin: calc(-1 * var(--content-gutter));
   position: relative;
 }
 
@@ -1204,7 +1205,7 @@ body {
   position: absolute;
   right: var(--space-4);
   bottom: var(--space-4);
-  max-width: 260px;
+  max-width: clamp(260px, 22vw, 420px);
   z-index: 350;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px);
@@ -1236,8 +1237,8 @@ body {
   top: var(--space-4);
   right: var(--space-4);
   z-index: 400;
-  width: min(272px, 86vw);
-  max-width: 340px;
+  width: clamp(272px, 20vw, 420px);
+  max-width: min(92vw, 420px);
   background: var(--color-surface);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(0, 0, 0, 0.07);
@@ -3613,15 +3614,15 @@ body {
 /* Pantallas grandes y TV: usar todo el ancho útil del área principal (sin “columna” centrada estrecha) */
 @media (min-width: 1280px) {
   .app-content {
-    padding-left: var(--space-8);
-    padding-right: var(--space-8);
+    padding-left: max(var(--content-gutter), var(--space-8));
+    padding-right: max(var(--content-gutter), var(--space-8));
   }
 }
 
 @media (min-width: 1600px) {
   .app-content {
-    padding-left: var(--space-10);
-    padding-right: var(--space-10);
+    padding-left: max(var(--content-gutter), var(--space-10));
+    padding-right: max(var(--content-gutter), var(--space-10));
   }
 
   .stat-card-value {
@@ -3946,6 +3947,68 @@ body {
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--color-surface-secondary);
+}
+
+/* Responsive system: medium → wide → ultrawide/4K */
+@media (min-width: 1440px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .admin-charts-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+
+  .admin-two-col {
+    grid-template-columns: 1.35fr 1fr;
+    gap: var(--space-6);
+  }
+
+  .map-filter-panel {
+    top: var(--space-5);
+    right: var(--space-5);
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --content-gutter: clamp(24px, 2vw, 42px);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .section-header,
+  .section-body {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+
+  .map-filter-panel {
+    width: clamp(300px, 18vw, 460px);
+    max-width: min(92vw, 460px);
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --sidebar-width: clamp(280px, 14vw, 360px);
+    --content-gutter: clamp(30px, 2.4vw, 56px);
+  }
+
+  .header-title {
+    font-size: var(--font-size-2xl);
+  }
+
+  .section-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .map-geo-hint {
+    max-width: 480px;
+  }
 }
 
 /* Accesibilidad: respetar preferencia de movimiento reducido (WCAG 2.2 / buenas prácticas) */
