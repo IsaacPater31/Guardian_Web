@@ -263,7 +263,8 @@ export const GUARDIAN_SWIPE_ALERT_TYPES = Object.freeze([
 export function normalizeAlertType(alertType, flowType = '') {
     if (alertType == null || alertType === '') return alertType ?? '';
     let t = String(alertType).trim();
-    if (flowType === 'quick' && t === 'HEALTH') {
+    const flow = String(flowType || '').trim().toLowerCase();
+    if (flow === 'quick' && t === 'HEALTH') {
         t = 'URGENCY';
     }
     return LEGACY_ALERT_TYPE_ALIASES[t] ?? t;

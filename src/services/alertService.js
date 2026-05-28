@@ -61,6 +61,8 @@ export function parseAlert(doc) {
 
     // Paridad Guardian `AlertModel.fromFirestore` + `AlertTypeNormalize`.
     const flowType = d[AlertFields.type] || '';
+    const subtype = d[AlertFields.subtype] ?? d.subType ?? d.sub_type ?? null;
+    const customDetail = d[AlertFields.customDetail] ?? d.customDetail ?? d.custom_detail ?? null;
     const alertType = normalizeAlertType(d[AlertFields.alertType] || '', flowType);
 
     return {
@@ -68,8 +70,8 @@ export function parseAlert(doc) {
         type:         flowType,
         alertType,
         description:  d[AlertFields.description]   ?? null,
-        subtype:      d[AlertFields.subtype]       ?? null,
-        customDetail: d[AlertFields.customDetail]  ?? null,
+        subtype,
+        customDetail,
         timestamp:    d[AlertFields.timestamp]     ?? null,
         isAnonymous:  d[AlertFields.isAnonymous]   ?? false,
         shareLocation:d[AlertFields.shareLocation] ?? false,
@@ -112,11 +114,17 @@ function timestampConstraints(start, end) {
 /** Firestore `where` por `alertType` — solo claves canónicas (casa, vial, …). */
 function firestoreTypeConstraints(canonicalTypes) {
     if (!canonicalTypes?.length) return [];
-    if (canonicalTypes.length === 1) {
-        return [where(AlertFields.alertType, '==', canonicalTypes[0])];
+    const expandedTypes = new Set(canonicalTypes);
+    // Mobile quick alerts may persist as HEALTH but normalize to URGENCY in web.
+    if (expandedTypes.has('URGENCY')) expandedTypes.add('HEALTH');
+    // Keep compatibility with mixed datasets where urgency may already be URGENCY.
+    if (expandedTypes.has('HEALTH')) expandedTypes.add('URGENCY');
+    const queryTypes = [...expandedTypes];
+    if (queryTypes.length === 1) {
+        return [where(AlertFields.alertType, '==', queryTypes[0])];
     }
-    if (canonicalTypes.length <= 10) {
-        return [where(AlertFields.alertType, 'in', canonicalTypes)];
+    if (queryTypes.length <= 10) {
+        return [where(AlertFields.alertType, 'in', queryTypes)];
     }
     return [];
 }

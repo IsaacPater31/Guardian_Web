@@ -207,10 +207,16 @@ function humanize(id) {
  */
 export function getSubtypeLabel(alertType, subtype, customDetail, useEs = true) {
     if (!subtype) return '';
-    if (subtype === OTHER) return (customDetail || '').trim();
+    const rawSubtype = String(subtype).trim();
+    const normalizedSubtype = rawSubtype.toUpperCase().replace(/[\s-]+/g, '_');
+    if (normalizedSubtype === OTHER) return (customDetail || '').trim();
     const canonical = normalizeAlertType(alertType);
     const table = useEs ? ES : EN;
-    return table[canonical]?.[subtype] ?? table[alertType]?.[subtype] ?? humanize(subtype);
+    return table[canonical]?.[rawSubtype]
+        ?? table[canonical]?.[normalizedSubtype]
+        ?? table[alertType]?.[rawSubtype]
+        ?? table[alertType]?.[normalizedSubtype]
+        ?? humanize(rawSubtype);
 }
 
 /**
