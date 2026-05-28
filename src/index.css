@@ -635,34 +635,18 @@ body {
   padding: var(--space-3) var(--space-4);
 }
 
-/* Alertas: rejilla que usa el ancho en escritorio (no una sola columna estrecha) */
+/* Alertas: pila vertical premium para escaneo rápido */
 .alerts-feed-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .alerts-feed-grid .alert-card {
   margin-bottom: 0;
-}
-
-@media (min-width: 720px) {
-  .alerts-feed-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1200px) {
-  .alerts-feed-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-4);
-  }
-}
-
-@media (min-width: 1800px) {
-  .alerts-feed-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 /* ─── Alert Cards ─── */
@@ -674,10 +658,12 @@ body {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast), background-color var(--transition-fast);
   margin-bottom: var(--space-3);
   background: var(--color-surface);
   position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .alert-card:last-child {
@@ -685,86 +671,67 @@ body {
 }
 
 .alert-card:hover {
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-sm);
-  transform: translateX(2px);
+  border-color: rgba(15, 23, 42, 0.16);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.11);
+  transform: translateY(-2px);
 }
 
 .alert-card--latest {
-  border-color: rgba(255, 59, 48, 0.66);
+  border-color: rgba(255, 59, 48, 0.76);
   background:
-    linear-gradient(130deg, rgba(255, 59, 48, 0.12), rgba(255, 59, 48, 0.04) 58%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(122deg, rgba(255, 59, 48, 0.26), rgba(255, 59, 48, 0.08) 62%, rgba(255, 255, 255, 0)),
     var(--color-surface);
   box-shadow:
-    0 12px 28px rgba(10, 14, 30, 0.16),
-    0 0 0 1px rgba(255, 59, 48, 0.48),
-    0 0 26px rgba(255, 59, 48, 0.34);
-  outline: 1px solid rgba(255, 59, 48, 0.55);
-  outline-offset: 0;
-  z-index: 4;
-  animation:
-    alertLatestEntry 280ms cubic-bezier(0.2, 0.9, 0.2, 1),
-    alertLatestBreathing 0.78s ease-in-out infinite,
-    alertLatestUrgencyFlash 0.55s steps(2, end) infinite,
-    alertLatestOutlineSweep 0.75s linear infinite,
-    alertLatestCriticalShake 0.95s steps(2, end) infinite;
-  overflow: visible;
+    0 14px 34px rgba(15, 23, 42, 0.19),
+    0 0 0 1px rgba(255, 59, 48, 0.58),
+    0 0 34px rgba(255, 59, 48, 0.28);
+  animation: alertLatestSoftPulse 1.35s ease-in-out infinite;
+  overflow: hidden;
 }
 
 .alert-card--latest::before {
   content: '';
   position: absolute;
-  left: -1px;
-  top: 8px;
-  bottom: 8px;
-  width: 6px;
-  border-radius: 99px;
-  background: linear-gradient(180deg, #ff7e77 0%, #ff3b30 58%, #c91d15 100%);
-  box-shadow: 0 0 20px rgba(255, 59, 48, 0.66);
-  animation: alertLatestRailPulse 1.55s ease-in-out infinite;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 18% 50%, rgba(255, 59, 48, 0.44), rgba(255, 59, 48, 0) 56%);
+  opacity: 0.46;
+  animation: alertLatestAttentionFlash 1.35s ease-in-out infinite;
 }
 
 .alert-card--latest::after {
   content: '';
   position: absolute;
-  inset: -8px;
-  border-radius: calc(var(--radius-md) + 8px);
+  inset: 0;
   pointer-events: none;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 16% 84%, rgba(255, 59, 48, 0.22), transparent 58%),
-    radial-gradient(circle at 85% 15%, rgba(255, 59, 48, 0.25), transparent 60%),
-    conic-gradient(from 0deg, rgba(255, 59, 48, 0.2), rgba(255, 59, 48, 0.03), rgba(255, 59, 48, 0.2));
-  filter: blur(7px);
-  animation:
-    alertLatestAura 0.72s ease-in-out infinite,
-    alertLatestSweep 1.2s linear infinite,
-    alertLatestFlashOverlay 0.6s steps(2, end) infinite,
-    alertLatestCriticalWash 0.7s steps(2, end) infinite;
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0) 36%,
+    rgba(255, 255, 255, 0.44) 50%,
+    rgba(255, 255, 255, 0) 64%
+  );
+  transform: translateX(-130%);
+  animation: alertLatestSoftSweep 2.2s ease-in-out infinite;
+  opacity: 1;
 }
 
 .alert-card--latest .alert-card-icon {
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.66),
-    0 0 0 8px rgba(255, 59, 48, 0.18),
-    0 0 20px rgba(255, 59, 48, 0.4);
-  animation:
-    alertLatestIconPulse 0.62s ease-in-out infinite,
-    alertLatestIconFlash 0.52s steps(2, end) infinite;
+  box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.34);
+  animation: alertLatestIconSoftPulse 1.35s ease-in-out infinite;
 }
 
 .alert-card--recent {
-  border-color: rgba(255, 59, 48, 0.26);
+  border-color: rgba(255, 59, 48, 0.2);
   background:
-    linear-gradient(135deg, rgba(255, 59, 48, 0.045), rgba(255, 59, 48, 0.015) 55%),
+    linear-gradient(130deg, rgba(255, 59, 48, 0.032), rgba(255, 59, 48, 0.008) 58%),
     var(--color-surface);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.09);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
   z-index: 2;
 }
 
 .alert-card--historical {
-  opacity: 0.52;
-  filter: saturate(0.72);
+  opacity: 0.84;
+  filter: saturate(0.88);
 }
 
 .alert-card--historical .alert-card-time,
@@ -772,106 +739,52 @@ body {
   color: rgba(92, 101, 117, 0.9);
 }
 
-@keyframes alertLatestEntry {
-  from {
-    opacity: 0.68;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes alertLatestBreathing {
+@keyframes alertLatestSoftPulse {
   0%, 100% {
     box-shadow:
-      0 12px 28px rgba(10, 14, 30, 0.16),
-      0 0 0 1px rgba(255, 59, 48, 0.46),
-      0 0 26px rgba(255, 59, 48, 0.3);
+      0 14px 34px rgba(15, 23, 42, 0.19),
+      0 0 0 1px rgba(255, 59, 48, 0.54),
+      0 0 30px rgba(255, 59, 48, 0.24);
   }
   50% {
     box-shadow:
-      0 18px 38px rgba(10, 14, 30, 0.26),
-      0 0 0 1px rgba(255, 59, 48, 0.62),
-      0 0 54px rgba(255, 59, 48, 0.6);
+      0 18px 40px rgba(15, 23, 42, 0.23),
+      0 0 0 1px rgba(255, 59, 48, 0.86),
+      0 0 46px rgba(255, 59, 48, 0.44);
   }
 }
 
-@keyframes alertLatestUrgencyFlash {
+@keyframes alertLatestAttentionFlash {
   0%, 100% {
-    filter: saturate(1.02) brightness(1);
+    opacity: 0.38;
+  }
+  45% {
+    opacity: 0.76;
+  }
+  55% {
+    opacity: 0.66;
+  }
+}
+
+@keyframes alertLatestIconSoftPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.34);
   }
   50% {
-    filter: saturate(1.25) brightness(1.07);
+    box-shadow: 0 0 0 8px rgba(255, 59, 48, 0.34);
   }
 }
 
-@keyframes alertLatestCriticalShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-0.6px); }
-  75% { transform: translateX(0.6px); }
-}
-
-@keyframes alertLatestOutlineSweep {
-  0%, 100% {
-    outline-color: rgba(255, 59, 48, 0.48);
+@keyframes alertLatestSoftSweep {
+  0%,
+  58% {
+    transform: translateX(-130%);
   }
-  50% {
-    outline-color: rgba(255, 59, 48, 0.9);
+  80% {
+    transform: translateX(130%);
   }
-}
-
-@keyframes alertLatestAura {
-  0%, 100% { opacity: 0.72; }
-  50% { opacity: 1; }
-}
-
-@keyframes alertLatestFlashOverlay {
-  0%, 100% {
-    opacity: 0.82;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes alertLatestCriticalWash {
-  0%, 100% { background-blend-mode: normal; }
-  50% { background-blend-mode: screen; }
-}
-
-@keyframes alertLatestRailPulse {
-  0%, 100% { opacity: 0.78; }
-  50% { opacity: 1; }
-}
-
-@keyframes alertLatestSweep {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes alertLatestIconPulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 2px rgba(255, 255, 255, 0.66),
-      0 0 0 8px rgba(255, 59, 48, 0.16),
-      0 0 18px rgba(255, 59, 48, 0.34);
-  }
-  50% {
-    box-shadow:
-      0 0 0 2px rgba(255, 255, 255, 0.76),
-      0 0 0 12px rgba(255, 59, 48, 0.22),
-      0 0 30px rgba(255, 59, 48, 0.56);
-  }
-}
-
-@keyframes alertLatestIconFlash {
-  0%, 100% {
-    filter: brightness(1);
-  }
-  50% {
-    filter: brightness(1.35);
+  100% {
+    transform: translateX(130%);
   }
 }
 
@@ -898,13 +811,10 @@ body {
 }
 
 .alert-card-recent-badge--latest {
-  border: 1px solid rgba(255, 59, 48, 0.62);
-  background: linear-gradient(120deg, rgba(255, 59, 48, 0.3), rgba(255, 59, 48, 0.16));
-  color: #8f130d;
-  box-shadow: 0 0 26px rgba(255, 59, 48, 0.36);
-  animation:
-    alertLatestBadgePulse 0.62s ease-in-out infinite,
-    alertLatestBadgeFlash 0.48s steps(2, end) infinite;
+  border: 1px solid rgba(255, 59, 48, 0.78);
+  background: linear-gradient(120deg, rgba(255, 59, 48, 0.4), rgba(255, 59, 48, 0.2));
+  color: #6f0b06;
+  animation: alertLatestBadgeSoftPulse 1.35s ease-in-out infinite;
 }
 
 .alert-card-recent-dot {
@@ -912,8 +822,8 @@ body {
   height: 6px;
   border-radius: 50%;
   background: #ff3b30;
-  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.26);
-  animation: alertBadgeDotPulse 0.42s steps(2, end) infinite;
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.32);
+  animation: alertBadgeDotSoftPulse 1.35s ease-in-out infinite;
 }
 
 .alert-card--latest .alert-card-type {
@@ -924,54 +834,55 @@ body {
   color: #2f3440;
 }
 
-@keyframes alertBadgeDotPulse {
+@keyframes alertBadgeDotSoftPulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.22);
+    box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.32);
   }
   50% {
     transform: scale(1.3);
-    box-shadow: 0 0 0 8px rgba(255, 59, 48, 0.16);
+    box-shadow: 0 0 0 10px rgba(255, 59, 48, 0.3);
   }
 }
 
-@keyframes alertLatestBadgePulse {
+@keyframes alertLatestBadgeSoftPulse {
   0%, 100% {
-    filter: saturate(1);
-    box-shadow: 0 0 20px rgba(255, 59, 48, 0.3);
+    filter: saturate(1.04);
   }
   50% {
-    filter: saturate(1.2);
-    box-shadow: 0 0 32px rgba(255, 59, 48, 0.48);
-  }
-}
-
-@keyframes alertLatestBadgeFlash {
-  0%, 100% {
-    color: #8f130d;
-  }
-  50% {
-    color: #5f0a06;
+    filter: saturate(1.22);
   }
 }
 
 .alert-card--latest .alert-card-time {
-  color: #a70f09;
+  color: #7a0d08;
   font-weight: 800;
-  text-shadow:
-    0 0 12px rgba(255, 59, 48, 0.52),
-    0 0 20px rgba(255, 59, 48, 0.34);
-  animation: alertLatestTimePulse 0.5s steps(2, end) infinite;
+  animation: alertLatestTimeSoftPulse 1.35s ease-in-out infinite;
 }
 
-@keyframes alertLatestTimePulse {
+@keyframes alertLatestTimeSoftPulse {
   0%, 100% {
-    opacity: 0.9;
+    opacity: 0.88;
   }
   50% {
     opacity: 1;
   }
 }
+
+@media (min-width: 1440px) {
+  .section-body--flush {
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .alerts-feed-grid {
+    gap: var(--space-4);
+  }
+
+  .alert-card {
+    padding: var(--space-5);
+  }
+}
+
 
 .alert-card-icon {
   width: 40px;

@@ -75,8 +75,8 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
         ? '2.5px solid #FFD600'
         : '2px solid rgba(255,255,255,0.9)';
     const glow = isHighlighted
-        ? `0 12px 26px rgba(10, 16, 28, 0.46),0 0 0 4px ${color}92,0 0 42px ${color}F0`
-        : `0 2px 10px rgba(0,0,0,0.3),0 0 0 3px ${color}28`;
+        ? `0 8px 20px rgba(10, 16, 28, 0.28),0 0 0 3px ${color}42`
+        : `0 2px 10px rgba(0,0,0,0.3),0 0 0 2px ${color}24`;
 
     return L.divIcon({
         className: '',
@@ -92,29 +92,15 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             position:relative;
             transition: box-shadow 260ms ease, transform 260ms ease;
             transform:none;
-            ${isHighlighted ? 'animation: marker-urgent-flash 0.55s steps(2, end) infinite;' : ''}
+            ${isHighlighted ? 'animation: marker-highlight-soft 2.6s ease-in-out infinite;' : ''}
         ">
             ${isHighlighted
         ? `<span style="
                     position:absolute;
                     inset:-8px;
                     border-radius:50%;
-                    border:2px solid ${color}9A;
-                    animation: marker-focus-ring 0.62s ease-in-out infinite;
-                "></span>
-                <span style="
-                    position:absolute;
-                    inset:-14px;
-                    border-radius:50%;
-                    border:2px solid ${color}4A;
-                    animation: marker-focus-ring-outer 0.9s ease-out infinite;
-                "></span>
-                <span style="
-                    position:absolute;
-                    inset:-3px;
-                    border-radius:50%;
-                    background: radial-gradient(circle, transparent 45%, ${color}40 72%, transparent 100%);
-                    animation: marker-core-urgency 0.55s ease-in-out infinite;
+                    border:1.5px solid ${color}66;
+                    animation: marker-focus-ring-soft 2.6s ease-in-out infinite;
                 "></span>`
         : ''}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
@@ -124,22 +110,13 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             </svg>
         </div>
         <style>
-            @keyframes marker-focus-ring {
-                0%, 100% { transform: scale(1); opacity: 0.95; }
-                50% { transform: scale(1.2); opacity: 0.12; }
+            @keyframes marker-focus-ring-soft {
+                0%, 100% { transform: scale(1); opacity: 0.34; }
+                50% { transform: scale(1.1); opacity: 0.12; }
             }
-            @keyframes marker-focus-ring-outer {
-                0% { transform: scale(0.96); opacity: 0.45; }
-                70% { transform: scale(1.34); opacity: 0.2; }
-                100% { transform: scale(1.42); opacity: 0; }
-            }
-            @keyframes marker-core-urgency {
-                0%, 100% { opacity: 0.45; filter: brightness(1); }
-                50% { opacity: 1; filter: brightness(1.6); }
-            }
-            @keyframes marker-urgent-flash {
+            @keyframes marker-highlight-soft {
                 0%, 100% { filter: saturate(1) brightness(1); }
-                50% { filter: saturate(1.35) brightness(1.14); }
+                50% { filter: saturate(1.08) brightness(1.06); }
             }
         </style>`,
     });

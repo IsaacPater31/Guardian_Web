@@ -56,7 +56,7 @@ export default function AlertCard({
                         {isLatest && (
                             <span className="alert-card-recent-badge alert-card-recent-badge--latest">
                                 <span className="alert-card-recent-dot" aria-hidden />
-                                Urgente ahora
+                                Activa ahora
                             </span>
                         )}
                         {isRecent && (

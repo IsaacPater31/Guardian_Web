@@ -738,8 +738,12 @@ export default function Dashboard() {
                         ) : (
                             alerts.slice(0, 12).map((a, index) => {
                                 const hasLatest = Boolean(latestContextAlertId);
-                                const isLatest = hasLatest && a.id === latestContextAlertId;
-                                const isRecent = hasLatest && !isLatest && index <= 3;
+                                const isLatest = hasLatest
+                                    ? a.id === latestContextAlertId
+                                    : index === 0;
+                                const isRecent = hasLatest
+                                    ? !isLatest && index <= 3
+                                    : !isLatest && index <= 2;
                                 const priorityLevel = isLatest
                                     ? 'latest'
                                     : isRecent

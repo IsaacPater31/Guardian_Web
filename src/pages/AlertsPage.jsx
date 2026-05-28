@@ -221,8 +221,12 @@ export default function AlertsPage() {
                         <div className="alerts-feed-grid">
                             {alerts.map((alert, index) => {
                                 const hasLatest = Boolean(latestContextAlertId);
-                                const isLatest = hasLatest && alert.id === latestContextAlertId;
-                                const isRecent = hasLatest && !isLatest && index <= 3;
+                                const isLatest = hasLatest
+                                    ? alert.id === latestContextAlertId
+                                    : index === 0;
+                                const isRecent = hasLatest
+                                    ? !isLatest && index <= 3
+                                    : !isLatest && index <= 2;
                                 const priorityLevel = isLatest
                                     ? 'latest'
                                     : isRecent
