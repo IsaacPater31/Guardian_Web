@@ -1339,23 +1339,32 @@ body {
 }
 
 /* Body */
+.map-filter-body-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows 230ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.map-filter-body-wrap.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .map-filter-body {
-  position: static;
+  min-height: 0;
+  overflow: hidden auto;
   padding: var(--space-3);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: var(--shadow-xl);
   max-height: min(62vh, 560px);
-  overflow-y: auto;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
-
-.map-filter-body.hidden {
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: none;
-  overflow: hidden;
 }
 
 /* Result row */

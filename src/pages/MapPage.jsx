@@ -112,14 +112,24 @@ export default function MapPage() {
 
     const handleRecentAlertSelect = useCallback((alert) => {
         if (!alert) return;
+        if (selectedAlert?.id === alert.id) {
+            setSelectedAlert(null);
+            setFocusedAlert(null);
+            return;
+        }
         setSelectedAlert(alert);
         setFocusedAlert({ ...alert, __focusKey: Date.now() });
-    }, []);
+    }, [selectedAlert?.id]);
 
     const handleMarkerClick = useCallback((alert) => {
+        if (selectedAlert?.id === alert.id) {
+            setSelectedAlert(null);
+            setFocusedAlert(null);
+            return;
+        }
         setSelectedAlert(alert);
         setFocusedAlert({ ...alert, __focusKey: Date.now() });
-    }, []);
+    }, [selectedAlert?.id]);
 
     return (
         <div className="map-page">

@@ -87,8 +87,9 @@ export default function MapFilterPanel({
             </button>
 
             {/* ── Body ── */}
-            <div className={`map-filter-body${isExpanded ? '' : ' hidden'}`}>
-                <div className="map-filter-view-toggle">
+            <div className={`map-filter-body-wrap${isExpanded ? ' expanded' : ''}`}>
+                <div className="map-filter-body">
+                    <div className="map-filter-view-toggle">
                     <button
                         className={`map-filter-view-btn${activeView === 'filters' ? ' active' : ''}`}
                         onClick={() => setActiveView('filters')}
@@ -105,8 +106,8 @@ export default function MapFilterPanel({
                     </button>
                 </div>
 
-                {activeView === 'filters' ? (
-                    <>
+                    {activeView === 'filters' ? (
+                        <>
                         {/* Result count */}
                         <div className="map-filter-result-row">
                             <span className="map-filter-result-label">{totalVisible} alerta{totalVisible !== 1 ? 's' : ''} visibles</span>
@@ -217,9 +218,9 @@ export default function MapFilterPanel({
                                 </div>
                             )}
                         </div>
-                    </>
-                ) : (
-                    <div className="map-recent-list">
+                        </>
+                    ) : (
+                        <div className="map-recent-list">
                         {recent.length === 0 && (
                             <div className="map-recent-empty">
                                 <BellRing />
@@ -253,8 +254,9 @@ export default function MapFilterPanel({
                                 </button>
                             );
                         })}
-                    </div>
-                )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
