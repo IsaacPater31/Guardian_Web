@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { X, MapPin, Clock, ExternalLink, CheckCircle2, Clock3, Users } from 'lucide-react';
+import { X, Clock, CheckCircle2, Clock3, Users } from 'lucide-react';
 import {
     getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo, AlertStatus,
 } from '../config/alertTypes';
@@ -9,88 +9,6 @@ import { getSubtypeLabel } from '../utils/alertSubtype';
 
 /** Detalle de alerta en español (producto). */
 const es = (copy) => copy;
-
-// ─── Leaflet mini-map ─────────────────────────────────────────────────────────
-function MiniMap({ lat, lng, color, openMapLabel }) {
-    const containerRef = useRef(null);
-    const mapRef       = useRef(null);
-
-    useEffect(() => {
-        if (!containerRef.current) return;
-
-        if (mapRef.current) {
-            mapRef.current.setView([lat, lng], 15);
-            return;
-        }
-
-        let cancelled = false;
-
-        import('leaflet').then((L) => {
-            if (cancelled || !containerRef.current) return;
-            if (containerRef.current._leaflet_id) return;
-
-            const map = L.default.map(containerRef.current, {
-                center: [lat, lng], zoom: 15,
-                zoomControl: false, scrollWheelZoom: false,
-                dragging: false, doubleClickZoom: false, attributionControl: false,
-            });
-
-            L.default.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-            const icon = L.default.divIcon({
-                className: '',
-                iconSize:  [28, 28],
-                iconAnchor:[14, 14],
-                html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.35);"></div>`,
-            });
-
-            L.default.marker([lat, lng], { icon }).addTo(map);
-            mapRef.current = map;
-
-            requestAnimationFrame(() => {
-                if (!cancelled && mapRef.current) mapRef.current.invalidateSize();
-            });
-        });
-
-        return () => {
-            cancelled = true;
-            if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
-        };
-    }, [lat, lng, color]);
-
-    return (
-        <div style={{ position: 'relative' }}>
-            <div
-                ref={containerRef}
-                style={{
-                    width: '100%', height: 160,
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    border: '1px solid var(--color-border)',
-                }}
-            />
-            <a
-                href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=16`}
-                target="_blank" rel="noopener noreferrer"
-                style={{
-                    position: 'absolute', bottom: 8, right: 8,
-                    background: 'rgba(29,29,31,0.82)',
-                    backdropFilter: 'blur(8px)',
-                    color: 'white',
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-full)',
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    display: 'flex', alignItems: 'center', gap: 4, zIndex: 500,
-                }}
-            >
-                <ExternalLink style={{ width: 10, height: 10 }} />
-                {openMapLabel}
-            </a>
-        </div>
-    );
-}
 
 // ─── Info row — reutilizable ──────────────────────────────────────────────────
 function InfoRow({ icon, iconColor = 'var(--color-text-tertiary)', label, children, accent }) {
@@ -171,7 +89,6 @@ export default function AlertDetailModal({ alert, onClose }) {
         ? alert.timestamp.toDate()
         : new Date(alert.timestamp);
 
-    const hasLocation = alert.shareLocation && alert.location;
     const dateLocale = 'es-CO';
 
     return (
@@ -355,27 +272,6 @@ export default function AlertDetailModal({ alert, onClose }) {
                             </div>
                         </div>
                     </div>
-
-                    {/* Mini Map */}
-                    {hasLocation && (
-                        <div className="modal-section">
-                            <div className="modal-section-label">{es('Ubicación')}</div>
-                            <MiniMap
-                                lat={alert.location.latitude}
-                                lng={alert.location.longitude}
-                                color={color}
-                                openMapLabel={es('Abrir mapa')}
-                            />
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                marginTop: 8, fontSize: 'var(--font-size-sm)',
-                                color: 'var(--color-text-secondary)',
-                            }}>
-                                <MapPin style={{ width: 12, height: 12, color: '#34C759' }} />
-                                {alert.location.latitude?.toFixed(6)}, {alert.location.longitude?.toFixed(6)}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Imágenes */}
                     {alert.imageBase64 && alert.imageBase64.length > 0 && (

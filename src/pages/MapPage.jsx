@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import { subscribeToMapAlertsFiltered } from '../services/alertService';
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../utils/mapUtils';
 import DynamicMarkers from '../components/Map/DynamicMarkers';
@@ -12,6 +12,31 @@ import RequestLocationOnFirstInteraction from '../components/Map/RequestLocation
 import MapFilterPanel from '../components/Map/MapFilterPanel';
 import { DEFAULT_FILTERS } from '../config/filterOptions';
 
+function MapFocusController({ focusAlert }) {
+    const map = useMap();
+    const lastFocusKeyRef = useRef(null);
+
+    useEffect(() => {
+        if (!focusAlert?.id || !focusAlert?.location) return;
+        const focusKey = `${focusAlert.id}-${focusAlert.__focusKey ?? 'default'}`;
+        if (lastFocusKeyRef.current === focusKey) return;
+
+        const lat = Number(focusAlert.location.latitude);
+        const lng = Number(focusAlert.location.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        lastFocusKeyRef.current = focusKey;
+        const nextZoom = Math.max(map.getZoom(), 15);
+        map.flyTo([lat, lng], nextZoom, {
+            animate: true,
+            duration: 0.75,
+            easeLinearity: 0.22,
+        });
+    }, [focusAlert, map]);
+
+    return null;
+}
+
 
 // ─── MapPage ──────────────────────────────────────────────────────────────────
 export default function MapPage() {
@@ -22,6 +47,7 @@ export default function MapPage() {
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
     const [timedPriorityAlertId, setTimedPriorityAlertId] = useState(null);
+    const [focusedAlert, setFocusedAlert] = useState(null);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
     // Keep a ref to the current unsubscribe fn so we can cancel it when filters change
@@ -84,6 +110,17 @@ export default function MapPage() {
         });
     }, []);
 
+    const handleRecentAlertSelect = useCallback((alert) => {
+        if (!alert) return;
+        setSelectedAlert(alert);
+        setFocusedAlert({ ...alert, __focusKey: Date.now() });
+    }, []);
+
+    const handleMarkerClick = useCallback((alert) => {
+        setSelectedAlert(alert);
+        setFocusedAlert({ ...alert, __focusKey: Date.now() });
+    }, []);
+
     return (
         <div className="map-page">
             <div className="map-container">
@@ -121,9 +158,11 @@ export default function MapPage() {
                     {/* Alert markers with spiral de-overlap */}
                     <DynamicMarkers
                         alerts={alerts}
-                        onMarkerClick={setSelectedAlert}
+                        onMarkerClick={handleMarkerClick}
                         highlightedAlertId={highlightedMarkerId}
+                        selectedAlertId={selectedAlert?.id || null}
                     />
+                    <MapFocusController focusAlert={focusedAlert} />
                 </MapContainer>
 
                 {/* ── Filter Panel (replaces old MapLegend) ── */}
@@ -135,6 +174,10 @@ export default function MapPage() {
                     customEnd={filters.customEnd}
                     onChange={handleFiltersChange}
                     totalVisible={alerts.length}
+                    recentAlerts={alerts}
+                    highlightedAlertId={highlightedMarkerId}
+                    selectedAlertId={selectedAlert?.id || null}
+                    onRecentAlertSelect={handleRecentAlertSelect}
                 />
 
                 {/* Alert count badge */}
