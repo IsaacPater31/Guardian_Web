@@ -20,6 +20,7 @@ export default function AlertCard({
     const isLatest = priorityLevel === 'latest';
     const isRecent = priorityLevel === 'recent';
     const isHistorical = priorityLevel === 'historical';
+    const identifiedLabel = (alert.userName || alert.userEmail || '').trim() || 'Usuario identificado';
 
     // Apple semantic colors
     const statusColor = isAttended ? '#34C759' : '#FF9F0A';
@@ -109,7 +110,7 @@ export default function AlertCard({
                             border: '1px solid rgba(52,199,89,0.35)',
                         }}>
                             <Eye style={{ width: 10, height: 10 }} />
-                            Identificada
+                            {identifiedLabel}
                         </span>
                     )}
                     {alert.viewedCount > 0 && (
