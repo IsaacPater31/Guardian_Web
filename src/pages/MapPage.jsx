@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import { subscribeToMapAlertsFiltered } from '../services/alertService';
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../utils/mapUtils';
@@ -42,7 +42,7 @@ function MapFocusController({ focusAlert }) {
 export default function MapPage() {
     const [alerts, setAlerts] = useState([]);
     const [alertsLoading, setAlertsLoading] = useState(true);
-    const [selectedAlert, setSelectedAlert] = useState(null);
+    const [selectedAlertId, setSelectedAlertId] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
@@ -100,36 +100,35 @@ export default function MapPage() {
     }, [timedPriorityAlertId]);
 
     const highlightedMarkerId = timedPriorityAlertId || latestContextAlertId || alerts[0]?.id || null;
+    const selectedAlert = useMemo(
+        () => alerts.find((a) => a.id === selectedAlertId) || null,
+        [alerts, selectedAlertId]
+    );
 
     const handleFiltersChange = useCallback((newFilters) => {
         setFilters(newFilters);
-        // If the currently selected alert is no longer in the filtered set, deselect it
-        setSelectedAlert((prev) => {
-            if (!prev) return prev;
-            return prev; // will naturally disappear if not in markers anymore
-        });
     }, []);
 
     const handleRecentAlertSelect = useCallback((alert) => {
         if (!alert) return;
-        if (selectedAlert?.id === alert.id) {
-            setSelectedAlert(null);
+        if (selectedAlertId === alert.id) {
+            setSelectedAlertId(null);
             setFocusedAlert(null);
             return;
         }
-        setSelectedAlert(alert);
+        setSelectedAlertId(alert.id);
         setFocusedAlert({ ...alert, __focusKey: Date.now() });
-    }, [selectedAlert?.id]);
+    }, [selectedAlertId]);
 
     const handleMarkerClick = useCallback((alert) => {
-        if (selectedAlert?.id === alert.id) {
-            setSelectedAlert(null);
+        if (selectedAlertId === alert.id) {
+            setSelectedAlertId(null);
             setFocusedAlert(null);
             return;
         }
-        setSelectedAlert(alert);
+        setSelectedAlertId(alert.id);
         setFocusedAlert({ ...alert, __focusKey: Date.now() });
-    }, [selectedAlert?.id]);
+    }, [selectedAlertId]);
 
     return (
         <div className="map-page">
@@ -170,7 +169,7 @@ export default function MapPage() {
                         alerts={alerts}
                         onMarkerClick={handleMarkerClick}
                         highlightedAlertId={highlightedMarkerId}
-                        selectedAlertId={selectedAlert?.id || null}
+                        selectedAlertId={selectedAlertId}
                     />
                     <MapFocusController focusAlert={focusedAlert} />
                 </MapContainer>
@@ -186,7 +185,7 @@ export default function MapPage() {
                     totalVisible={alerts.length}
                     recentAlerts={alerts}
                     highlightedAlertId={highlightedMarkerId}
-                    selectedAlertId={selectedAlert?.id || null}
+                    selectedAlertId={selectedAlertId}
                     onRecentAlertSelect={handleRecentAlertSelect}
                 />
 
@@ -212,7 +211,7 @@ export default function MapPage() {
                 {selectedAlert && (
                     <SelectedAlertPanel
                         alert={selectedAlert}
-                        onClose={() => setSelectedAlert(null)}
+                        onClose={() => setSelectedAlertId(null)}
                         onShowDetail={() => setShowModal(true)}
                     />
                 )}

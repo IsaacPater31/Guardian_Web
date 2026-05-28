@@ -5,6 +5,7 @@ import {
     getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo, AlertStatus,
 } from '../config/alertTypes';
 import { getCommunityNames } from '../services/communityService';
+import { updateAlertStatus } from '../services/alertService';
 import { getSubtypeLabel } from '../utils/alertSubtype';
 
 /** Detalle de alerta en español (producto). */
@@ -52,6 +53,10 @@ function InfoRow({ icon, iconColor = 'var(--color-text-tertiary)', label, childr
 // ─── Main modal ───────────────────────────────────────────────────────────────
 export default function AlertDetailModal({ alert, onClose }) {
     const [communityNames, setCommunityNames] = useState([]);
+    const [localStatus, setLocalStatus] = useState(alert?.alertStatus ?? AlertStatus.PENDING);
+    const [showAttendConfirm, setShowAttendConfirm] = useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [statusFeedback, setStatusFeedback] = useState('');
 
     useEffect(() => {
         let cancelled = false;
@@ -71,6 +76,13 @@ export default function AlertDetailModal({ alert, onClose }) {
         };
     }, [alert?.communityIds]);
 
+    useEffect(() => {
+        setLocalStatus(alert?.alertStatus ?? AlertStatus.PENDING);
+        setShowAttendConfirm(false);
+        setIsUpdatingStatus(false);
+        setStatusFeedback('');
+    }, [alert?.id, alert?.alertStatus]);
+
     if (!alert) return null;
 
     const color     = getAlertColor(alert.alertType);
@@ -79,7 +91,7 @@ export default function AlertDetailModal({ alert, onClose }) {
     const mainLabel = getAlertLabel(alert.alertType);
     const subLabel  = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo   = getTimeAgo(alert.timestamp);
-    const isAttended= alert.alertStatus === AlertStatus.ATTENDED;
+    const isAttended= localStatus === AlertStatus.ATTENDED;
     const reporterName = alert.isAnonymous
         ? es('Anónimo')
         : (alert.userName || '').trim() || es('Usuario desconocido');
@@ -90,6 +102,23 @@ export default function AlertDetailModal({ alert, onClose }) {
         : new Date(alert.timestamp);
 
     const dateLocale = 'es-CO';
+
+    const handleConfirmAttend = async () => {
+        if (!alert?.id || isUpdatingStatus) return;
+        setIsUpdatingStatus(true);
+        setStatusFeedback('');
+        try {
+            await updateAlertStatus(alert.id, AlertStatus.ATTENDED);
+            setLocalStatus(AlertStatus.ATTENDED);
+            setShowAttendConfirm(false);
+            setStatusFeedback(es('Alerta marcada como atendida.'));
+        } catch (error) {
+            console.error('[AlertDetailModal] updateAlertStatus', error);
+            setStatusFeedback(es('No se pudo actualizar el estado. Intenta nuevamente.'));
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
 
     return (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -183,6 +212,100 @@ export default function AlertDetailModal({ alert, onClose }) {
                                         ? es('Esta alerta fue marcada como atendida.')
                                         : es('Esta alerta está pendiente de atención.')}
                                 </div>
+                                {!isAttended && (
+                                    <div style={{ marginTop: 10 }}>
+                                        {!showAttendConfirm ? (
+                                            <div style={{
+                                                marginTop: 2,
+                                                paddingTop: 10,
+                                                borderTop: '1px solid rgba(255,159,10,0.26)',
+                                            }}>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Marcar alerta como atendida"
+                                                    onClick={() => setShowAttendConfirm(true)}
+                                                    disabled={isUpdatingStatus}
+                                                    style={{
+                                                        width: '100%',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: 8,
+                                                        border: '1px solid #DC2626',
+                                                        background: 'linear-gradient(180deg, #EF4444 0%, #DC2626 100%)',
+                                                        color: '#FFFFFF',
+                                                        borderRadius: 10,
+                                                        padding: '10px 12px',
+                                                        fontSize: 13,
+                                                        fontWeight: 800,
+                                                        cursor: 'pointer',
+                                                        boxShadow: '0 6px 14px rgba(220,38,38,0.24)',
+                                                    }}
+                                                >
+                                                    <LucideIcons.CheckCircle2 style={{ width: 14, height: 14 }} />
+                                                    {es('Marcar como atendida')}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                marginTop: 2,
+                                                padding: '10px',
+                                                borderRadius: 8,
+                                                border: '1px solid rgba(220,38,38,0.3)',
+                                                background: 'rgba(254,226,226,0.45)',
+                                            }}>
+                                                <div style={{ display: 'flex', gap: 8 }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowAttendConfirm(false)}
+                                                        disabled={isUpdatingStatus}
+                                                        style={{
+                                                            flex: 1,
+                                                            border: '1px solid rgba(0,0,0,0.14)',
+                                                            background: '#fff',
+                                                            color: '#4B5563',
+                                                            borderRadius: 8,
+                                                            padding: '7px 10px',
+                                                            fontSize: 12,
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        {es('Cancelar')}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleConfirmAttend}
+                                                        disabled={isUpdatingStatus}
+                                                        style={{
+                                                            flex: 1,
+                                                            border: '1px solid rgba(22,163,74,0.55)',
+                                                            background: 'rgba(34,197,94,0.2)',
+                                                            color: '#166534',
+                                                            borderRadius: 8,
+                                                            padding: '7px 10px',
+                                                            fontSize: 12,
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        {isUpdatingStatus ? es('Marcando...') : es('Confirmar')}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {statusFeedback && (
+                                    <div style={{
+                                        marginTop: 8,
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: statusFeedback.includes('No se pudo') ? '#C62828' : '#1F7A3D',
+                                    }}>
+                                        {statusFeedback}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
