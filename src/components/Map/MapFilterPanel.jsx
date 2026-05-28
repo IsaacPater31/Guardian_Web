@@ -248,7 +248,7 @@ export default function MapFilterPanel({
                                         ) : null}
                                     </span>
                                     <span className="map-recent-item-meta">
-                                        <span>{isUrgent ? 'Viva' : getTimeAgo(alert.timestamp)}</span>
+                                        <span>{getTimeAgo(alert.timestamp)}</span>
                                         <ArrowUpRight />
                                     </span>
                                 </button>

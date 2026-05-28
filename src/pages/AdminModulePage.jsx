@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Building2,
@@ -8,12 +8,12 @@ import {
     UserSquare2,
 } from 'lucide-react';
 import {
-    fetchRegistryCounts,
+    subscribeCommunitiesCount,
     findUserBySearch,
     listCommunitiesForUser,
     findCommunityBySearch,
     fetchCommunityMembersEnriched,
-    fetchAllUsers,
+    subscribeAllUsers,
 } from '../services/adminModuleService';
 
 function formatUserDate(val) {
@@ -55,40 +55,45 @@ export default function AdminModulePage() {
     const [memberFilter, setMemberFilter] = useState('');
     const [commErr, setCommErr] = useState(null);
 
-    const loadCounts = useCallback(async () => {
+    useEffect(() => {
         setCountsErr(null);
-        try {
-            const c = await fetchRegistryCounts();
-            setCounts(c);
-        } catch (e) {
-            setCountsErr(e?.message || 'No se pudieron cargar los totales');
-        }
+        const unsubscribe = subscribeCommunitiesCount(
+            (communityCount) => {
+                setCounts((prev) => ({
+                    ...prev,
+                    communities: communityCount,
+                }));
+                setCountsErr(null);
+            },
+            (e) => {
+                setCountsErr(e?.message || 'No se pudieron cargar los totales');
+                setCounts((prev) => ({ ...prev, communities: null }));
+            }
+        );
+        return () => unsubscribe();
     }, []);
 
     useEffect(() => {
-        loadCounts();
-    }, [loadCounts]);
-
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            setAllUsersLoading(true);
-            setAllUsersErr(null);
-            try {
-                const list = await fetchAllUsers();
-                if (!cancelled) setAllUsers(list);
-            } catch (e) {
-                if (!cancelled) {
-                    setAllUsersErr(e?.message || 'No se pudo cargar el listado');
-                    setAllUsers([]);
-                }
-            } finally {
-                if (!cancelled) setAllUsersLoading(false);
+        setAllUsersLoading(true);
+        setAllUsersErr(null);
+        const unsubscribe = subscribeAllUsers(
+            (list) => {
+                setAllUsers(list);
+                setCounts((prev) => ({
+                    ...prev,
+                    users: list.length,
+                }));
+                setAllUsersErr(null);
+                setAllUsersLoading(false);
+            },
+            (e) => {
+                setAllUsersErr(e?.message || 'No se pudo cargar el listado');
+                setAllUsers([]);
+                setCounts((prev) => ({ ...prev, users: null }));
+                setAllUsersLoading(false);
             }
-        })();
-        return () => {
-            cancelled = true;
-        };
+        );
+        return () => unsubscribe();
     }, []);
 
     async function runUserSearch(e) {

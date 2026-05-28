@@ -8,6 +8,7 @@ import {
     getDoc,
     getDocs,
     getCountFromServer,
+    onSnapshot,
     query,
     where,
     limit,
@@ -55,6 +56,25 @@ export async function fetchAllUsers() {
     return list;
 }
 
+/**
+ * Suscripción en tiempo real al directorio completo de usuarios.
+ * @param {(users: Array<any>) => void} callback
+ * @param {(error: Error) => void} [onError]
+ */
+export function subscribeAllUsers(callback, onError) {
+    return onSnapshot(
+        collection(db, Collections.USERS),
+        (snap) => {
+            const list = snap.docs.map(parseUserSnap);
+            list.sort((a, b) => createdAtSortKey(b.createdAt) - createdAtSortKey(a.createdAt));
+            callback(list);
+        },
+        (error) => {
+            onError?.(error);
+        }
+    );
+}
+
 /** @returns {{ users: number, communities: number }} */
 export async function fetchRegistryCounts() {
     const [u, c] = await Promise.all([
@@ -65,6 +85,23 @@ export async function fetchRegistryCounts() {
         users: u.data().count,
         communities: c.data().count,
     };
+}
+
+/**
+ * Conteo realtime de comunidades usando listener de colección.
+ * @param {(count: number) => void} callback
+ * @param {(error: Error) => void} [onError]
+ */
+export function subscribeCommunitiesCount(callback, onError) {
+    return onSnapshot(
+        collection(db, Collections.COMMUNITIES),
+        (snap) => {
+            callback(snap.size);
+        },
+        (error) => {
+            onError?.(error);
+        }
+    );
 }
 
 /**
