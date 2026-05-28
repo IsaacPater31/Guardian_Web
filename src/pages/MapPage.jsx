@@ -21,6 +21,7 @@ export default function MapPage() {
     const [showModal, setShowModal] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
+    const [timedPriorityAlertId, setTimedPriorityAlertId] = useState(null);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
     // Keep a ref to the current unsubscribe fn so we can cancel it when filters change
@@ -40,7 +41,18 @@ export default function MapPage() {
         const unsub = subscribeToMapAlertsFiltered(filters, (data, meta = {}) => {
             setAlerts(data);
             setAlertsLoading(false);
-            setLatestContextAlertId(meta.latestContextAlertId ?? null);
+            const fallbackLatestId = meta.latestContextAlertId ?? data[0]?.id ?? null;
+            setLatestContextAlertId(fallbackLatestId);
+
+            const changedIds = Array.isArray(meta.changedIds) ? meta.changedIds : [];
+            const newestChangedId = data.find((a) => changedIds.includes(a.id))?.id ?? null;
+
+            if (newestChangedId) {
+                setTimedPriorityAlertId(newestChangedId);
+            } else if (fallbackLatestId) {
+                // Ensure there is always one highlighted marker even without fresh changes.
+                setTimedPriorityAlertId((prev) => prev || fallbackLatestId);
+            }
         });
 
         unsubRef.current = unsub;
@@ -52,6 +64,16 @@ export default function MapPage() {
             }
         };
     }, [filters]);
+
+    useEffect(() => {
+        if (!timedPriorityAlertId) return undefined;
+        const timeout = setTimeout(() => {
+            setTimedPriorityAlertId(null);
+        }, 20000);
+        return () => clearTimeout(timeout);
+    }, [timedPriorityAlertId]);
+
+    const highlightedMarkerId = timedPriorityAlertId || latestContextAlertId || alerts[0]?.id || null;
 
     const handleFiltersChange = useCallback((newFilters) => {
         setFilters(newFilters);
@@ -100,7 +122,7 @@ export default function MapPage() {
                     <DynamicMarkers
                         alerts={alerts}
                         onMarkerClick={setSelectedAlert}
-                        highlightedAlertId={latestContextAlertId}
+                        highlightedAlertId={highlightedMarkerId}
                     />
                 </MapContainer>
 

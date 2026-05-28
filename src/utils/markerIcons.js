@@ -75,7 +75,7 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
         ? '2.5px solid #FFD600'
         : '2px solid rgba(255,255,255,0.9)';
     const glow = isHighlighted
-        ? `0 8px 20px rgba(10, 16, 28, 0.28),0 0 0 3px ${color}42`
+        ? `0 18px 40px rgba(10, 16, 28, 0.56),0 0 0 4px ${color}99,0 0 40px ${color}88`
         : `0 2px 10px rgba(0,0,0,0.3),0 0 0 2px ${color}24`;
 
     return L.divIcon({
@@ -92,15 +92,40 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             position:relative;
             transition: box-shadow 260ms ease, transform 260ms ease;
             transform:none;
-            ${isHighlighted ? 'animation: marker-highlight-soft 2.6s ease-in-out infinite;' : ''}
+            ${isHighlighted ? 'animation: marker-highlight-noc 0.82s cubic-bezier(0.4, 0, 0.2, 1) infinite;' : ''}
         ">
             ${isHighlighted
         ? `<span style="
                     position:absolute;
-                    inset:-8px;
+                    inset:-10px;
                     border-radius:50%;
-                    border:1.5px solid ${color}66;
-                    animation: marker-focus-ring-soft 2.6s ease-in-out infinite;
+                    border:2px solid ${color}C8;
+                    animation: marker-focus-ring-core 0.82s ease-out infinite;
+                "></span>
+                <span style="
+                    position:absolute;
+                    inset:-18px;
+                    border-radius:50%;
+                    border:2px solid ${color}78;
+                    animation: marker-focus-ring-outer 1.25s ease-out infinite;
+                "></span>
+                <span style="
+                    position:absolute;
+                    inset:-2px;
+                    border-radius:50%;
+                    background: radial-gradient(circle, transparent 38%, ${color}78 68%, transparent 100%);
+                    animation: marker-core-flash 0.82s ease-in-out infinite;
+                "></span>
+                <span style="
+                    position:absolute;
+                    right:-4px;
+                    top:-4px;
+                    width:9px;
+                    height:9px;
+                    border-radius:50%;
+                    background:#ff3b30;
+                    box-shadow:0 0 0 3px rgba(255,59,48,0.25),0 0 14px rgba(255,59,48,0.8);
+                    animation: marker-priority-beacon 0.82s steps(2, end) infinite;
                 "></span>`
         : ''}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
@@ -110,13 +135,25 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             </svg>
         </div>
         <style>
-            @keyframes marker-focus-ring-soft {
-                0%, 100% { transform: scale(1); opacity: 0.34; }
-                50% { transform: scale(1.1); opacity: 0.12; }
+            @keyframes marker-focus-ring-core {
+                0% { transform: scale(0.94); opacity: 0.86; }
+                100% { transform: scale(1.34); opacity: 0; }
             }
-            @keyframes marker-highlight-soft {
-                0%, 100% { filter: saturate(1) brightness(1); }
-                50% { filter: saturate(1.08) brightness(1.06); }
+            @keyframes marker-focus-ring-outer {
+                0% { transform: scale(0.9); opacity: 0.56; }
+                100% { transform: scale(1.56); opacity: 0; }
+            }
+            @keyframes marker-core-flash {
+                0%, 100% { opacity: 0.48; filter: brightness(1); }
+                50% { opacity: 1; filter: brightness(1.35); }
+            }
+            @keyframes marker-priority-beacon {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.25; }
+            }
+            @keyframes marker-highlight-noc {
+                0%, 100% { filter: saturate(1.08) brightness(1); transform: scale(1); }
+                50% { filter: saturate(1.45) brightness(1.24); transform: scale(1.12); }
             }
         </style>`,
     });
