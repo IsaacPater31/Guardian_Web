@@ -43,7 +43,7 @@ export default function DynamicMarkers({
                         isHighlighted: alert.id === highlightedAlertId,
                         isSelected: alert.id === selectedAlertId,
                     })}
-                    zIndexOffset={alert.id === highlightedAlertId ? 1200 : alert.id === selectedAlertId ? 800 : 0}
+                    zIndexOffset={alert.id === selectedAlertId ? 1600 : alert.id === highlightedAlertId ? 1200 : 0}
                     eventHandlers={{ click: () => onMarkerClick(alert) }}
                 />
             ))}

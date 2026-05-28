@@ -1701,15 +1701,18 @@ body {
 }
 
 .map-recent-item.urgent {
-  border-color: rgba(255, 59, 48, 0.6);
-  background: linear-gradient(115deg, rgba(255, 59, 48, 0.12), rgba(255, 59, 48, 0.03));
-  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.24);
+  border-color: rgba(255, 59, 48, 0.5);
+  background: linear-gradient(115deg, rgba(255, 59, 48, 0.1), rgba(255, 59, 48, 0.02));
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.18);
 }
 
 .map-recent-item.selected {
-  border-color: rgba(37, 99, 235, 0.48);
-  background: linear-gradient(115deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.025));
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.9);
+  background: linear-gradient(115deg, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.06));
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.35),
+    0 12px 20px rgba(15, 23, 42, 0.14);
+  transform: translateY(-1px);
 }
 
 .map-recent-item-dot {

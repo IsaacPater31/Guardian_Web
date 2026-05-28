@@ -74,10 +74,10 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
     const border  = hasOffset
         ? '2.5px solid #FFD600'
         : '2px solid rgba(255,255,255,0.9)';
-    const glow = isHighlighted
-        ? `0 18px 40px rgba(10, 16, 28, 0.56),0 0 0 4px ${color}99,0 0 40px ${color}88`
-        : isSelected
-            ? `0 10px 24px rgba(10, 16, 28, 0.34),0 0 0 3px rgba(37,99,235,0.46)`
+    const glow = isSelected
+        ? `0 18px 40px rgba(10, 16, 28, 0.58),0 0 0 4px rgba(37,99,235,0.9),0 0 42px rgba(37,99,235,0.62)`
+        : isHighlighted
+            ? `0 12px 30px rgba(10, 16, 28, 0.44),0 0 0 3px ${color}76,0 0 22px ${color}58`
         : `0 2px 10px rgba(0,0,0,0.3),0 0 0 2px ${color}24`;
 
     return L.divIcon({
@@ -94,9 +94,24 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             position:relative;
             transition: box-shadow 260ms ease, transform 260ms ease;
             transform:none;
-            ${isHighlighted ? 'animation: marker-highlight-noc 0.82s cubic-bezier(0.4, 0, 0.2, 1) infinite;' : isSelected ? 'animation: marker-selected-focus 1.8s ease-in-out infinite;' : ''}
+            ${isSelected ? 'animation: marker-selected-focus 1.05s cubic-bezier(0.4, 0, 0.2, 1) infinite;' : isHighlighted ? 'animation: marker-highlight-noc 1.15s ease-in-out infinite;' : ''}
         ">
-            ${isHighlighted
+            ${isSelected
+        ? `<span style="
+                    position:absolute;
+                    inset:-10px;
+                    border-radius:50%;
+                    border:2px solid rgba(37,99,235,0.84);
+                    animation: marker-selected-ring 1.05s ease-out infinite;
+                "></span>
+                <span style="
+                    position:absolute;
+                    inset:-18px;
+                    border-radius:50%;
+                    border:2px solid rgba(37,99,235,0.45);
+                    animation: marker-selected-ring-outer 1.2s ease-out infinite;
+                "></span>`
+        : isHighlighted
         ? `<span style="
                     position:absolute;
                     inset:-10px;
@@ -129,14 +144,6 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
                     box-shadow:0 0 0 3px rgba(255,59,48,0.25),0 0 14px rgba(255,59,48,0.8);
                     animation: marker-priority-beacon 0.82s steps(2, end) infinite;
                 "></span>`
-        : isSelected
-            ? `<span style="
-                    position:absolute;
-                    inset:-8px;
-                    border-radius:50%;
-                    border:2px solid rgba(37,99,235,0.46);
-                    animation: marker-selected-ring 1.8s ease-in-out infinite;
-                "></span>`
         : ''}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
                 fill="none" stroke="white" stroke-width="2.2"
@@ -163,15 +170,19 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
             }
             @keyframes marker-highlight-noc {
                 0%, 100% { filter: saturate(1.08) brightness(1); transform: scale(1); }
-                50% { filter: saturate(1.45) brightness(1.24); transform: scale(1.12); }
+                50% { filter: saturate(1.28) brightness(1.16); transform: scale(1.08); }
             }
             @keyframes marker-selected-ring {
-                0%, 100% { opacity: 0.62; transform: scale(1); }
-                50% { opacity: 0.28; transform: scale(1.12); }
+                0% { opacity: 0.85; transform: scale(0.94); }
+                100% { opacity: 0; transform: scale(1.34); }
+            }
+            @keyframes marker-selected-ring-outer {
+                0% { opacity: 0.55; transform: scale(0.9); }
+                100% { opacity: 0; transform: scale(1.58); }
             }
             @keyframes marker-selected-focus {
-                0%, 100% { filter: saturate(1.03) brightness(1); transform: scale(1); }
-                50% { filter: saturate(1.1) brightness(1.08); transform: scale(1.04); }
+                0%, 100% { filter: saturate(1.12) brightness(1); transform: scale(1); }
+                50% { filter: saturate(1.45) brightness(1.22); transform: scale(1.12); }
             }
         </style>`,
     });
