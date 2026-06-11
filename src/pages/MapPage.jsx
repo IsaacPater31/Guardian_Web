@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
-import { subscribeToMapAlertsFiltered } from '../services/alertService';
+import {
+    subscribeToMapAlertsFiltered,
+    sortAlertsNewestFirst,
+    sortPendingAlertsNewestFirst,
+    findNewestPendingAmongChanges,
+} from '../services/alertService';
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../utils/mapUtils';
 import DynamicMarkers from '../components/Map/DynamicMarkers';
 import { UserLocationMarker, LocateMeButton, AutoCenterOnUser } from '../components/Map/UserLocation';
@@ -11,7 +16,7 @@ import MapAlertCountBadge from '../components/Map/MapAlertCountBadge';
 import RequestLocationOnFirstInteraction from '../components/Map/RequestLocationOnFirstInteraction';
 import MapFilterPanel from '../components/Map/MapFilterPanel';
 import { DEFAULT_FILTERS } from '../config/filterOptions';
-import { ACTIVE_ALERT_FEEDBACK_MS, AlertStatus } from '../config/alertTypes';
+import { ACTIVE_ALERT_FEEDBACK_MS } from '../config/alertTypes';
 
 function MapFocusController({ focusAlert }) {
     const map = useMap();
@@ -46,21 +51,23 @@ export default function MapPage() {
     const [selectedAlertId, setSelectedAlertId] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
-    const [latestPendingAlertId, setLatestPendingAlertId] = useState(null);
     const [timedPriorityAlertId, setTimedPriorityAlertId] = useState(null);
     const [focusedAlert, setFocusedAlert] = useState(null);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
-    // Keep a ref to the current unsubscribe fn so we can cancel it when filters change
     const unsubRef = useRef(null);
+    const isInitialSnapshotRef = useRef(true);
+    const lastAutoFocusIdRef = useRef(null);
 
     // Re-subscribe every time filters change
     useEffect(() => {
-        // Cancel previous subscription
         if (unsubRef.current) {
             unsubRef.current();
             unsubRef.current = null;
         }
+
+        isInitialSnapshotRef.current = true;
+        lastAutoFocusIdRef.current = null;
 
         // eslint-disable-next-line react-hooks/set-state-in-effect -- map subscription loading gate
         setAlertsLoading(true);
@@ -68,14 +75,29 @@ export default function MapPage() {
         const unsub = subscribeToMapAlertsFiltered(filters, (data, meta = {}) => {
             setAlerts(data);
             setAlertsLoading(false);
-            const pendingLatestId = meta.latestContextAlertId ?? null;
-            setLatestPendingAlertId(pendingLatestId);
+
+            if (isInitialSnapshotRef.current) {
+                isInitialSnapshotRef.current = false;
+                return;
+            }
 
             const changedIds = Array.isArray(meta.changedIds) ? meta.changedIds : [];
-            const newestChanged = data.find((a) => changedIds.includes(a.id)) ?? null;
+            const newestChanged = findNewestPendingAmongChanges(data, changedIds);
+            if (!newestChanged?.id) return;
 
-            if (newestChanged?.id && newestChanged.alertStatus !== AlertStatus.ATTENDED) {
-                setTimedPriorityAlertId(newestChanged.id);
+            const nextActiveId = sortPendingAlertsNewestFirst(data)[0]?.id ?? null;
+            if (newestChanged.id !== nextActiveId) return;
+
+            setTimedPriorityAlertId(newestChanged.id);
+
+            if (
+                newestChanged.id !== lastAutoFocusIdRef.current &&
+                newestChanged.shareLocation &&
+                newestChanged.location
+            ) {
+                lastAutoFocusIdRef.current = newestChanged.id;
+                setSelectedAlertId(newestChanged.id);
+                setFocusedAlert({ ...newestChanged, __focusKey: Date.now() });
             }
         });
 
@@ -97,7 +119,18 @@ export default function MapPage() {
         return () => clearTimeout(timeout);
     }, [timedPriorityAlertId]);
 
-    const highlightedMarkerId = timedPriorityAlertId || latestPendingAlertId;
+    const listAlerts = useMemo(
+        () => sortAlertsNewestFirst(alerts),
+        [alerts]
+    );
+
+    const pendingAlerts = useMemo(
+        () => sortPendingAlertsNewestFirst(alerts),
+        [alerts]
+    );
+
+    /** Latest non-attended alert — only this one is highlighted as active. */
+    const activeAlertId = pendingAlerts[0]?.id ?? null;
     const selectedAlert = useMemo(
         () => alerts.find((a) => a.id === selectedAlertId) || null,
         [alerts, selectedAlertId]
@@ -166,7 +199,7 @@ export default function MapPage() {
                     <DynamicMarkers
                         alerts={alerts}
                         onMarkerClick={handleMarkerClick}
-                        highlightedAlertId={highlightedMarkerId}
+                        highlightedAlertId={activeAlertId}
                         selectedAlertId={selectedAlertId}
                     />
                     <MapFocusController focusAlert={focusedAlert} />
@@ -181,8 +214,13 @@ export default function MapPage() {
                     customEnd={filters.customEnd}
                     onChange={handleFiltersChange}
                     totalVisible={alerts.length}
-                    recentAlerts={alerts}
-                    highlightedAlertId={highlightedMarkerId}
+                    listAlerts={listAlerts}
+                    activeAlertId={activeAlertId}
+                    pulseAlertId={
+                        timedPriorityAlertId && timedPriorityAlertId === activeAlertId
+                            ? timedPriorityAlertId
+                            : null
+                    }
                     selectedAlertId={selectedAlertId}
                     onRecentAlertSelect={handleRecentAlertSelect}
                 />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Marker, useMap, useMapEvents } from 'react-leaflet';
 import { computeOffsets } from '../../utils/mapUtils';
 import { createAlertIcon } from '../../utils/markerIcons';
+import { AlertStatus } from '../../config/alertTypes';
 
 /**
  * DynamicMarkers — recalculates spiral-offset marker positions on every
@@ -35,18 +36,32 @@ export default function DynamicMarkers({
 
     return (
         <>
-            {markers.map(({ alert, lat, lng, hasOffset }) => (
-                <Marker
-                    key={alert.id}
-                    position={[lat, lng]}
-                    icon={createAlertIcon(alert.alertType, hasOffset, {
-                        isHighlighted: alert.id === highlightedAlertId,
-                        isSelected: alert.id === selectedAlertId,
-                    })}
-                    zIndexOffset={alert.id === selectedAlertId ? 1600 : alert.id === highlightedAlertId ? 1200 : 0}
-                    eventHandlers={{ click: () => onMarkerClick(alert) }}
-                />
-            ))}
+            {markers.map(({ alert, lat, lng, hasOffset }) => {
+                const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
+                const isActive = !isAttended && alert.id === highlightedAlertId;
+                const isSelected = alert.id === selectedAlertId;
+                const zIndexOffset = isSelected
+                    ? 1800
+                    : isActive
+                        ? 1500
+                        : isAttended
+                            ? -300
+                            : 0;
+
+                return (
+                    <Marker
+                        key={alert.id}
+                        position={[lat, lng]}
+                        icon={createAlertIcon(alert.alertType, hasOffset, {
+                            isActive,
+                            isSelected,
+                            isAttended,
+                        })}
+                        zIndexOffset={zIndexOffset}
+                        eventHandlers={{ click: () => onMarkerClick(alert) }}
+                    />
+                );
+            })}
         </>
     );
 }

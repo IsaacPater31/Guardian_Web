@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { subscribeToAlertsFiltered } from '../services/alertService';
+import { subscribeToAlertsFiltered, isActivePendingAlert } from '../services/alertService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
@@ -197,7 +197,7 @@ export default function AlertsPage() {
                             <div className="empty-state-desc">
                                 {hasFilters
                                     ? 'No hay alertas que coincidan con los filtros aplicados.'
-                                    : 'No hay alertas recientes.'}
+                                    : 'No hay alertas.'}
                             </div>
                             {hasFilters && (
                                 <button
@@ -219,34 +219,14 @@ export default function AlertsPage() {
                         </div>
                     ) : (
                         <div className="alerts-feed-grid">
-                            {alerts.map((alert, index) => {
-                                const isPending = alert.alertStatus !== 'attended';
-                                const hasLatest = Boolean(latestContextAlertId);
-                                const isLatest = isPending && hasLatest
-                                    ? alert.id === latestContextAlertId
-                                    : isPending && !hasLatest && index === 0;
-                                const isRecent = isPending && (
-                                    hasLatest
-                                        ? !isLatest && index <= 3
-                                        : !isLatest && index <= 2
-                                );
-                                const priorityLevel = isLatest
-                                    ? 'latest'
-                                    : isRecent
-                                        ? 'recent'
-                                        : hasLatest && isPending
-                                            ? 'historical'
-                                            : 'normal';
-
-                                return (
-                                    <AlertCard
-                                        key={alert.id}
-                                        alert={alert}
-                                        onClick={setSelectedAlert}
-                                        priorityLevel={priorityLevel}
-                                    />
-                                );
-                            })}
+                            {alerts.map((alert) => (
+                                <AlertCard
+                                    key={alert.id}
+                                    alert={alert}
+                                    onClick={setSelectedAlert}
+                                    isActive={isActivePendingAlert(alert, latestContextAlertId)}
+                                />
+                            ))}
                         </div>
                     )}
                 </div>

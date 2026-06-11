@@ -171,6 +171,48 @@ function alertTimeMs(alert) {
     return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
+/** All alerts, newest first (map side panel list). */
+export function sortAlertsNewestFirst(alerts) {
+    return (alerts ?? [])
+        .slice()
+        .sort((a, b) => alertTimeMs(b) - alertTimeMs(a));
+}
+
+/** Pending alerts, newest first. */
+export function sortPendingAlertsNewestFirst(alerts) {
+    return (alerts ?? [])
+        .filter((a) => a.alertStatus !== AlertStatus.ATTENDED)
+        .slice()
+        .sort((a, b) => alertTimeMs(b) - alertTimeMs(a));
+}
+
+/**
+ * Newest pending alert among Firestore docChanges (added/modified).
+ * @param {AlertObject[]} alerts
+ * @param {string[]} changedIds
+ * @returns {AlertObject|null}
+ */
+export function findNewestPendingAmongChanges(alerts, changedIds) {
+    if (!Array.isArray(changedIds) || changedIds.length === 0) return null;
+    const idSet = new Set(changedIds);
+    const pool = (alerts ?? []).filter(
+        (a) => idSet.has(a.id) && a.alertStatus !== AlertStatus.ATTENDED
+    );
+    if (pool.length === 0) return null;
+    return pool.reduce(
+        (latest, current) =>
+            alertTimeMs(current) > alertTimeMs(latest) ? current : latest,
+        pool[0]
+    );
+}
+
+/** True when [alert] is the latest non-attended alert in the feed. */
+export function isActivePendingAlert(alert, latestPendingAlertId) {
+    if (!alert?.id || !latestPendingAlertId) return false;
+    if (alert.alertStatus === AlertStatus.ATTENDED) return false;
+    return alert.id === latestPendingAlertId;
+}
+
 /** Latest pending (not attended) alert id — the active community alert. */
 export function resolveLatestPendingAlertId(alerts) {
     const pending = (alerts ?? []).filter(
@@ -241,7 +283,7 @@ function subscribeAlertsFiltered(filters, callback, options = {}) {
                     return;
                 }
                 console.error('[alertService] subscribeAlertsFiltered', error.message);
-                callback([]);
+                callback([], { latestContextAlertId: null, changedIds: [] });
             }
         );
     };

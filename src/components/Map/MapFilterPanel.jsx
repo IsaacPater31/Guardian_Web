@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import {
     X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle, BellRing, ArrowUpRight,
@@ -7,6 +7,7 @@ import {
     ACTIVE_ALERT_TYPES,
     AlertStatus,
     getAlertColor,
+    getAlertIcon,
     getAlertLabel,
     getTimeAgo,
 } from '../../config/alertTypes';
@@ -24,8 +25,9 @@ import { getSubtypeLabel } from '../../utils/alertSubtype';
  *   customEnd: Date|null,
  *   onChange: (filters) => void,
  *   totalVisible: number,
- *   recentAlerts?: Array,
- *   highlightedAlertId?: string|null,
+ *   listAlerts?: Array,
+ *   activeAlertId?: string|null,
+ *   pulseAlertId?: string|null,
  *   onRecentAlertSelect?: (alert) => void,
  * }} props
  */
@@ -37,20 +39,24 @@ export default function MapFilterPanel({
     customEnd = null,
     onChange,
     totalVisible = 0,
-    recentAlerts = [],
-    highlightedAlertId = null,
+    listAlerts = [],
+    activeAlertId = null,
+    pulseAlertId = null,
     selectedAlertId = null,
     onRecentAlertSelect,
 }) {
     const [isExpanded, setIsExpanded] = useState(true);
     const [activeView, setActiveView] = useState('recent');
+    const lastPulseIdRef = useRef(null);
+
+    useEffect(() => {
+        if (!pulseAlertId || pulseAlertId === lastPulseIdRef.current) return;
+        lastPulseIdRef.current = pulseAlertId;
+        setActiveView('recent');
+        setIsExpanded(true);
+    }, [pulseAlertId]);
     const activeCount = countActiveFilters(types, status, dateRange);
-    const recent = useMemo(
-        () => recentAlerts
-            .filter((a) => a.alertStatus !== AlertStatus.ATTENDED)
-            .slice(0, 8),
-        [recentAlerts]
-    );
+    // All alerts (attended + pending); only activeAlertId (latest pending) is highlighted.
 
     const toggleType = useCallback((type) => {
         const next = types.includes(type)
@@ -84,13 +90,13 @@ export default function MapFilterPanel({
                     {activeView === 'filters' ? <SlidersHorizontal /> : <BellRing />}
                 </div>
                 <span className="map-filter-header-label">
-                    {activeView === 'filters' ? 'Filtros' : 'Alertas recientes'}
+                    {activeView === 'filters' ? 'Filtros' : 'Alertas'}
                 </span>
                 {activeView === 'filters' && activeCount > 0 && (
                     <span className="map-filter-badge">{activeCount}</span>
                 )}
-                {activeView === 'recent' && recent.length > 0 && (
-                    <span className="map-filter-badge">{recent.length}</span>
+                {activeView === 'recent' && listAlerts.length > 0 && (
+                    <span className="map-filter-badge">{listAlerts.length}</span>
                 )}
                 <div className={`map-filter-chevron${isExpanded ? '' : ' collapsed'}`}>
                     <LucideIcons.ChevronDown />
@@ -113,7 +119,7 @@ export default function MapFilterPanel({
                         onClick={() => setActiveView('recent')}
                     >
                         <BellRing />
-                        Alertas recientes
+                        Alertas
                     </button>
                 </div>
 
@@ -232,34 +238,48 @@ export default function MapFilterPanel({
                         </>
                     ) : (
                         <div className="map-recent-list">
-                        {recent.length === 0 && (
+                        {listAlerts.length === 0 && (
                             <div className="map-recent-empty">
                                 <BellRing />
-                                Sin alertas recientes para mostrar.
+                                Sin alertas para mostrar.
                             </div>
                         )}
-                        {recent.map((alert) => {
+                        {listAlerts.map((alert) => {
                             const sub = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
-                            const isUrgent = alert.id === highlightedAlertId;
+                            const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
+                            const isActive = !isAttended && alert.id === activeAlertId;
                             const isSelected = alert.id === selectedAlertId;
+                            const iconName = getAlertIcon(alert.alertType);
+                            const TypeIcon = LucideIcons[iconName] || LucideIcons.AlertTriangle;
+                            const typeColor = getAlertColor(alert.alertType);
                             return (
                                 <button
                                     key={alert.id}
-                                    className={`map-recent-item${isUrgent ? ' urgent' : ''}${isSelected ? ' selected' : ''}`}
+                                    className={`map-recent-item${isActive ? ' map-recent-item--latest' : ''}${isAttended ? ' map-recent-item--attended' : ''}${isSelected ? ' map-recent-item--selected' : ''}`}
                                     onClick={() => onRecentAlertSelect?.(alert)}
                                 >
                                     <span
-                                        className="map-recent-item-dot"
-                                        style={{ background: getAlertColor(alert.alertType) }}
-                                    />
+                                        className={`map-recent-item-icon${isActive ? ' is-active' : ''}${isAttended ? ' is-attended' : ''}`}
+                                        style={{ backgroundColor: typeColor }}
+                                        aria-hidden
+                                    >
+                                        <TypeIcon />
+                                        {isAttended ? (
+                                            <span className="map-recent-item-attended-dot" />
+                                        ) : null}
+                                    </span>
                                     <span className="map-recent-item-main">
-                                        <span className="map-recent-item-title">{getAlertLabel(alert.alertType)}</span>
+                                        <span className="map-recent-item-title">
+                                            {getAlertLabel(alert.alertType)}
+                                        </span>
                                         {sub ? (
                                             <span className="map-recent-item-sub">{sub}</span>
                                         ) : null}
                                     </span>
                                     <span className="map-recent-item-meta">
-                                        <span>{getTimeAgo(alert.timestamp)}</span>
+                                        <span className={isActive ? 'map-recent-item-time--active' : undefined}>
+                                            {getTimeAgo(alert.timestamp)}
+                                        </span>
                                         <ArrowUpRight />
                                     </span>
                                 </button>

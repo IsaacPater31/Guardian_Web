@@ -8,7 +8,7 @@ import { getSubtypeLabel } from '../utils/alertSubtype';
 export default function AlertCard({
     alert,
     onClick,
-    priorityLevel = 'normal',
+    isActive = false,
 }) {
     const color      = getAlertColor(alert.alertType);
     const iconName   = getAlertIcon(alert.alertType);
@@ -17,28 +17,21 @@ export default function AlertCard({
     const sub        = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo    = getTimeAgo(alert.timestamp);
     const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
-    const isLatest = priorityLevel === 'latest';
-    const isRecent = priorityLevel === 'recent';
-    const isHistorical = priorityLevel === 'historical';
     const identifiedLabel = (alert.userName || alert.userEmail || '').trim() || 'Usuario identificado';
 
-    // Apple semantic colors
     const statusColor = isAttended ? '#34C759' : '#FF9F0A';
     const StatusIcon  = isAttended ? CheckCircle2 : Clock3;
 
     return (
         <div
-            className={`alert-card${isLatest ? ' alert-card--latest' : ''}${isRecent ? ' alert-card--recent' : ''}${isHistorical ? ' alert-card--historical' : ''}`}
+            className={`alert-card${isActive ? ' alert-card--latest' : ''}${isAttended ? ' alert-card--attended' : ''}`}
             onClick={() => onClick?.(alert)}
         >
-            {/* Icon column */}
             <div className="alert-card-icon" style={{ backgroundColor: color, position: 'relative' }}>
                 <Icon />
-                {/* Attended dot — subtle secondary indicator */}
                 {isAttended && <span className="alert-card-attended-dot" title="Atendida" />}
             </div>
 
-            {/* Content */}
             <div className="alert-card-content">
                 <div className="alert-card-top">
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -54,17 +47,6 @@ export default function AlertCard({
                         ) : null}
                     </div>
                     <div className="alert-card-time-wrap">
-                        {isLatest && (
-                            <span className="alert-card-recent-badge alert-card-recent-badge--latest">
-                                <span className="alert-card-recent-dot" aria-hidden />
-                                Activa ahora
-                            </span>
-                        )}
-                        {isRecent && (
-                            <span className="alert-card-recent-badge">
-                                Reciente
-                            </span>
-                        )}
                         <span className="alert-card-time">{timeAgo}</span>
                     </div>
                 </div>
@@ -74,8 +56,6 @@ export default function AlertCard({
                 )}
 
                 <div className="alert-card-tags">
-
-                    {/* ── Status badge — always first, Apple-style pill ──────── */}
                     <span style={{
                         display:     'inline-flex',
                         alignItems:  'center',

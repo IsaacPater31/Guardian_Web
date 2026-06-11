@@ -21,7 +21,7 @@ import {
     BarChart3,
     Users,
 } from 'lucide-react';
-import { subscribeToAlertsInDateRange } from '../services/alertService';
+import { subscribeToAlertsInDateRange, isActivePendingAlert } from '../services/alertService';
 import { adminListUsersInCreatedRange } from '../services/adminCrudService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
@@ -736,34 +736,14 @@ export default function Dashboard() {
                         {alerts.length === 0 ? (
                             <p className="admin-muted">Sin alertas en este periodo.</p>
                         ) : (
-                            alerts.slice(0, 12).map((a, index) => {
-                                const isPending = a.alertStatus !== 'attended';
-                                const hasLatest = Boolean(latestContextAlertId);
-                                const isLatest = isPending && hasLatest
-                                    ? a.id === latestContextAlertId
-                                    : isPending && !hasLatest && index === 0;
-                                const isRecent = isPending && (
-                                    hasLatest
-                                        ? !isLatest && index <= 3
-                                        : !isLatest && index <= 2
-                                );
-                                const priorityLevel = isLatest
-                                    ? 'latest'
-                                    : isRecent
-                                        ? 'recent'
-                                        : hasLatest && isPending
-                                            ? 'historical'
-                                            : 'normal';
-
-                                return (
-                                    <AlertCard
-                                        key={a.id}
-                                        alert={a}
-                                        onClick={setSelectedAlert}
-                                        priorityLevel={priorityLevel}
-                                    />
-                                );
-                            })
+                            alerts.slice(0, 12).map((a) => (
+                                <AlertCard
+                                    key={a.id}
+                                    alert={a}
+                                    onClick={setSelectedAlert}
+                                    isActive={isActivePendingAlert(a, latestContextAlertId)}
+                                />
+                            ))
                         )}
                     </div>
                 </section>
