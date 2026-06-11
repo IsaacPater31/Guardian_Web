@@ -1,13 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { subscribeToAlertsFiltered, isActivePendingAlert } from '../services/alertService';
+import {
+    fetchAlertsPage,
+    fetchActivePendingAlertId,
+    isActivePendingAlert,
+} from '../services/alertService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
 import AlertFilterPanel from '../components/AlertFilterPanel';
+import AdminPaginationBar from '../components/admin/AdminPaginationBar';
+import { ALERTS_LIST_PAGE_SIZE } from '../config/adminPagination';
 import { EMPTY_FILTERS, countActiveFilters } from '../config/filterOptions';
-
-// ─── Labels de los filtros activos ────────────────────────────────────────────
 
 const STATUS_LABELS = {
     pending:  'No atendidas',
@@ -30,36 +34,82 @@ export default function AlertsPage() {
     const [filters, setFilters]             = useState(EMPTY_FILTERS);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const cursorsRef = useRef([null]);
+    const listAnchorRef = useRef(null);
 
-    // Suscripción reactiva con filtros
-    const subscribe = useCallback((activeFilters) => {
-        setLoading(true);
+    const resetToFirstPage = useCallback(() => {
+        cursorsRef.current = [null];
+        setPage(1);
+    }, []);
 
-        const unsub = subscribeToAlertsFiltered(activeFilters, (data, meta = {}) => {
-            setAlerts(data);
-            setLoading(false);
-            setLatestContextAlertId(meta.latestContextAlertId ?? null);
+    const goToPage = useCallback((nextPage) => {
+        setPage(nextPage);
+        requestAnimationFrame(() => {
+            listAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-
-        return unsub;
     }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Firestore listener wires loading/alerts
-        const unsub = subscribe(filters);
-        return unsub;
-    }, [filters, subscribe]);
+        let cancelled = false;
+
+        async function loadActiveId() {
+            try {
+                const id = await fetchActivePendingAlertId();
+                if (!cancelled) setLatestContextAlertId(id);
+            } catch {
+                if (!cancelled) setLatestContextAlertId(null);
+            }
+        }
+
+        loadActiveId();
+        return () => {
+            cancelled = true;
+        };
+    }, [filters]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadPage() {
+            setLoading(true);
+            const cursor = page > 1 ? cursorsRef.current[page - 1] : null;
+            try {
+                const result = await fetchAlertsPage(filters, {
+                    pageSize: ALERTS_LIST_PAGE_SIZE,
+                    cursor,
+                });
+                if (cancelled) return;
+                cursorsRef.current[page] = result.lastDoc;
+                setAlerts(result.items);
+                setHasMore(result.hasMore);
+            } catch (e) {
+                if (!cancelled) {
+                    console.error('[AlertsPage] fetchAlertsPage', e);
+                    setAlerts([]);
+                    setHasMore(false);
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        }
+
+        loadPage();
+        return () => {
+            cancelled = true;
+        };
+    }, [filters, page]);
 
     const applyFilters = (newFilters) => {
+        resetToFirstPage();
         setFilters(newFilters);
     };
 
-    const clearFilters = () => setFilters(EMPTY_FILTERS);
+    const clearFilters = () => applyFilters(EMPTY_FILTERS);
 
     const activeCount = countActiveFilters(filters.types, filters.status, filters.dateRange);
     const hasFilters  = activeCount > 0;
-
-    // ─── Chips de filtros activos ─────────────────────────────────────────────
 
     const activeChips = [];
 
@@ -69,11 +119,13 @@ export default function AlertsPage() {
                 key: `type-${type}`,
                 label: getAlertLabel(type),
                 color: getAlertColor(type),
-                onRemove: () =>
+                onRemove: () => {
+                    resetToFirstPage();
                     setFilters((prev) => ({
                         ...prev,
                         types: prev.types.filter((t) => t !== type),
-                    })),
+                    }));
+                },
             });
         });
     }
@@ -83,7 +135,10 @@ export default function AlertsPage() {
             key: 'status',
             label: STATUS_LABELS[filters.status],
             color: filters.status === 'attended' ? '#34C759' : '#FF9500',
-            onRemove: () => setFilters((prev) => ({ ...prev, status: 'all' })),
+            onRemove: () => {
+                resetToFirstPage();
+                setFilters((prev) => ({ ...prev, status: 'all' }));
+            },
         });
     }
 
@@ -92,17 +147,17 @@ export default function AlertsPage() {
             key: 'date',
             label: DATE_LABELS[filters.dateRange] ?? 'Fecha',
             color: '#3F51B5',
-            onRemove: () =>
+            onRemove: () => {
+                resetToFirstPage();
                 setFilters((prev) => ({
                     ...prev,
                     dateRange: 'all',
                     customStart: null,
                     customEnd: null,
-                })),
+                }));
+            },
         });
     }
-
-    // ─── Render ───────────────────────────────────────────────────────────────
 
     if (loading && alerts.length === 0) {
         return (
@@ -116,7 +171,6 @@ export default function AlertsPage() {
         <>
             <div className="alerts-toolbar-card">
             <div className="filter-toolbar">
-                {/* Botón principal de filtros */}
                 <button
                     id="alerts-filter-btn"
                     className={`filter-toolbar-btn${hasFilters ? ' active' : ''}`}
@@ -129,7 +183,6 @@ export default function AlertsPage() {
                     )}
                 </button>
 
-                {/* Chips de filtros activos */}
                 {activeChips.map((chip) => (
                     <span
                         key={chip.key}
@@ -146,25 +199,15 @@ export default function AlertsPage() {
                     </span>
                 ))}
 
-                {/* Botón limpiar todo */}
                 {hasFilters && (
                     <button className="filter-clear-all-btn" onClick={clearFilters}>
                         Limpiar todo
                     </button>
                 )}
-
-                {/* Indicador de carga */}
-                {loading && alerts.length > 0 && (
-                    <span className="filter-loading-indicator">
-                        <span className="filter-loading-dot" />
-                        Actualizando…
-                    </span>
-                )}
             </div>
             </div>
 
-            {/* ── Sección de alertas ── */}
-            <div className="section section--dash">
+            <div className="section section--dash" ref={listAnchorRef}>
                 <div className="section-header">
                     <div className="section-header-left">
                         <div className="section-icon" style={{ background: 'rgba(255, 59, 48, 0.08)' }}>
@@ -172,23 +215,27 @@ export default function AlertsPage() {
                         </div>
                         <div>
                             <h3 className="section-title">
-                                {hasFilters ? 'Alertas filtradas' : 'Todas las alertas'}
+                                {hasFilters ? 'Resultados filtrados' : 'Todas las alertas'}
                             </h3>
                             <p className="section-subtitle">
-                                Listado en vivo según tus filtros
+                                {hasFilters
+                                    ? 'Mostrando alertas que coinciden con tus filtros, de más reciente a más antigua'
+                                    : 'Historial de alertas de la comunidad, de más reciente a más antigua'}
                             </p>
                         </div>
                     </div>
-                    <span
-                        className="section-badge"
-                        style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }}
-                    >
-                        {alerts.length}
-                    </span>
+                    {!loading && (
+                        <span
+                            className="section-badge"
+                            style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }}
+                        >
+                            {alerts.length}
+                        </span>
+                    )}
                 </div>
 
                 <div className="section-body section-body--flush">
-                    {alerts.length === 0 ? (
+                    {alerts.length === 0 && !loading ? (
                         <div className="empty-state">
                             <div className="empty-state-icon">
                                 <LucideIcons.CheckCircle />
@@ -196,8 +243,10 @@ export default function AlertsPage() {
                             <div className="empty-state-title">Sin alertas</div>
                             <div className="empty-state-desc">
                                 {hasFilters
-                                    ? 'No hay alertas que coincidan con los filtros aplicados.'
-                                    : 'No hay alertas.'}
+                                    ? 'Ninguna alerta coincide con los filtros en esta página.'
+                                    : page > 1
+                                      ? 'No hay alertas en esta página. Prueba volver a la anterior.'
+                                      : 'Aún no hay alertas registradas.'}
                             </div>
                             {hasFilters && (
                                 <button
@@ -217,8 +266,8 @@ export default function AlertsPage() {
                                 </button>
                             )}
                         </div>
-                    ) : (
-                        <div className="alerts-feed-grid">
+                    ) : alerts.length > 0 ? (
+                        <div className={`alerts-feed-grid${loading ? ' alerts-feed-grid--loading' : ''}`}>
                             {alerts.map((alert) => (
                                 <AlertCard
                                     key={alert.id}
@@ -228,11 +277,25 @@ export default function AlertsPage() {
                                 />
                             ))}
                         </div>
+                    ) : null}
+
+                    {(page > 1 || hasMore || alerts.length > 0) && (
+                        <AdminPaginationBar
+                            page={page}
+                            hasMore={hasMore}
+                            loading={loading}
+                            onPrev={() => page > 1 && goToPage(page - 1)}
+                            onNext={() => hasMore && goToPage(page + 1)}
+                            pageSize={ALERTS_LIST_PAGE_SIZE}
+                            shownCount={alerts.length}
+                            label="alertas"
+                            labelSingular="alerta"
+                            filterActive={hasFilters}
+                        />
                     )}
                 </div>
             </div>
 
-            {/* ── Panel de filtros ── */}
             {showFilterPanel && (
                 <AlertFilterPanel
                     filters={filters}
@@ -241,7 +304,6 @@ export default function AlertsPage() {
                 />
             )}
 
-            {/* ── Modal de detalle ── */}
             {selectedAlert && (
                 <AlertDetailModal
                     alert={selectedAlert}

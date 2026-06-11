@@ -20,8 +20,9 @@
 import {
     collection, query, where, orderBy,
     onSnapshot, Timestamp, getDocs, limit,
-    doc, updateDoc,
+    doc, updateDoc, startAfter,
 } from 'firebase/firestore';
+import { ALERTS_LIST_PAGE_SIZE } from '../config/adminPagination';
 
 import { db } from '../firebase';
 import { Collections }                from '../config/collections';
@@ -290,6 +291,129 @@ function subscribeAlertsFiltered(filters, callback, options = {}) {
 
     attach(canonicalTypes.length > 0);
     return () => unsub();
+}
+
+const ALERTS_PAGE_MAX_SCAN_BATCHES = 10;
+
+function alertMatchesClientFilters(alert, types, status) {
+    return applyClientFilters([alert], types, status).length > 0;
+}
+
+/**
+ * Una página de alertas alineada con los filtros activos.
+ * Si hace falta filtrar en cliente (estado / tipo), avanza en lotes hasta
+ * completar la página o agotar resultados.
+ *
+ * @param {object} filters — mismos filtros que {@link subscribeToAlertsFiltered}
+ * @param {{ pageSize?: number, cursor?: import('firebase/firestore').QueryDocumentSnapshot | null }} [opts]
+ * @returns {Promise<{ items: AlertObject[], lastDoc: import('firebase/firestore').QueryDocumentSnapshot | null, hasMore: boolean }>}
+ */
+async function fetchAlertsPageOnce(filters, useServerTypeFilter, pageSize, cursor) {
+    const { types = [], status = 'all' } = filters;
+    const canonicalTypes = normalizeFilterTypes(types);
+    const { start, end } = resolveFilterDates(filters);
+
+    const needsClientFilter =
+        status !== 'all' || (canonicalTypes.length > 0 && !useServerTypeFilter);
+
+    const buildConstraints = (afterCursor) => {
+        const constraints = [
+            ...timestampConstraints(start, end),
+            ...(useServerTypeFilter ? firestoreTypeConstraints(canonicalTypes) : []),
+            orderBy(AlertFields.timestamp, 'desc'),
+        ];
+        if (afterCursor) constraints.push(startAfter(afterCursor));
+        return constraints;
+    };
+
+    if (!needsClientFilter) {
+        const constraints = buildConstraints(cursor);
+        constraints.push(limit(pageSize));
+        const snapshot = await getDocs(query(alertsCol(), ...constraints));
+        const items = snapshot.docs.map(parseAlert);
+        const lastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+        return {
+            items,
+            lastDoc,
+            hasMore: snapshot.docs.length === pageSize,
+        };
+    }
+
+    const displayed = [];
+    let scanCursor = cursor;
+    let lastDocForPagination = cursor;
+    let hasMoreInDb = true;
+    let stoppedMidBatch = false;
+
+    for (
+        let batch = 0;
+        batch < ALERTS_PAGE_MAX_SCAN_BATCHES && displayed.length < pageSize && hasMoreInDb;
+        batch += 1
+    ) {
+        const constraints = buildConstraints(scanCursor);
+        constraints.push(limit(pageSize));
+        const snapshot = await getDocs(query(alertsCol(), ...constraints));
+
+        if (snapshot.empty) {
+            hasMoreInDb = false;
+            break;
+        }
+
+        const docs = snapshot.docs;
+        for (let i = 0; i < docs.length; i += 1) {
+            const docSnap = docs[i];
+            const alert = parseAlert(docSnap);
+            if (!alertMatchesClientFilters(alert, types, status)) continue;
+
+            displayed.push(alert);
+            lastDocForPagination = docSnap;
+
+            if (displayed.length >= pageSize) {
+                stoppedMidBatch = i < docs.length - 1;
+                break;
+            }
+        }
+
+        scanCursor = docs[docs.length - 1];
+        if (docs.length < pageSize) hasMoreInDb = false;
+    }
+
+    return {
+        items: displayed,
+        lastDoc: displayed.length > 0 ? lastDocForPagination : scanCursor,
+        hasMore: displayed.length === pageSize && (stoppedMidBatch || hasMoreInDb),
+    };
+}
+
+export async function fetchAlertsPage(
+    filters,
+    { pageSize = ALERTS_LIST_PAGE_SIZE, cursor = null } = {},
+) {
+    const canonicalTypes = normalizeFilterTypes(filters?.types);
+    try {
+        if (canonicalTypes.length > 0) {
+            return await fetchAlertsPageOnce(filters, true, pageSize, cursor);
+        }
+        return await fetchAlertsPageOnce(filters, false, pageSize, cursor);
+    } catch (error) {
+        if (canonicalTypes.length > 0) {
+            console.warn('[alertService] fetchAlertsPage fallback:', error.message);
+            return fetchAlertsPageOnce(filters, false, pageSize, cursor);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Id de la última alerta pendiente (ventana acotada) para el indicador «activa».
+ * @param {number} [scanLimit=40]
+ * @returns {Promise<string|null>}
+ */
+export async function fetchActivePendingAlertId(scanLimit = 40) {
+    const snapshot = await getDocs(
+        query(alertsCol(), orderBy(AlertFields.timestamp, 'desc'), limit(scanLimit)),
+    );
+    return resolveLatestPendingAlertId(snapshot.docs.map(parseAlert));
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

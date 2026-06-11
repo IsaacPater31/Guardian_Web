@@ -5,18 +5,21 @@
 import {
     collection,
     doc,
+    documentId,
     getDoc,
     getDocs,
     getCountFromServer,
-    onSnapshot,
     query,
     where,
     limit,
+    orderBy,
+    startAfter,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Collections } from '../config/collections';
 import { MemberFields, UserFields } from '../config/firestoreFields';
-import { getAllCommunities, getCommunityMembers, getCommunityName } from './communityService';
+import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
+import { fetchCommunitiesPage, getCommunityMembers, getCommunityName } from './communityService';
 import { extractUserProfileFields } from '../utils/userDocParse';
 
 function parseUserSnap(docSnap) {
@@ -44,35 +47,36 @@ function createdAtSortKey(ts) {
 }
 
 /**
- * Lista todos los documentos de `users`.
+ * Página del directorio de usuarios (lecturas acotadas).
  *
- * No usar `orderBy(created_at)` en servidor: en Firestore los docs **sin** ese campo
- * no entran en el resultado y desaparecen del panel (p. ej. perfiles viejos o solo correo).
+ * Orden principal: `created_at` desc. Si falla (índice / campo ausente), cae a `documentId`.
+ * Perfiles sin `created_at` pueden no aparecer en el listado paginado; usar búsqueda.
+ *
+ * @param {{ pageSize?: number, cursor?: import('firebase/firestore').QueryDocumentSnapshot | null }} [opts]
+ * @returns {Promise<{ items: Array<any>, lastDoc: import('firebase/firestore').QueryDocumentSnapshot | null, hasMore: boolean }>}
  */
-export async function fetchAllUsers() {
-    const snap = await getDocs(collection(db, Collections.USERS));
-    const list = snap.docs.map(parseUserSnap);
-    list.sort((a, b) => createdAtSortKey(b.createdAt) - createdAtSortKey(a.createdAt));
-    return list;
-}
-
-/**
- * Suscripción en tiempo real al directorio completo de usuarios.
- * @param {(users: Array<any>) => void} callback
- * @param {(error: Error) => void} [onError]
- */
-export function subscribeAllUsers(callback, onError) {
-    return onSnapshot(
-        collection(db, Collections.USERS),
-        (snap) => {
-            const list = snap.docs.map(parseUserSnap);
-            list.sort((a, b) => createdAtSortKey(b.createdAt) - createdAtSortKey(a.createdAt));
-            callback(list);
-        },
-        (error) => {
-            onError?.(error);
+export async function fetchUsersPage({ pageSize = ADMIN_LIST_PAGE_SIZE, cursor = null } = {}) {
+    const run = async (field, direction = 'desc') => {
+        const constraints = [orderBy(field, direction), limit(pageSize)];
+        if (cursor) constraints.push(startAfter(cursor));
+        const snap = await getDocs(query(collection(db, Collections.USERS), ...constraints));
+        const items = snap.docs.map(parseUserSnap);
+        if (field === UserFields.createdAt) {
+            items.sort((a, b) => createdAtSortKey(b.createdAt) - createdAtSortKey(a.createdAt));
         }
-    );
+        const lastDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+        return {
+            items,
+            lastDoc,
+            hasMore: snap.docs.length === pageSize,
+        };
+    };
+
+    try {
+        return await run(UserFields.createdAt, 'desc');
+    } catch {
+        return run(documentId(), 'asc');
+    }
 }
 
 /** @returns {{ users: number, communities: number }} */
@@ -87,22 +91,6 @@ export async function fetchRegistryCounts() {
     };
 }
 
-/**
- * Conteo realtime de comunidades usando listener de colección.
- * @param {(count: number) => void} callback
- * @param {(error: Error) => void} [onError]
- */
-export function subscribeCommunitiesCount(callback, onError) {
-    return onSnapshot(
-        collection(db, Collections.COMMUNITIES),
-        (snap) => {
-            callback(snap.size);
-        },
-        (error) => {
-            onError?.(error);
-        }
-    );
-}
 
 /**
  * Busca un usuario por UID exacto, email exacto o texto en nombre/email (lote reciente).
@@ -142,10 +130,16 @@ export async function findUserBySearch(searchText) {
     }
 
     const qLower = raw.toLowerCase();
-    const snap = await getDocs(collection(db, Collections.USERS));
-    for (const d of snap.docs) {
-        const u = parseUserSnap(d);
-        if (userMatchesText(u, d, qLower)) return u;
+    try {
+        const snap = await getDocs(
+            query(collection(db, Collections.USERS), orderBy(documentId()), limit(500))
+        );
+        for (const d of snap.docs) {
+            const u = parseUserSnap(d);
+            if (userMatchesText(u, d, qLower)) return u;
+        }
+    } catch {
+        /* sin permiso */
     }
     return null;
 }
@@ -195,11 +189,16 @@ export async function findCommunityBySearch(searchText) {
         };
     }
 
-    const all = await getAllCommunities();
     const lower = raw.toLowerCase();
-    const hit =
-        all.find((c) => c.id === raw) ||
-        all.find((c) => (c.name || '').toLowerCase().includes(lower));
+    let hit = null;
+    try {
+        const page = await fetchCommunitiesPage({ pageSize: 200 });
+        hit =
+            page.items.find((c) => c.id === raw) ||
+            page.items.find((c) => (c.name || '').toLowerCase().includes(lower));
+    } catch {
+        /* sin permiso */
+    }
     return hit
         ? {
               id: hit.id,

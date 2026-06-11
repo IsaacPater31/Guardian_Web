@@ -4,11 +4,13 @@
  */
 
 import {
-    collection, getDocs, query, where,
-    onSnapshot, documentId,
+    collection, getDocs, getCountFromServer, query, where,
+    onSnapshot, documentId, orderBy, limit, startAfter,
 } from 'firebase/firestore';
 import { db }          from '../firebase';
 import { Collections } from '../config/collections';
+import { CommunityFields } from '../config/firestoreFields';
+import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
 
 // ─── In-memory name cache: communityId → name ─────────────────────────────────
 let _nameCache  = {};
@@ -74,7 +76,31 @@ function parseCommunity(doc) {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Fetch all communities (one-shot). */
+/**
+ * Página de comunidades ordenadas por nombre (lecturas acotadas).
+ * @param {{ pageSize?: number, cursor?: import('firebase/firestore').QueryDocumentSnapshot | null }} [opts]
+ */
+export async function fetchCommunitiesPage({ pageSize = ADMIN_LIST_PAGE_SIZE, cursor = null } = {}) {
+    const constraints = [orderBy(CommunityFields.name)];
+    if (cursor) constraints.push(startAfter(cursor));
+    constraints.push(limit(pageSize));
+    const snapshot = await getDocs(query(collection(db, Collections.COMMUNITIES), ...constraints));
+    const items = snapshot.docs.map(parseCommunity);
+    const lastDoc = snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null;
+    return {
+        items,
+        lastDoc,
+        hasMore: snapshot.docs.length === pageSize,
+    };
+}
+
+/** Conteo agregado sin leer cada documento. */
+export async function getCommunitiesCount() {
+    const snap = await getCountFromServer(collection(db, Collections.COMMUNITIES));
+    return snap.data().count;
+}
+
+/** Fetch all communities (one-shot). Preferir {@link fetchCommunitiesPage} en listados grandes. */
 export async function getAllCommunities() {
     const snapshot    = await getDocs(collection(db, Collections.COMMUNITIES));
     const communities = snapshot.docs.map(parseCommunity);

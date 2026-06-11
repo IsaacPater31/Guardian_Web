@@ -1,20 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-    Building2,
-    LayoutGrid,
-    Search,
-    Users,
-    UserSquare2,
-} from 'lucide-react';
-import {
-    subscribeCommunitiesCount,
-    findUserBySearch,
-    listCommunitiesForUser,
-    findCommunityBySearch,
-    fetchCommunityMembersEnriched,
-    subscribeAllUsers,
-} from '../services/adminModuleService';
+import { Building2, LayoutGrid, Search, Users } from 'lucide-react';
+import AdminPaginationBar from '../components/admin/AdminPaginationBar';
+import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
+import { fetchRegistryCounts, fetchUsersPage } from '../services/adminModuleService';
+import { fetchCommunitiesPage } from '../services/communityService';
 
 function formatUserDate(val) {
     if (val == null) return '—';
@@ -36,130 +26,122 @@ function formatUserDate(val) {
 export default function AdminModulePage() {
     const [counts, setCounts] = useState({ users: null, communities: null });
     const [countsErr, setCountsErr] = useState(null);
+    const [countsLoading, setCountsLoading] = useState(true);
 
-    const [allUsers, setAllUsers] = useState([]);
-    const [allUsersLoading, setAllUsersLoading] = useState(true);
-    const [allUsersErr, setAllUsersErr] = useState(null);
+    const [usersPage, setUsersPage] = useState(1);
+    const [users, setUsers] = useState([]);
+    const usersCursorsRef = useRef([null]);
+    const [usersHasMore, setUsersHasMore] = useState(false);
+    const [usersLoading, setUsersLoading] = useState(true);
+    const [usersErr, setUsersErr] = useState(null);
     const [directoryFilter, setDirectoryFilter] = useState('');
 
-    const [userQuery, setUserQuery] = useState('');
-    const [userLoading, setUserLoading] = useState(false);
-    const [userResult, setUserResult] = useState(null);
-    const [userMemberships, setUserMemberships] = useState([]);
-    const [userErr, setUserErr] = useState(null);
-
-    const [commQuery, setCommQuery] = useState('');
-    const [commLoading, setCommLoading] = useState(false);
-    const [commResult, setCommResult] = useState(null);
-    const [commMembers, setCommMembers] = useState([]);
-    const [memberFilter, setMemberFilter] = useState('');
-    const [commErr, setCommErr] = useState(null);
+    const [communitiesPage, setCommunitiesPage] = useState(1);
+    const [communities, setCommunities] = useState([]);
+    const communitiesCursorsRef = useRef([null]);
+    const [communitiesHasMore, setCommunitiesHasMore] = useState(false);
+    const [communitiesLoading, setCommunitiesLoading] = useState(true);
+    const [communitiesErr, setCommunitiesErr] = useState(null);
+    const [communitiesDirectoryFilter, setCommunitiesDirectoryFilter] = useState('');
 
     useEffect(() => {
+        let cancelled = false;
+        setCountsLoading(true);
         setCountsErr(null);
-        const unsubscribe = subscribeCommunitiesCount(
-            (communityCount) => {
-                setCounts((prev) => ({
-                    ...prev,
-                    communities: communityCount,
-                }));
-                setCountsErr(null);
-            },
-            (e) => {
-                setCountsErr(e?.message || 'No se pudieron cargar los totales');
-                setCounts((prev) => ({ ...prev, communities: null }));
-            }
-        );
-        return () => unsubscribe();
+        fetchRegistryCounts()
+            .then((totals) => {
+                if (!cancelled) {
+                    setCounts(totals);
+                    setCountsErr(null);
+                }
+            })
+            .catch((e) => {
+                if (!cancelled) {
+                    setCountsErr(e?.message || 'No se pudieron cargar los totales');
+                    setCounts({ users: null, communities: null });
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setCountsLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     useEffect(() => {
-        setAllUsersLoading(true);
-        setAllUsersErr(null);
-        const unsubscribe = subscribeAllUsers(
-            (list) => {
-                setAllUsers(list);
-                setCounts((prev) => ({
-                    ...prev,
-                    users: list.length,
-                }));
-                setAllUsersErr(null);
-                setAllUsersLoading(false);
-            },
-            (e) => {
-                setAllUsersErr(e?.message || 'No se pudo cargar el listado');
-                setAllUsers([]);
-                setCounts((prev) => ({ ...prev, users: null }));
-                setAllUsersLoading(false);
-            }
-        );
-        return () => unsubscribe();
-    }, []);
+        let cancelled = false;
 
-    async function runUserSearch(e) {
-        e?.preventDefault();
-        const q = userQuery.trim();
-        if (!q) return;
-        setUserLoading(true);
-        setUserErr(null);
-        setUserResult(null);
-        setUserMemberships([]);
-        try {
-            const u = await findUserBySearch(q);
-            setUserResult(u);
-            if (u) {
-                const list = await listCommunitiesForUser(u.id);
-                setUserMemberships(list);
-            } else {
-                setUserErr('No se encontró ningún usuario con ese criterio.');
+        async function load() {
+            setUsersLoading(true);
+            setUsersErr(null);
+            const cursor = usersPage > 1 ? usersCursorsRef.current[usersPage - 1] : null;
+            try {
+                const result = await fetchUsersPage({
+                    pageSize: ADMIN_LIST_PAGE_SIZE,
+                    cursor,
+                });
+                if (cancelled) return;
+                usersCursorsRef.current[usersPage] = result.lastDoc;
+                setUsers(result.items);
+                setUsersHasMore(result.hasMore);
+            } catch (e) {
+                if (!cancelled) {
+                    setUsersErr(e?.message || 'No se pudo cargar el listado');
+                    setUsers([]);
+                    setUsersHasMore(false);
+                }
+            } finally {
+                if (!cancelled) setUsersLoading(false);
             }
-        } catch (err) {
-            setUserErr(err?.message || 'Error al buscar');
-        } finally {
-            setUserLoading(false);
         }
-    }
 
-    async function runCommSearch(e) {
-        e?.preventDefault();
-        const q = commQuery.trim();
-        if (!q) return;
-        setCommLoading(true);
-        setCommErr(null);
-        setCommResult(null);
-        setCommMembers([]);
-        setMemberFilter('');
-        try {
-            const c = await findCommunityBySearch(q);
-            setCommResult(c);
-            if (c) {
-                const m = await fetchCommunityMembersEnriched(c.id);
-                setCommMembers(m);
-            } else {
-                setCommErr('No se encontró la comunidad.');
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, [usersPage]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function load() {
+            setCommunitiesLoading(true);
+            setCommunitiesErr(null);
+            const cursor = communitiesPage > 1 ? communitiesCursorsRef.current[communitiesPage - 1] : null;
+            try {
+                const result = await fetchCommunitiesPage({
+                    pageSize: ADMIN_LIST_PAGE_SIZE,
+                    cursor,
+                });
+                if (cancelled) return;
+                communitiesCursorsRef.current[communitiesPage] = result.lastDoc;
+                setCommunities(result.items);
+                setCommunitiesHasMore(result.hasMore);
+            } catch (e) {
+                if (!cancelled) {
+                    setCommunitiesErr(e?.message || 'No se pudo cargar el listado');
+                    setCommunities([]);
+                    setCommunitiesHasMore(false);
+                }
+            } finally {
+                if (!cancelled) setCommunitiesLoading(false);
             }
-        } catch (err) {
-            setCommErr(err?.message || 'Error al buscar');
-        } finally {
-            setCommLoading(false);
         }
-    }
 
-    const filteredMembers = useMemo(() => {
-        const f = memberFilter.trim().toLowerCase();
-        if (!f) return commMembers;
-        return commMembers.filter((m) => {
-            const email = (m.email || '').toLowerCase();
-            const uid = (m.userId || '').toLowerCase();
-            const name = (m.displayName || '').toLowerCase();
-            return email.includes(f) || uid.includes(f) || name.includes(f);
-        });
-    }, [commMembers, memberFilter]);
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, [communitiesPage]);
+
+    const directoryFilterActive = directoryFilter.trim().length > 0;
+    const communitiesDirectoryFilterActive = communitiesDirectoryFilter.trim().length > 0;
 
     const filteredDirectory = useMemo(() => {
         const f = directoryFilter.trim().toLowerCase();
-        if (!f) return allUsers;
-        return allUsers.filter((u) => {
+        if (!f) return users;
+        return users.filter((u) => {
             const email = (u.email || '').toLowerCase();
             const id = (u.id || '').toLowerCase();
             const name = (u.displayName || '').toLowerCase();
@@ -172,7 +154,55 @@ export default function AdminModulePage() {
                 (phone && phone.includes(fq))
             );
         });
-    }, [allUsers, directoryFilter]);
+    }, [users, directoryFilter]);
+
+    const filteredCommunitiesDirectory = useMemo(() => {
+        const f = communitiesDirectoryFilter.trim().toLowerCase();
+        if (!f) return communities;
+        return communities.filter((c) => {
+            const id = (c.id || '').toLowerCase();
+            const name = (c.name || '').toLowerCase();
+            const desc = (c.description || '').toLowerCase();
+            return id.includes(f) || name.includes(f) || desc.includes(f);
+        });
+    }, [communities, communitiesDirectoryFilter]);
+
+    const usersListRef = useRef(null);
+    const communitiesListRef = useRef(null);
+
+    function scrollIntoView(ref) {
+        requestAnimationFrame(() => {
+            ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    function goUsersPrev() {
+        if (usersPage > 1) {
+            setUsersPage((p) => p - 1);
+            scrollIntoView(usersListRef);
+        }
+    }
+
+    function goUsersNext() {
+        if (usersHasMore) {
+            setUsersPage((p) => p + 1);
+            scrollIntoView(usersListRef);
+        }
+    }
+
+    function goCommunitiesPrev() {
+        if (communitiesPage > 1) {
+            setCommunitiesPage((p) => p - 1);
+            scrollIntoView(communitiesListRef);
+        }
+    }
+
+    function goCommunitiesNext() {
+        if (communitiesHasMore) {
+            setCommunitiesPage((p) => p + 1);
+            scrollIntoView(communitiesListRef);
+        }
+    }
 
     return (
         <div className="admin-module-page">
@@ -180,9 +210,7 @@ export default function AdminModulePage() {
                 <LayoutGrid size={22} className="admin-module-intro-icon" aria-hidden />
                 <div>
                     <h2 className="admin-module-title">Módulo administrativo</h2>
-                    <p className="admin-module-sub">
-                        Totales del registro, directorio completo de usuarios y cruce usuario ↔ comunidades.
-                    </p>
+                    <p className="admin-module-sub">Directorios de usuarios y comunidades.</p>
                 </div>
             </div>
 
@@ -199,7 +227,9 @@ export default function AdminModulePage() {
                         </div>
                     </div>
                     <div className="stat-card-value">
-                        {counts.users == null ? '—' : counts.users.toLocaleString('es-CO')}
+                        {countsLoading || counts.users == null
+                            ? '—'
+                            : counts.users.toLocaleString('es-CO')}
                     </div>
                 </div>
                 <div className="stat-card stat-card--dash">
@@ -210,43 +240,34 @@ export default function AdminModulePage() {
                         </div>
                     </div>
                     <div className="stat-card-value">
-                        {counts.communities == null ? '—' : counts.communities.toLocaleString('es-CO')}
+                        {countsLoading || counts.communities == null
+                            ? '—'
+                            : counts.communities.toLocaleString('es-CO')}
                     </div>
                 </div>
             </div>
 
-            <div className="admin-module-layout admin-module-layout--split">
-                <section className="admin-module-panel admin-module-users-block">
+            <div className="admin-module-layout admin-module-layout--directories">
+                <section className="admin-module-panel admin-module-directory" ref={usersListRef}>
                     <h3 className="admin-module-panel-title">
-                        <Users size={18} /> Directorio de usuarios
+                        <Users size={18} /> Usuarios
                     </h3>
-                    <p className="admin-module-panel-hint">
-                        Toda la colección <code className="admin-code-inline">users</code> (incluidos perfiles sin
-                        fecha o solo correo). El listado no filtra por proveedor. Nombre según la app:{' '}
-                        <code className="admin-code-inline">name</code> →{' '}
-                        <code className="admin-code-inline">displayName</code> → parte del correo.
-                    </p>
-                    <div className="admin-module-users-head">
+                    <div className="admin-module-directory-search">
+                        <Search size={16} className="admin-module-directory-search-icon" aria-hidden />
                         <input
                             type="search"
-                            className="admin-module-input"
-                            style={{ flex: '1 1 220px', minWidth: 0, maxWidth: 420 }}
-                            placeholder="Filtrar por texto…"
+                            className="admin-module-input admin-module-input--search"
+                            placeholder="Buscar por nombre, correo o identificador…"
                             value={directoryFilter}
                             onChange={(e) => setDirectoryFilter(e.target.value)}
                             autoComplete="off"
-                            aria-label="Filtrar usuarios"
+                            aria-label="Buscar usuarios"
                         />
-                        <span className="admin-module-users-count">
-                            {allUsersLoading
-                                ? 'Cargando…'
-                                : `${filteredDirectory.length.toLocaleString('es-CO')} de ${allUsers.length.toLocaleString('es-CO')}`}
-                        </span>
                     </div>
-                    {allUsersErr && (
-                        <p className="admin-module-msg admin-module-msg--muted">{allUsersErr}</p>
+                    {usersErr && (
+                        <p className="admin-module-msg admin-module-msg--muted">{usersErr}</p>
                     )}
-                    <div className="admin-module-scroll">
+                    <div className="admin-module-scroll admin-module-scroll--directory">
                         <table className="admin-module-table">
                             <thead>
                                 <tr>
@@ -258,12 +279,12 @@ export default function AdminModulePage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {!allUsersLoading && filteredDirectory.length === 0 && (
+                                {!usersLoading && filteredDirectory.length === 0 && (
                                     <tr>
                                         <td colSpan={5} className="admin-module-msg admin-module-msg--muted">
-                                            {allUsers.length === 0
-                                                ? 'No hay usuarios en el registro o no tienes permiso de lectura.'
-                                                : 'Ningún usuario coincide con el filtro.'}
+                                            {users.length === 0
+                                                ? 'No hay usuarios para mostrar.'
+                                                : 'Ningún usuario coincide con la búsqueda.'}
                                         </td>
                                     </tr>
                                 )}
@@ -287,163 +308,106 @@ export default function AdminModulePage() {
                             </tbody>
                         </table>
                     </div>
+                    <AdminPaginationBar
+                        page={usersPage}
+                        hasMore={usersHasMore}
+                        loading={usersLoading}
+                        onPrev={goUsersPrev}
+                        onNext={goUsersNext}
+                        total={counts.users}
+                        pageSize={ADMIN_LIST_PAGE_SIZE}
+                        shownCount={filteredDirectory.length}
+                        label="usuarios"
+                        labelSingular="usuario"
+                        filterActive={directoryFilterActive}
+                    />
                 </section>
 
-                <div className="admin-module-sidebar-stack">
-                    <section className="admin-module-panel">
+                <section className="admin-module-panel admin-module-directory" ref={communitiesListRef}>
+                    <div className="admin-module-directory-head">
                         <h3 className="admin-module-panel-title">
-                            <UserSquare2 size={18} /> Buscar usuario
+                            <Building2 size={18} /> Comunidades
                         </h3>
-                        <p className="admin-module-panel-hint">
-                            UID, correo o parte del nombre. Verás en qué comunidades participa.
-                        </p>
-                        <form className="admin-module-search" onSubmit={runUserSearch}>
-                            <input
-                                type="search"
-                                className="admin-module-input"
-                                placeholder="Ej. abc123… o correo@dominio.com"
-                                value={userQuery}
-                                onChange={(e) => setUserQuery(e.target.value)}
-                                autoComplete="off"
-                            />
-                            <button
-                                type="submit"
-                                className="admin-btn-primary admin-module-btn"
-                                disabled={userLoading}
-                            >
-                                <Search size={16} /> {userLoading ? 'Buscando…' : 'Buscar'}
-                            </button>
-                        </form>
-                        {userErr && <p className="admin-module-msg admin-module-msg--muted">{userErr}</p>}
-                        {userResult && (
-                            <div className="admin-module-result">
-                                <div className="admin-module-user-card">
-                                    <div>
-                                        <strong>{userResult.displayName || 'Sin nombre'}</strong>
-                                        <div className="admin-module-meta">
-                                            {[userResult.email, userResult.phone].filter(Boolean).join(' · ') ||
-                                                'Sin correo ni teléfono en el perfil'}
-                                        </div>
-                                        <div className="admin-module-meta mono">{userResult.id}</div>
-                                    </div>
-                                </div>
-                                {userMemberships.length === 0 ? (
-                                    <p className="admin-module-msg">No pertenece a ninguna comunidad.</p>
-                                ) : (
-                                    <table className="admin-module-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Comunidad</th>
-                                                <th>Rol</th>
-                                                <th />
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {userMemberships.map((row) => (
-                                                <tr key={row.memberDocId}>
-                                                    <td>{row.communityName}</td>
-                                                    <td>{row.role}</td>
-                                                    <td>
-                                                        <Link
-                                                            to={`/communities/${row.communityId}`}
-                                                            className="admin-module-link"
-                                                        >
-                                                            Ver comunidad
-                                                        </Link>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                        <Link to="/communities" className="admin-module-link admin-module-manage-link">
+                            Gestionar
+                        </Link>
+                    </div>
+                    <div className="admin-module-directory-search">
+                        <Search size={16} className="admin-module-directory-search-icon" aria-hidden />
+                        <input
+                            type="search"
+                            className="admin-module-input admin-module-input--search"
+                            placeholder="Buscar por nombre o identificador…"
+                            value={communitiesDirectoryFilter}
+                            onChange={(e) => setCommunitiesDirectoryFilter(e.target.value)}
+                            autoComplete="off"
+                            aria-label="Buscar comunidades"
+                        />
+                    </div>
+                    {communitiesErr && (
+                        <p className="admin-module-msg admin-module-msg--muted">{communitiesErr}</p>
+                    )}
+                    <div className="admin-module-scroll admin-module-scroll--directory">
+                        <table className="admin-module-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Reenvío</th>
+                                    <th>ID</th>
+                                    <th />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {!communitiesLoading && filteredCommunitiesDirectory.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="admin-module-msg admin-module-msg--muted">
+                                            {communities.length === 0
+                                                ? 'No hay comunidades para mostrar.'
+                                                : 'Ninguna comunidad coincide con la búsqueda.'}
+                                        </td>
+                                    </tr>
                                 )}
-                            </div>
-                        )}
-                    </section>
-
-                    <section className="admin-module-panel">
-                        <h3 className="admin-module-panel-title">
-                            <Building2 size={18} /> Buscar comunidad
-                        </h3>
-                        <p className="admin-module-panel-hint">
-                            ID de Firestore o parte del nombre. Lista de miembros; puedes filtrar por usuario abajo.
-                        </p>
-                        <form className="admin-module-search" onSubmit={runCommSearch}>
-                            <input
-                                type="search"
-                                className="admin-module-input"
-                                placeholder="ID o nombre…"
-                                value={commQuery}
-                                onChange={(e) => setCommQuery(e.target.value)}
-                                autoComplete="off"
-                            />
-                            <button
-                                type="submit"
-                                className="admin-btn-primary admin-module-btn"
-                                disabled={commLoading}
-                            >
-                                <Search size={16} /> {commLoading ? 'Buscando…' : 'Buscar'}
-                            </button>
-                        </form>
-                        {commErr && <p className="admin-module-msg admin-module-msg--muted">{commErr}</p>}
-                        {commResult && (
-                            <div className="admin-module-result">
-                                <div className="admin-module-comm-head">
-                                    <div>
-                                        <strong>{commResult.name}</strong>
-                                        <div className="admin-module-meta mono">{commResult.id}</div>
-                                        {commResult.description && (
-                                            <p className="admin-module-desc">{commResult.description}</p>
-                                        )}
-                                    </div>
-                                    <Link
-                                        to={`/communities/${commResult.id}`}
-                                        className="admin-btn-ghost admin-module-manage-link"
-                                    >
-                                        Gestionar miembros
-                                    </Link>
-                                </div>
-                                <div className="admin-module-filter-row">
-                                    <label htmlFor="member-filter">Filtrar miembros</label>
-                                    <input
-                                        id="member-filter"
-                                        type="search"
-                                        className="admin-module-input admin-module-input--narrow"
-                                        placeholder="Correo, UID o nombre…"
-                                        value={memberFilter}
-                                        onChange={(e) => setMemberFilter(e.target.value)}
-                                    />
-                                </div>
-                                {filteredMembers.length === 0 ? (
-                                    <p className="admin-module-msg">Sin coincidencias.</p>
-                                ) : (
-                                    <div className="admin-module-scroll" style={{ maxHeight: 'min(48vh, 520px)' }}>
-                                        <table className="admin-module-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Usuario</th>
-                                                    <th>Correo</th>
-                                                    <th>Rol</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredMembers.map((m) => (
-                                                    <tr key={m.id}>
-                                                        <td>
-                                                            <div>{m.displayName || '—'}</div>
-                                                            <div className="admin-module-meta mono">{m.userId}</div>
-                                                        </td>
-                                                        <td>{m.email || '—'}</td>
-                                                        <td>{m.role}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </section>
-                </div>
+                                {filteredCommunitiesDirectory.map((c) => (
+                                    <tr key={c.id}>
+                                        <td>
+                                            <strong>{c.name || '—'}</strong>
+                                            {c.description && (
+                                                <div className="admin-module-meta admin-module-desc">
+                                                    {c.description}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td>{c.isEntity ? 'Entidad oficial' : 'Comunidad'}</td>
+                                        <td>{c.allowForwardToEntities ? 'Sí' : 'No'}</td>
+                                        <td className="admin-module-meta mono">{c.id}</td>
+                                        <td>
+                                            <Link
+                                                to={`/communities/${c.id}`}
+                                                className="admin-module-link"
+                                            >
+                                                Ver
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <AdminPaginationBar
+                        page={communitiesPage}
+                        hasMore={communitiesHasMore}
+                        loading={communitiesLoading}
+                        onPrev={goCommunitiesPrev}
+                        onNext={goCommunitiesNext}
+                        total={counts.communities}
+                        pageSize={ADMIN_LIST_PAGE_SIZE}
+                        shownCount={filteredCommunitiesDirectory.length}
+                        label="comunidades"
+                        labelSingular="comunidad"
+                        filterActive={communitiesDirectoryFilterActive}
+                    />
+                </section>
             </div>
         </div>
     );

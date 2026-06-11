@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Users, Building2, Info } from 'lucide-react';
-import { getAllCommunities, getCommunityMemberCount } from '../services/communityService';
+import AdminPaginationBar from '../components/admin/AdminPaginationBar';
+import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
+import {
+    fetchCommunitiesPage,
+    getCommunitiesCount,
+    getCommunityMemberCount,
+} from '../services/communityService';
 import {
     adminCreateCommunity,
     adminUpdateCommunity,
@@ -34,6 +40,10 @@ function formatFirestoreDate(val) {
 
 export default function CommunitiesPage() {
     const [list, setList] = useState([]);
+    const [page, setPage] = useState(1);
+    const cursorsRef = useRef([null]);
+    const [hasMore, setHasMore] = useState(false);
+    const [total, setTotal] = useState(null);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
     const [form, setForm] = useState({ ...emptyForm });
@@ -41,24 +51,69 @@ export default function CommunitiesPage() {
     const [err, setErr] = useState('');
     const [infoCommunity, setInfoCommunity] = useState(null);
     const [infoMemberCount, setInfoMemberCount] = useState(null);
+    const listAnchorRef = useRef(null);
 
-    async function refresh() {
+    function goToPage(nextPage) {
+        setPage(nextPage);
+        requestAnimationFrame(() => {
+            listAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    async function refresh({ targetPage = page } = {}) {
         setLoading(true);
         try {
-            const data = await getAllCommunities();
-            data.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            setList(data);
+            const cursor = targetPage > 1 ? cursorsRef.current[targetPage - 1] : null;
+            const [result, count] = await Promise.all([
+                fetchCommunitiesPage({ pageSize: ADMIN_LIST_PAGE_SIZE, cursor }),
+                total == null ? getCommunitiesCount().catch(() => null) : Promise.resolve(total),
+            ]);
+            cursorsRef.current[targetPage] = result.lastDoc;
+            setList(result.items);
+            setHasMore(result.hasMore);
+            if (count != null) setTotal(count);
+            if (targetPage !== page) setPage(targetPage);
         } catch (e) {
             console.error(e);
             setList([]);
+            setHasMore(false);
         } finally {
             setLoading(false);
         }
     }
 
     useEffect(() => {
-        refresh();
-    }, []);
+        let cancelled = false;
+
+        async function load() {
+            setLoading(true);
+            try {
+                const cursor = page > 1 ? cursorsRef.current[page - 1] : null;
+                const [result, count] = await Promise.all([
+                    fetchCommunitiesPage({ pageSize: ADMIN_LIST_PAGE_SIZE, cursor }),
+                    getCommunitiesCount().catch(() => null),
+                ]);
+                if (cancelled) return;
+                cursorsRef.current[page] = result.lastDoc;
+                setList(result.items);
+                setHasMore(result.hasMore);
+                if (count != null) setTotal(count);
+            } catch (e) {
+                if (!cancelled) {
+                    console.error(e);
+                    setList([]);
+                    setHasMore(false);
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        }
+
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, [page]);
 
     useEffect(() => {
         if (!infoCommunity) {
@@ -120,7 +175,9 @@ export default function CommunitiesPage() {
                 });
             }
             setModal(null);
-            await refresh();
+            cursorsRef.current = [null];
+            setPage(1);
+            await refresh({ targetPage: 1 });
         } catch (e) {
             setErr(e?.message || 'Error al guardar');
         } finally {
@@ -139,20 +196,14 @@ export default function CommunitiesPage() {
         setSaving(true);
         try {
             await adminDeleteCommunityCascade(c.id);
-            await refresh();
+            cursorsRef.current = [null];
+            setPage(1);
+            await refresh({ targetPage: 1 });
         } catch (e) {
             alert(e?.message || 'No se pudo eliminar');
         } finally {
             setSaving(false);
         }
-    }
-
-    if (loading) {
-        return (
-            <div className="loading-container">
-                <div className="loading-spinner" />
-            </div>
-        );
     }
 
     return (
@@ -168,7 +219,9 @@ export default function CommunitiesPage() {
                         </div>
                         <div>
                             <h2 className="section-title">Comunidades</h2>
-                            <p className="section-subtitle">Directorio, entidades oficiales y permisos</p>
+                            <p className="section-subtitle">
+                                Gestión de comunidades, entidades oficiales y permisos de reenvío
+                            </p>
                         </div>
                     </div>
                     <button type="button" className="admin-btn-primary" onClick={openCreate}>
@@ -177,7 +230,12 @@ export default function CommunitiesPage() {
                 </div>
             </section>
 
-            <div className="section section--dash section-body--table">
+            <div className="section section--dash section-body--table" ref={listAnchorRef}>
+                {loading && list.length === 0 ? (
+                    <div className="loading-container" style={{ minHeight: '12rem' }}>
+                        <div className="loading-spinner" />
+                    </div>
+                ) : (
                 <div className="admin-table-scroll">
                     <table className="admin-table admin-table--users admin-table-wide">
                     <thead>
@@ -190,6 +248,13 @@ export default function CommunitiesPage() {
                         </tr>
                     </thead>
                     <tbody>
+                        {!loading && list.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="admin-muted">
+                                    No hay comunidades para mostrar.
+                                </td>
+                            </tr>
+                        )}
                         {list.map((c) => (
                             <tr key={c.id}>
                                 <td className="admin-td-mono admin-td-id">{c.id}</td>
@@ -241,6 +306,19 @@ export default function CommunitiesPage() {
                     </tbody>
                 </table>
                 </div>
+                )}
+                <AdminPaginationBar
+                    page={page}
+                    hasMore={hasMore}
+                    loading={loading}
+                    onPrev={() => page > 1 && goToPage(page - 1)}
+                    onNext={() => hasMore && goToPage(page + 1)}
+                    total={total}
+                    pageSize={ADMIN_LIST_PAGE_SIZE}
+                    shownCount={list.length}
+                    label="comunidades"
+                    labelSingular="comunidad"
+                />
             </div>
 
             {infoCommunity && (
