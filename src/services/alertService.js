@@ -171,6 +171,19 @@ function alertTimeMs(alert) {
     return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
+/** Latest pending (not attended) alert id — the active community alert. */
+export function resolveLatestPendingAlertId(alerts) {
+    const pending = (alerts ?? []).filter(
+        (a) => a.alertStatus !== AlertStatus.ATTENDED
+    );
+    if (pending.length === 0) return null;
+    return pending.reduce(
+        (latest, current) =>
+            alertTimeMs(current) > alertTimeMs(latest) ? current : latest,
+        pending[0]
+    ).id;
+}
+
 /**
  * Suscripción con filtros; intenta `alertType` en servidor (nombres canónicos).
  * Si falla el índice compuesto, reintenta sin filtro de tipo y filtra en cliente.
@@ -209,13 +222,7 @@ function subscribeAlertsFiltered(filters, callback, options = {}) {
                     base = base.filter((a) => a.shareLocation && a.location);
                 }
                 const filtered = applyClientFilters(base, types, status);
-                const latestContextAlertId = filtered.length > 0
-                    ? filtered.reduce(
-                        (latest, current) =>
-                            alertTimeMs(current) > alertTimeMs(latest) ? current : latest,
-                        filtered[0]
-                    ).id
-                    : null;
+                const latestContextAlertId = resolveLatestPendingAlertId(filtered);
                 const changedIds = snapshot
                     .docChanges()
                     .filter((change) => change.type === 'added' || change.type === 'modified')
@@ -506,7 +513,7 @@ export function subscribeToAlertsInDateRange(start, end, callback, maxDocs = 200
                 if (!withUpperBound) {
                     alerts = alerts.filter((a) => alertTimeMs(a) <= end.getTime());
                 }
-                const latestContextAlertId = alerts.length > 0 ? alerts[0].id : null;
+                const latestContextAlertId = resolveLatestPendingAlertId(alerts);
                 const changedIds = snapshot
                     .docChanges()
                     .filter((change) => change.type === 'added' || change.type === 'modified')

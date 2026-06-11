@@ -11,6 +11,7 @@ import MapAlertCountBadge from '../components/Map/MapAlertCountBadge';
 import RequestLocationOnFirstInteraction from '../components/Map/RequestLocationOnFirstInteraction';
 import MapFilterPanel from '../components/Map/MapFilterPanel';
 import { DEFAULT_FILTERS } from '../config/filterOptions';
+import { ACTIVE_ALERT_FEEDBACK_MS, AlertStatus } from '../config/alertTypes';
 
 function MapFocusController({ focusAlert }) {
     const map = useMap();
@@ -45,7 +46,7 @@ export default function MapPage() {
     const [selectedAlertId, setSelectedAlertId] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
-    const [latestContextAlertId, setLatestContextAlertId] = useState(null);
+    const [latestPendingAlertId, setLatestPendingAlertId] = useState(null);
     const [timedPriorityAlertId, setTimedPriorityAlertId] = useState(null);
     const [focusedAlert, setFocusedAlert] = useState(null);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
@@ -67,17 +68,14 @@ export default function MapPage() {
         const unsub = subscribeToMapAlertsFiltered(filters, (data, meta = {}) => {
             setAlerts(data);
             setAlertsLoading(false);
-            const fallbackLatestId = meta.latestContextAlertId ?? data[0]?.id ?? null;
-            setLatestContextAlertId(fallbackLatestId);
+            const pendingLatestId = meta.latestContextAlertId ?? null;
+            setLatestPendingAlertId(pendingLatestId);
 
             const changedIds = Array.isArray(meta.changedIds) ? meta.changedIds : [];
-            const newestChangedId = data.find((a) => changedIds.includes(a.id))?.id ?? null;
+            const newestChanged = data.find((a) => changedIds.includes(a.id)) ?? null;
 
-            if (newestChangedId) {
-                setTimedPriorityAlertId(newestChangedId);
-            } else if (fallbackLatestId) {
-                // Ensure there is always one highlighted marker even without fresh changes.
-                setTimedPriorityAlertId((prev) => prev || fallbackLatestId);
+            if (newestChanged?.id && newestChanged.alertStatus !== AlertStatus.ATTENDED) {
+                setTimedPriorityAlertId(newestChanged.id);
             }
         });
 
@@ -95,11 +93,11 @@ export default function MapPage() {
         if (!timedPriorityAlertId) return undefined;
         const timeout = setTimeout(() => {
             setTimedPriorityAlertId(null);
-        }, 20000);
+        }, ACTIVE_ALERT_FEEDBACK_MS);
         return () => clearTimeout(timeout);
     }, [timedPriorityAlertId]);
 
-    const highlightedMarkerId = timedPriorityAlertId || latestContextAlertId || alerts[0]?.id || null;
+    const highlightedMarkerId = timedPriorityAlertId || latestPendingAlertId;
     const selectedAlert = useMemo(
         () => alerts.find((a) => a.id === selectedAlertId) || null,
         [alerts, selectedAlertId]

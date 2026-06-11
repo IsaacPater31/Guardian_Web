@@ -737,18 +737,21 @@ export default function Dashboard() {
                             <p className="admin-muted">Sin alertas en este periodo.</p>
                         ) : (
                             alerts.slice(0, 12).map((a, index) => {
+                                const isPending = a.alertStatus !== 'attended';
                                 const hasLatest = Boolean(latestContextAlertId);
-                                const isLatest = hasLatest
+                                const isLatest = isPending && hasLatest
                                     ? a.id === latestContextAlertId
-                                    : index === 0;
-                                const isRecent = hasLatest
-                                    ? !isLatest && index <= 3
-                                    : !isLatest && index <= 2;
+                                    : isPending && !hasLatest && index === 0;
+                                const isRecent = isPending && (
+                                    hasLatest
+                                        ? !isLatest && index <= 3
+                                        : !isLatest && index <= 2
+                                );
                                 const priorityLevel = isLatest
                                     ? 'latest'
                                     : isRecent
                                         ? 'recent'
-                                        : hasLatest
+                                        : hasLatest && isPending
                                             ? 'historical'
                                             : 'normal';
 

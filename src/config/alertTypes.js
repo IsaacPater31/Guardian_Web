@@ -322,6 +322,9 @@ export const QUERY_CONFIG = Object.freeze({
     communityAlertsLimit: 50,
 });
 
+/** Marker/card highlight pulse window (web: animation only; mobile vibrates separately). */
+export const ACTIVE_ALERT_FEEDBACK_MS = 10_000;
+
 export function getAlertColor(alertType) {
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.color ?? ALERT_TYPES[alertType]?.color ?? '#9E9E9E';

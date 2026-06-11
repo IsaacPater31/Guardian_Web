@@ -3,7 +3,13 @@ import * as LucideIcons from 'lucide-react';
 import {
     X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle, BellRing, ArrowUpRight,
 } from 'lucide-react';
-import { ACTIVE_ALERT_TYPES, getAlertColor, getAlertLabel, getTimeAgo } from '../../config/alertTypes';
+import {
+    ACTIVE_ALERT_TYPES,
+    AlertStatus,
+    getAlertColor,
+    getAlertLabel,
+    getTimeAgo,
+} from '../../config/alertTypes';
 import { STATUS_OPTIONS, DATE_OPTIONS, countActiveFilters } from '../../config/filterOptions';
 import { getSubtypeLabel } from '../../utils/alertSubtype';
 
@@ -39,7 +45,12 @@ export default function MapFilterPanel({
     const [isExpanded, setIsExpanded] = useState(true);
     const [activeView, setActiveView] = useState('recent');
     const activeCount = countActiveFilters(types, status, dateRange);
-    const recent = useMemo(() => recentAlerts.slice(0, 8), [recentAlerts]);
+    const recent = useMemo(
+        () => recentAlerts
+            .filter((a) => a.alertStatus !== AlertStatus.ATTENDED)
+            .slice(0, 8),
+        [recentAlerts]
+    );
 
     const toggleType = useCallback((type) => {
         const next = types.includes(type)
