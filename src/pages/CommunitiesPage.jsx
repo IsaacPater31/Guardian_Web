@@ -13,11 +13,12 @@ import {
     adminUpdateCommunity,
     adminDeleteCommunityCascade,
 } from '../services/adminCrudService';
-import { visibleUserCommunities } from '../utils/communityVisibility';
+import { isOfficialEntityCommunity } from '../utils/communityVisibility';
 
 const emptyForm = {
     name: '',
     description: '',
+    isEntity: false,
 };
 
 function formatFirestoreDate(val) {
@@ -68,7 +69,8 @@ export default function CommunitiesPage() {
                 total == null ? getCommunitiesCount().catch(() => null) : Promise.resolve(total),
             ]);
             cursorsRef.current[targetPage] = result.lastDoc;
-            setList(visibleUserCommunities(result.items));
+            // El panel admin muestra también entidades (a diferencia del móvil).
+            setList(result.items);
             setHasMore(result.hasMore);
             if (count != null) setTotal(count);
             if (targetPage !== page) setPage(targetPage);
@@ -94,7 +96,7 @@ export default function CommunitiesPage() {
                 ]);
                 if (cancelled) return;
                 cursorsRef.current[page] = result.lastDoc;
-                setList(visibleUserCommunities(result.items));
+                setList(result.items);
                 setHasMore(result.hasMore);
                 if (count != null) setTotal(count);
             } catch (e) {
@@ -146,6 +148,7 @@ export default function CommunitiesPage() {
             id: c.id,
             name: c.name,
             description: c.description || '',
+            isEntity: isOfficialEntityCommunity(c),
         });
         setModal('edit');
     }
@@ -154,18 +157,28 @@ export default function CommunitiesPage() {
         e.preventDefault();
         setSaving(true);
         setErr('');
+
+        // Las entidades se muestran en el móvil como "Reporte {Nombre}";
+        // el nombre debe ser una sola palabra (p. ej. "Policía", "EPA").
+        const trimmedName = String(form.name || '').trim();
+        if (form.isEntity && /\s/.test(trimmedName)) {
+            setErr('El nombre de una entidad debe ser una sola palabra (p. ej. "Policía").');
+            setSaving(false);
+            return;
+        }
+
         try {
             if (modal === 'create') {
                 await adminCreateCommunity({
-                    name: form.name,
+                    name: trimmedName,
                     description: form.description || null,
-                    isEntity: false,
+                    isEntity: form.isEntity,
                     allowForwardToEntities: true,
                     createdByUid: null,
                 });
             } else if (modal === 'edit' && form.id) {
                 await adminUpdateCommunity(form.id, {
-                    name: form.name,
+                    name: trimmedName,
                     description: form.description || null,
                 });
             }
@@ -235,13 +248,14 @@ export default function CommunitiesPage() {
                         <tr>
                             <th>ID</th>
                             <th>Nombre</th>
+                            <th>Tipo</th>
                             <th className="admin-th-actions">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {!loading && list.length === 0 && (
                             <tr>
-                                <td colSpan={3} className="admin-muted">
+                                <td colSpan={4} className="admin-muted">
                                     No hay comunidades para mostrar.
                                 </td>
                             </tr>
@@ -253,6 +267,15 @@ export default function CommunitiesPage() {
                                     <strong>{c.name}</strong>
                                     {c.description && (
                                         <div className="admin-muted admin-desc">{c.description}</div>
+                                    )}
+                                </td>
+                                <td>
+                                    {isOfficialEntityCommunity(c) ? (
+                                        <span className="admin-badge admin-badge--entity">
+                                            Entidad
+                                        </span>
+                                    ) : (
+                                        <span className="admin-muted">Comunidad</span>
                                     )}
                                 </td>
                                 <td>
@@ -335,6 +358,12 @@ export default function CommunitiesPage() {
                         <dl className="community-info-dl">
                             <dt>ID documento</dt>
                             <dd className="mono">{infoCommunity.id}</dd>
+                            <dt>Tipo</dt>
+                            <dd>
+                                {isOfficialEntityCommunity(infoCommunity)
+                                    ? 'Entidad (reportes)'
+                                    : 'Comunidad'}
+                            </dd>
                             <dt>Nombre</dt>
                             <dd>{infoCommunity.name || '—'}</dd>
                             <dt>Descripción</dt>
@@ -399,6 +428,22 @@ export default function CommunitiesPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                                 />
                             </label>
+                            {modal === 'create' && (
+                                <label className="admin-checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.isEntity}
+                                        onChange={(e) =>
+                                            setForm((f) => ({ ...f, isEntity: e.target.checked }))
+                                        }
+                                    />
+                                    <span>
+                                        Entidad (reportes) — nombre de una sola palabra; en la app
+                                        aparece como “Reporte {form.name.trim() || 'Nombre'}” y solo
+                                        los miembros oficiales reciben los reportes.
+                                    </span>
+                                </label>
+                            )}
                             {err && <div className="login-error">{err}</div>}
                             <div className="admin-modal-actions">
                                 <button type="button" className="admin-btn-ghost" onClick={() => setModal(null)}>

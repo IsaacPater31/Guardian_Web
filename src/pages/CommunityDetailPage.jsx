@@ -1,18 +1,33 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, UserMinus, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, UserMinus, UserPlus, Users } from 'lucide-react';
 import { getAllCommunities, getCommunityMembers } from '../services/communityService';
 import {
     adminAddCommunityMember,
     adminRemoveMember,
     adminUpdateMemberRole,
 } from '../services/adminCrudService';
+import { adminCreateOfficialUser } from '../services/adminUserProvisionService';
 import { isOfficialEntityCommunity } from '../utils/communityVisibility';
 
-const ROLES = [
+const BASE_ROLES = [
     { value: 'member', label: 'Miembro' },
     { value: 'admin', label: 'Administrador' },
 ];
+
+// El rol "oficial" solo aplica en entidades: junto con admin, son quienes
+// reciben los reportes enviados a la entidad.
+const ENTITY_ROLES = [
+    { value: 'member', label: 'Miembro' },
+    { value: 'official', label: 'Oficial' },
+    { value: 'admin', label: 'Administrador' },
+];
+
+const emptyOfficialForm = {
+    displayName: '',
+    email: '',
+    password: '',
+};
 
 /**
  * Detalle de comunidad: gestión de miembros (CRUD) para el panel administrativo.
@@ -20,11 +35,17 @@ const ROLES = [
 export default function CommunityDetailPage() {
     const { id: communityId } = useParams();
     const [communityName, setCommunityName] = useState('');
+    const [isEntity, setIsEntity] = useState(false);
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newUid, setNewUid] = useState('');
     const [newRole, setNewRole] = useState('member');
     const [busy, setBusy] = useState(false);
+    const [officialForm, setOfficialForm] = useState({ ...emptyOfficialForm });
+    const [officialErr, setOfficialErr] = useState('');
+    const [officialOk, setOfficialOk] = useState('');
+
+    const roles = isEntity ? ENTITY_ROLES : BASE_ROLES;
 
     const load = useCallback(async () => {
         if (!communityId) return;
@@ -32,12 +53,8 @@ export default function CommunityDetailPage() {
         try {
             const all = await getAllCommunities();
             const c = all.find((x) => x.id === communityId);
-            if (c && isOfficialEntityCommunity(c)) {
-                setCommunityName('');
-                setMembers([]);
-                return;
-            }
             setCommunityName(c?.name || communityId);
+            setIsEntity(c ? isOfficialEntityCommunity(c) : false);
             const m = await getCommunityMembers(communityId);
             setMembers(m);
         } catch (e) {
@@ -93,6 +110,28 @@ export default function CommunityDetailPage() {
         }
     }
 
+    async function createOfficial(e) {
+        e.preventDefault();
+        setOfficialErr('');
+        setOfficialOk('');
+        setBusy(true);
+        try {
+            const uid = await adminCreateOfficialUser({
+                email: officialForm.email,
+                password: officialForm.password,
+                displayName: officialForm.displayName,
+                communityId,
+            });
+            setOfficialOk(`Usuario oficial creado (UID: ${uid}).`);
+            setOfficialForm({ ...emptyOfficialForm });
+            await load();
+        } catch (err) {
+            setOfficialErr(err?.message || 'No se pudo crear el usuario oficial');
+        } finally {
+            setBusy(false);
+        }
+    }
+
     if (loading) {
         return (
             <div className="loading-container">
@@ -128,8 +167,14 @@ export default function CommunityDetailPage() {
                             <Users size={18} style={{ color: 'var(--color-accent)' }} />
                         </div>
                         <div>
-                            <h2 className="section-title">{communityName}</h2>
-                            <p className="section-subtitle">Gestión de miembros y roles</p>
+                            <h2 className="section-title">
+                                {isEntity ? `Reporte ${communityName}` : communityName}
+                            </h2>
+                            <p className="section-subtitle">
+                                {isEntity
+                                    ? 'Entidad de reportes — gestión de miembros, oficiales y roles'
+                                    : 'Gestión de miembros y roles'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -160,7 +205,7 @@ export default function CommunityDetailPage() {
                             value={newRole}
                             onChange={(e) => setNewRole(e.target.value)}
                         >
-                            {ROLES.map((r) => (
+                            {roles.map((r) => (
                                 <option key={r.value} value={r.value}>
                                     {r.label}
                                 </option>
@@ -172,6 +217,73 @@ export default function CommunityDetailPage() {
                     </form>
                 </div>
             </section>
+
+            {isEntity && (
+                <section className="section section--dash" style={{ marginBottom: 'var(--space-5)' }}>
+                    <div className="section-header">
+                        <div className="section-header-left">
+                            <div className="section-icon" style={{ background: 'rgba(13, 27, 62, 0.1)' }}>
+                                <ShieldCheck size={18} style={{ color: '#0d1b3e' }} />
+                            </div>
+                            <div>
+                                <h3 className="section-title">Crear usuario oficial</h3>
+                                <p className="section-subtitle">
+                                    Crea la cuenta en Firebase Auth y la vincula a esta entidad con
+                                    rol Oficial (recibe los reportes). Tu sesión de administrador no
+                                    se ve afectada.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="section-body">
+                        <form onSubmit={createOfficial} className="admin-add-form">
+                            <input
+                                className="login-input"
+                                placeholder="Nombre completo"
+                                value={officialForm.displayName}
+                                onChange={(e) =>
+                                    setOfficialForm((f) => ({ ...f, displayName: e.target.value }))
+                                }
+                                required
+                            />
+                            <input
+                                className="login-input"
+                                type="email"
+                                placeholder="Correo"
+                                value={officialForm.email}
+                                onChange={(e) =>
+                                    setOfficialForm((f) => ({ ...f, email: e.target.value }))
+                                }
+                                required
+                            />
+                            <input
+                                className="login-input"
+                                type="password"
+                                placeholder="Contraseña inicial"
+                                value={officialForm.password}
+                                onChange={(e) =>
+                                    setOfficialForm((f) => ({ ...f, password: e.target.value }))
+                                }
+                                minLength={6}
+                                required
+                            />
+                            <button type="submit" className="admin-btn-primary" disabled={busy}>
+                                <ShieldCheck size={18} /> Crear oficial
+                            </button>
+                        </form>
+                        {officialErr && (
+                            <div className="login-error" style={{ marginTop: 'var(--space-2)' }}>
+                                {officialErr}
+                            </div>
+                        )}
+                        {officialOk && (
+                            <p className="admin-muted" style={{ marginTop: 'var(--space-2)' }}>
+                                {officialOk}
+                            </p>
+                        )}
+                    </div>
+                </section>
+            )}
 
             <section className="section section--dash">
                 <div className="section-header">
@@ -211,11 +323,15 @@ export default function CommunityDetailPage() {
                                             <td>
                                                 <select
                                                     className="login-input admin-select-inline"
-                                                    value={m.role === 'official' ? 'member' : m.role}
+                                                    value={
+                                                        !isEntity && m.role === 'official'
+                                                            ? 'member'
+                                                            : m.role
+                                                    }
                                                     onChange={(e) => changeRole(m.id, e.target.value)}
                                                     disabled={busy}
                                                 >
-                                                    {ROLES.map((r) => (
+                                                    {roles.map((r) => (
                                                         <option key={r.value} value={r.value}>
                                                             {r.label}
                                                         </option>

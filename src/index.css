@@ -3576,6 +3576,36 @@ body {
   min-height: 72px;
 }
 
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-badge--entity {
+  background: rgba(13, 27, 62, 0.1);
+  color: #0d1b3e;
+}
+
+.admin-checkbox-label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.admin-checkbox-label input[type='checkbox'] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
 .admin-check {
   display: flex;
   align-items: center;

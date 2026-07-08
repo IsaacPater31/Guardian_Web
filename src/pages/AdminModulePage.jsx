@@ -5,7 +5,6 @@ import AdminPaginationBar from '../components/admin/AdminPaginationBar';
 import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
 import { fetchRegistryCounts, fetchUsersPage } from '../services/adminModuleService';
 import { fetchCommunitiesPage } from '../services/communityService';
-import { visibleUserCommunities } from '../utils/communityVisibility';
 
 function formatUserDate(val) {
     if (val == null) return '—';
@@ -117,7 +116,8 @@ export default function AdminModulePage() {
                 });
                 if (cancelled) return;
                 communitiesCursorsRef.current[communitiesPage] = result.lastDoc;
-                setCommunities(visibleUserCommunities(result.items));
+                // El directorio admin también lista entidades (a diferencia del móvil).
+                setCommunities(result.items);
                 setCommunitiesHasMore(result.hasMore);
             } catch (e) {
                 if (!cancelled) {
