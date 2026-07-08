@@ -7,11 +7,11 @@ import {
     adminRemoveMember,
     adminUpdateMemberRole,
 } from '../services/adminCrudService';
+import { isOfficialEntityCommunity } from '../utils/communityVisibility';
 
 const ROLES = [
     { value: 'member', label: 'Miembro' },
     { value: 'admin', label: 'Administrador' },
-    { value: 'official', label: 'Oficial (entidad)' },
 ];
 
 /**
@@ -20,7 +20,6 @@ const ROLES = [
 export default function CommunityDetailPage() {
     const { id: communityId } = useParams();
     const [communityName, setCommunityName] = useState('');
-    const [isEntity, setIsEntity] = useState(false);
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newUid, setNewUid] = useState('');
@@ -33,8 +32,12 @@ export default function CommunityDetailPage() {
         try {
             const all = await getAllCommunities();
             const c = all.find((x) => x.id === communityId);
+            if (c && isOfficialEntityCommunity(c)) {
+                setCommunityName('');
+                setMembers([]);
+                return;
+            }
             setCommunityName(c?.name || communityId);
-            setIsEntity(!!c?.isEntity);
             const m = await getCommunityMembers(communityId);
             setMembers(m);
         } catch (e) {
@@ -55,9 +58,7 @@ export default function CommunityDetailPage() {
         if (!uid || !communityId) return;
         setBusy(true);
         try {
-            let role = newRole;
-            if (!isEntity && role === 'official') role = 'member';
-            await adminAddCommunityMember(communityId, uid, role);
+            await adminAddCommunityMember(communityId, uid, newRole);
             setNewUid('');
             await load();
         } catch (err) {
@@ -100,6 +101,17 @@ export default function CommunityDetailPage() {
         );
     }
 
+    if (!communityName) {
+        return (
+            <>
+                <Link to="/communities" className="admin-back" style={{ marginBottom: 'var(--space-4)' }}>
+                    <ArrowLeft size={18} /> Comunidades
+                </Link>
+                <p className="admin-muted">Esta comunidad no está disponible.</p>
+            </>
+        );
+    }
+
     return (
         <>
             <Link to="/communities" className="admin-back" style={{ marginBottom: 'var(--space-4)' }}>
@@ -117,11 +129,7 @@ export default function CommunityDetailPage() {
                         </div>
                         <div>
                             <h2 className="section-title">{communityName}</h2>
-                            <p className="section-subtitle">
-                                {isEntity
-                                    ? 'Entidad oficial — puedes asignar rol «Oficial»'
-                                    : 'Comunidad — roles de miembro y administrador'}
-                            </p>
+                            <p className="section-subtitle">Gestión de miembros y roles</p>
                         </div>
                     </div>
                 </div>
@@ -152,7 +160,7 @@ export default function CommunityDetailPage() {
                             value={newRole}
                             onChange={(e) => setNewRole(e.target.value)}
                         >
-                            {ROLES.filter((r) => isEntity || r.value !== 'official').map((r) => (
+                            {ROLES.map((r) => (
                                 <option key={r.value} value={r.value}>
                                     {r.label}
                                 </option>
@@ -203,17 +211,15 @@ export default function CommunityDetailPage() {
                                             <td>
                                                 <select
                                                     className="login-input admin-select-inline"
-                                                    value={m.role}
+                                                    value={m.role === 'official' ? 'member' : m.role}
                                                     onChange={(e) => changeRole(m.id, e.target.value)}
                                                     disabled={busy}
                                                 >
-                                                    {ROLES.filter((r) => isEntity || r.value !== 'official').map(
-                                                        (r) => (
-                                                            <option key={r.value} value={r.value}>
-                                                                {r.label}
-                                                            </option>
-                                                        ),
-                                                    )}
+                                                    {ROLES.map((r) => (
+                                                        <option key={r.value} value={r.value}>
+                                                            {r.label}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                             </td>
                                             <td>

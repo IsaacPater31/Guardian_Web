@@ -13,12 +13,11 @@ import {
     adminUpdateCommunity,
     adminDeleteCommunityCascade,
 } from '../services/adminCrudService';
+import { visibleUserCommunities } from '../utils/communityVisibility';
 
 const emptyForm = {
     name: '',
     description: '',
-    isEntity: false,
-    allowForwardToEntities: true,
 };
 
 function formatFirestoreDate(val) {
@@ -69,7 +68,7 @@ export default function CommunitiesPage() {
                 total == null ? getCommunitiesCount().catch(() => null) : Promise.resolve(total),
             ]);
             cursorsRef.current[targetPage] = result.lastDoc;
-            setList(result.items);
+            setList(visibleUserCommunities(result.items));
             setHasMore(result.hasMore);
             if (count != null) setTotal(count);
             if (targetPage !== page) setPage(targetPage);
@@ -95,7 +94,7 @@ export default function CommunitiesPage() {
                 ]);
                 if (cancelled) return;
                 cursorsRef.current[page] = result.lastDoc;
-                setList(result.items);
+                setList(visibleUserCommunities(result.items));
                 setHasMore(result.hasMore);
                 if (count != null) setTotal(count);
             } catch (e) {
@@ -147,8 +146,6 @@ export default function CommunitiesPage() {
             id: c.id,
             name: c.name,
             description: c.description || '',
-            isEntity: !!c.isEntity,
-            allowForwardToEntities: c.allowForwardToEntities !== false,
         });
         setModal('edit');
     }
@@ -162,16 +159,14 @@ export default function CommunitiesPage() {
                 await adminCreateCommunity({
                     name: form.name,
                     description: form.description || null,
-                    isEntity: form.isEntity,
-                    allowForwardToEntities: form.allowForwardToEntities,
+                    isEntity: false,
+                    allowForwardToEntities: true,
                     createdByUid: null,
                 });
             } else if (modal === 'edit' && form.id) {
                 await adminUpdateCommunity(form.id, {
                     name: form.name,
                     description: form.description || null,
-                    isEntity: form.isEntity,
-                    allowForwardToEntities: form.allowForwardToEntities,
                 });
             }
             setModal(null);
@@ -219,9 +214,7 @@ export default function CommunitiesPage() {
                         </div>
                         <div>
                             <h2 className="section-title">Comunidades</h2>
-                            <p className="section-subtitle">
-                                Gestión de comunidades, entidades oficiales y permisos de reenvío
-                            </p>
+                            <p className="section-subtitle">Gestión de comunidades</p>
                         </div>
                     </div>
                     <button type="button" className="admin-btn-primary" onClick={openCreate}>
@@ -242,15 +235,13 @@ export default function CommunitiesPage() {
                         <tr>
                             <th>ID</th>
                             <th>Nombre</th>
-                            <th>Tipo</th>
-                            <th>Reenvío a entidades</th>
                             <th className="admin-th-actions">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {!loading && list.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="admin-muted">
+                                <td colSpan={3} className="admin-muted">
                                     No hay comunidades para mostrar.
                                 </td>
                             </tr>
@@ -264,8 +255,6 @@ export default function CommunitiesPage() {
                                         <div className="admin-muted admin-desc">{c.description}</div>
                                     )}
                                 </td>
-                                <td>{c.isEntity ? 'Entidad oficial' : 'Normal'}</td>
-                                <td>{c.allowForwardToEntities ? 'Sí' : 'No'}</td>
                                 <td>
                                     <div className="admin-row-actions">
                                         <button
@@ -350,10 +339,6 @@ export default function CommunitiesPage() {
                             <dd>{infoCommunity.name || '—'}</dd>
                             <dt>Descripción</dt>
                             <dd>{infoCommunity.description || '—'}</dd>
-                            <dt>Tipo</dt>
-                            <dd>{infoCommunity.isEntity ? 'Entidad oficial' : 'Normal'}</dd>
-                            <dt>Reenvío a entidades oficiales</dt>
-                            <dd>{infoCommunity.allowForwardToEntities !== false ? 'Sí' : 'No'}</dd>
                             <dt>Creado por (UID)</dt>
                             <dd className="mono">{infoCommunity.createdBy ?? '—'}</dd>
                             <dt>Fecha de creación</dt>
@@ -413,27 +398,6 @@ export default function CommunitiesPage() {
                                     value={form.description}
                                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                                 />
-                            </label>
-                            <label className="admin-check">
-                                <input
-                                    type="checkbox"
-                                    checked={form.isEntity}
-                                    onChange={(e) => setForm((f) => ({ ...f, isEntity: e.target.checked }))}
-                                />
-                                Entidad oficial (Ambiental / Policía / …)
-                            </label>
-                            <label className="admin-check">
-                                <input
-                                    type="checkbox"
-                                    checked={form.allowForwardToEntities}
-                                    onChange={(e) =>
-                                        setForm((f) => ({
-                                            ...f,
-                                            allowForwardToEntities: e.target.checked,
-                                        }))
-                                    }
-                                />
-                                Permitir reenvío a entidades oficiales
                             </label>
                             {err && <div className="login-error">{err}</div>}
                             <div className="admin-modal-actions">

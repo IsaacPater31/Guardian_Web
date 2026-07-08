@@ -5,6 +5,7 @@ import AdminPaginationBar from '../components/admin/AdminPaginationBar';
 import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
 import { fetchRegistryCounts, fetchUsersPage } from '../services/adminModuleService';
 import { fetchCommunitiesPage } from '../services/communityService';
+import { visibleUserCommunities } from '../utils/communityVisibility';
 
 function formatUserDate(val) {
     if (val == null) return '—';
@@ -116,7 +117,7 @@ export default function AdminModulePage() {
                 });
                 if (cancelled) return;
                 communitiesCursorsRef.current[communitiesPage] = result.lastDoc;
-                setCommunities(result.items);
+                setCommunities(visibleUserCommunities(result.items));
                 setCommunitiesHasMore(result.hasMore);
             } catch (e) {
                 if (!cancelled) {
@@ -352,8 +353,6 @@ export default function AdminModulePage() {
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
-                                    <th>Tipo</th>
-                                    <th>Reenvío</th>
                                     <th>ID</th>
                                     <th />
                                 </tr>
@@ -361,7 +360,7 @@ export default function AdminModulePage() {
                             <tbody>
                                 {!communitiesLoading && filteredCommunitiesDirectory.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="admin-module-msg admin-module-msg--muted">
+                                        <td colSpan={3} className="admin-module-msg admin-module-msg--muted">
                                             {communities.length === 0
                                                 ? 'No hay comunidades para mostrar.'
                                                 : 'Ninguna comunidad coincide con la búsqueda.'}
@@ -378,8 +377,6 @@ export default function AdminModulePage() {
                                                 </div>
                                             )}
                                         </td>
-                                        <td>{c.isEntity ? 'Entidad oficial' : 'Comunidad'}</td>
-                                        <td>{c.allowForwardToEntities ? 'Sí' : 'No'}</td>
                                         <td className="admin-module-meta mono">{c.id}</td>
                                         <td>
                                             <Link
