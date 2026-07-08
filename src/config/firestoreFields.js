@@ -10,6 +10,8 @@ export const CommunityFields = Object.freeze({
     createdAt: 'created_at',
     iconCodePoint: 'icon_code_point',
     iconColor: 'icon_color',
+    reportButtonColor: 'report_button_color',
+    reportAlertTypes: 'report_alert_types',
 });
 
 export const MemberFields = Object.freeze({

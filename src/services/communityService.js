@@ -71,6 +71,10 @@ function parseCommunity(doc) {
         createdAt:              d.created_at               ?? null,
         iconCodePoint:          d.icon_code_point          ?? null,
         iconColor:              d.icon_color               ?? null,
+        reportButtonColor:      d.report_button_color      ?? null,
+        reportAlertTypes:       Array.isArray(d.report_alert_types)
+            ? d.report_alert_types.filter((t) => typeof t === 'string' && t)
+            : [],
     };
 }
 

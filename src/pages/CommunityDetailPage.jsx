@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, UserMinus, UserPlus, Users } from 'lucide-react';
 import { getAllCommunities, getCommunityMembers } from '../services/communityService';
@@ -8,6 +8,7 @@ import {
     adminUpdateMemberRole,
 } from '../services/adminCrudService';
 import { adminCreateOfficialUser } from '../services/adminUserProvisionService';
+import { searchUsersByText } from '../services/adminModuleService';
 import { isOfficialEntityCommunity } from '../utils/communityVisibility';
 
 const BASE_ROLES = [
@@ -38,7 +39,11 @@ export default function CommunityDetailPage() {
     const [isEntity, setIsEntity] = useState(false);
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [newUid, setNewUid] = useState('');
+    const [memberSearch, setMemberSearch] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
+    const [searchErr, setSearchErr] = useState('');
+    const searchDebounceRef = useRef(null);
     const [newRole, setNewRole] = useState('member');
     const [busy, setBusy] = useState(false);
     const [officialForm, setOfficialForm] = useState({ ...emptyOfficialForm });
@@ -69,17 +74,49 @@ export default function CommunityDetailPage() {
         load();
     }, [load]);
 
-    async function addMember(e) {
-        e.preventDefault();
-        const uid = newUid.trim();
-        if (!uid || !communityId) return;
+    useEffect(() => {
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+        const query = memberSearch.trim();
+        if (query.length < 2) {
+            setSearchResults([]);
+            setSearching(false);
+            setSearchErr('');
+            return undefined;
+        }
+
+        setSearching(true);
+        setSearchErr('');
+        searchDebounceRef.current = setTimeout(async () => {
+            try {
+                const results = await searchUsersByText(query, {
+                    excludeCommunityId: communityId,
+                });
+                setSearchResults(results);
+            } catch (err) {
+                setSearchResults([]);
+                setSearchErr(err?.message || 'No se pudo buscar usuarios');
+            } finally {
+                setSearching(false);
+            }
+        }, 400);
+
+        return () => {
+            if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        };
+    }, [memberSearch, communityId]);
+
+    async function addMemberByUser(user) {
+        if (!user?.id || !communityId) return;
         setBusy(true);
+        setSearchErr('');
         try {
-            await adminAddCommunityMember(communityId, uid, newRole);
-            setNewUid('');
+            await adminAddCommunityMember(communityId, user.id, newRole);
+            setMemberSearch('');
+            setSearchResults([]);
             await load();
         } catch (err) {
-            alert(err?.message || 'No se pudo agregar');
+            setSearchErr(err?.message || 'No se pudo agregar');
         } finally {
             setBusy(false);
         }
@@ -188,17 +225,20 @@ export default function CommunityDetailPage() {
                         </div>
                         <div>
                             <h3 className="section-title">Agregar miembro</h3>
-                            <p className="section-subtitle">UID de Firebase y rol en esta comunidad</p>
+                            <p className="section-subtitle">
+                                Busca por nombre, correo o UID y elige el rol
+                            </p>
                         </div>
                     </div>
                 </div>
                 <div className="section-body">
-                    <form onSubmit={addMember} className="admin-add-form">
+                    <div className="admin-add-form admin-add-form--stacked">
                         <input
                             className="login-input"
-                            placeholder="UID de Firebase del usuario"
-                            value={newUid}
-                            onChange={(e) => setNewUid(e.target.value)}
+                            placeholder="Nombre, correo o UID"
+                            value={memberSearch}
+                            onChange={(e) => setMemberSearch(e.target.value)}
+                            autoComplete="off"
                         />
                         <select
                             className="login-input admin-select"
@@ -211,10 +251,45 @@ export default function CommunityDetailPage() {
                                 </option>
                             ))}
                         </select>
-                        <button type="submit" className="admin-btn-primary" disabled={busy}>
-                            <UserPlus size={18} /> Añadir
-                        </button>
-                    </form>
+                    </div>
+                    {searching && (
+                        <p className="admin-muted" style={{ marginTop: 'var(--space-2)' }}>
+                            Buscando…
+                        </p>
+                    )}
+                    {searchErr && (
+                        <div className="login-error" style={{ marginTop: 'var(--space-2)' }}>
+                            {searchErr}
+                        </div>
+                    )}
+                    {!searching && memberSearch.trim().length >= 2 && searchResults.length === 0 && (
+                        <p className="admin-muted" style={{ marginTop: 'var(--space-2)' }}>
+                            Sin coincidencias.
+                        </p>
+                    )}
+                    {searchResults.length > 0 && (
+                        <ul className="member-search-results">
+                            {searchResults.map((user) => (
+                                <li key={user.id} className="member-search-result">
+                                    <div className="member-search-result-info">
+                                        <strong>{user.displayName || 'Sin nombre'}</strong>
+                                        <span className="admin-muted">
+                                            {user.email || '—'}
+                                        </span>
+                                        <span className="admin-mono admin-uid">{user.id}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="admin-btn-primary"
+                                        disabled={busy}
+                                        onClick={() => addMemberByUser(user)}
+                                    >
+                                        <UserPlus size={18} /> Añadir
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             </section>
 

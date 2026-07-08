@@ -35,6 +35,8 @@ export async function adminCreateCommunity({
     createdByUid,
     iconCodePoint,
     iconColor,
+    reportButtonColor,
+    reportAlertTypes,
 }) {
     const payload = {
         [CommunityFields.name]: String(name || '').trim(),
@@ -46,6 +48,10 @@ export async function adminCreateCommunity({
     };
     if (iconCodePoint != null) payload[CommunityFields.iconCodePoint] = Number(iconCodePoint);
     if (iconColor) payload[CommunityFields.iconColor] = String(iconColor);
+    if (reportButtonColor) payload[CommunityFields.reportButtonColor] = String(reportButtonColor);
+    if (isEntity && Array.isArray(reportAlertTypes) && reportAlertTypes.length) {
+        payload[CommunityFields.reportAlertTypes] = reportAlertTypes;
+    }
 
     const ref = await addDoc(communitiesCol(), payload);
     return ref.id;
@@ -65,6 +71,14 @@ export async function adminUpdateCommunity(communityId, patch) {
             patch.iconCodePoint == null ? null : Number(patch.iconCodePoint);
     }
     if (patch.iconColor !== undefined) data[CommunityFields.iconColor] = patch.iconColor;
+    if (patch.reportButtonColor !== undefined) {
+        data[CommunityFields.reportButtonColor] = patch.reportButtonColor;
+    }
+    if (patch.reportAlertTypes !== undefined) {
+        data[CommunityFields.reportAlertTypes] = Array.isArray(patch.reportAlertTypes)
+            ? patch.reportAlertTypes
+            : [];
+    }
     await updateDoc(ref, data);
 }
 

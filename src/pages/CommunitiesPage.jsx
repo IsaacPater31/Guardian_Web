@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Users, Building2, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Building2, Info, ShieldCheck } from 'lucide-react';
 import AdminPaginationBar from '../components/admin/AdminPaginationBar';
 import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
 import {
@@ -14,12 +14,55 @@ import {
     adminDeleteCommunityCascade,
 } from '../services/adminCrudService';
 import { isOfficialEntityCommunity } from '../utils/communityVisibility';
+import CommunityIconPickerGrid from '../components/community/CommunityIconPickerGrid';
+import CommunityIconDisplay from '../components/community/CommunityIconDisplay';
+import EntityAlertTypesPicker from '../components/community/EntityAlertTypesPicker';
+import { ACTIVE_ALERT_TYPES } from '../config/alertTypes';
+import {
+    DEFAULT_ICON_CODE_POINT,
+    DEFAULT_ICON_COLOR,
+} from '../config/communityIconCatalog';
 
 const emptyForm = {
     name: '',
     description: '',
-    isEntity: false,
+    iconCodePoint: DEFAULT_ICON_CODE_POINT,
+    iconColor: DEFAULT_ICON_COLOR,
+    reportButtonColor: '#0D1B3E',
+    reportAlertTypes: [],
 };
+
+function isEntityModal(modal) {
+    return modal === 'create-entity' || modal === 'edit-entity';
+}
+
+function modalTitle(modal) {
+    switch (modal) {
+        case 'create-community':
+            return 'Nueva comunidad';
+        case 'create-entity':
+            return 'Nueva entidad de reportes';
+        case 'edit-community':
+            return 'Editar comunidad';
+        case 'edit-entity':
+            return 'Editar entidad';
+        default:
+            return 'Comunidad';
+    }
+}
+
+function formatReportTypes(types) {
+    if (!types?.length) return '—';
+    return types
+        .map((t) => ACTIVE_ALERT_TYPES[t]?.labelEs || t)
+        .join(', ');
+}
+
+function normalizeHexColor(value, fallback = '#0D1B3E') {
+    const raw = String(value || '').trim();
+    if (/^#([0-9a-fA-F]{6})$/.test(raw)) return raw.toUpperCase();
+    return fallback;
+}
 
 function formatFirestoreDate(val) {
     if (val == null) return '—';
@@ -136,21 +179,31 @@ export default function CommunitiesPage() {
         };
     }, [infoCommunity]);
 
-    function openCreate() {
+    function openCreateCommunity() {
         setErr('');
-        setForm({ ...emptyForm });
-        setModal('create');
+        setForm({ ...emptyForm, reportAlertTypes: [] });
+        setModal('create-community');
+    }
+
+    function openCreateEntity() {
+        setErr('');
+        setForm({ ...emptyForm, reportAlertTypes: [] });
+        setModal('create-entity');
     }
 
     function openEdit(c) {
         setErr('');
+        const entity = isOfficialEntityCommunity(c);
         setForm({
             id: c.id,
             name: c.name,
             description: c.description || '',
-            isEntity: isOfficialEntityCommunity(c),
+            iconCodePoint: c.iconCodePoint ?? DEFAULT_ICON_CODE_POINT,
+            iconColor: entity ? null : c.iconColor || DEFAULT_ICON_COLOR,
+            reportButtonColor: c.reportButtonColor || '#0D1B3E',
+            reportAlertTypes: Array.isArray(c.reportAlertTypes) ? [...c.reportAlertTypes] : [],
         });
-        setModal('edit');
+        setModal(entity ? 'edit-entity' : 'edit-community');
     }
 
     async function handleSubmit(e) {
@@ -161,25 +214,58 @@ export default function CommunitiesPage() {
         // Las entidades se muestran en el móvil como "Reporte {Nombre}";
         // el nombre debe ser una sola palabra (p. ej. "Policía", "EPA").
         const trimmedName = String(form.name || '').trim();
-        if (form.isEntity && /\s/.test(trimmedName)) {
+        const entityFlow = isEntityModal(modal);
+        const reportButtonColor = normalizeHexColor(form.reportButtonColor);
+        if (entityFlow && /\s/.test(trimmedName)) {
             setErr('El nombre de una entidad debe ser una sola palabra (p. ej. "Policía").');
+            setSaving(false);
+            return;
+        }
+        if (entityFlow && (!form.reportAlertTypes || form.reportAlertTypes.length === 0)) {
+            setErr('Selecciona al menos un tipo de reporte para la entidad.');
             setSaving(false);
             return;
         }
 
         try {
-            if (modal === 'create') {
+            if (modal === 'create-community') {
                 await adminCreateCommunity({
                     name: trimmedName,
                     description: form.description || null,
-                    isEntity: form.isEntity,
+                    isEntity: false,
                     allowForwardToEntities: true,
                     createdByUid: null,
+                    iconCodePoint: form.iconCodePoint,
+                    iconColor: form.iconColor,
+                    reportButtonColor,
                 });
-            } else if (modal === 'edit' && form.id) {
+            } else if (modal === 'create-entity') {
+                await adminCreateCommunity({
+                    name: trimmedName,
+                    description: form.description || null,
+                    isEntity: true,
+                    allowForwardToEntities: true,
+                    createdByUid: null,
+                    iconCodePoint: form.iconCodePoint,
+                    reportButtonColor,
+                    reportAlertTypes: form.reportAlertTypes,
+                });
+            } else if (modal === 'edit-community' && form.id) {
                 await adminUpdateCommunity(form.id, {
                     name: trimmedName,
                     description: form.description || null,
+                    iconCodePoint: form.iconCodePoint,
+                    iconColor: form.iconColor,
+                    reportButtonColor,
+                });
+            } else if (modal === 'edit-entity' && form.id) {
+                await adminUpdateCommunity(form.id, {
+                    name: trimmedName,
+                    description: form.description || null,
+                    iconCodePoint: form.iconCodePoint,
+                    iconColor: null,
+                    reportButtonColor,
+                    reportAlertTypes: form.reportAlertTypes,
                 });
             }
             setModal(null);
@@ -230,9 +316,14 @@ export default function CommunitiesPage() {
                             <p className="section-subtitle">Gestión de comunidades</p>
                         </div>
                     </div>
-                    <button type="button" className="admin-btn-primary" onClick={openCreate}>
-                        <Plus size={18} /> Nueva comunidad
-                    </button>
+                    <div className="admin-header-actions">
+                        <button type="button" className="admin-btn-ghost" onClick={openCreateCommunity}>
+                            <Plus size={18} /> Nueva comunidad
+                        </button>
+                        <button type="button" className="admin-btn-primary" onClick={openCreateEntity}>
+                            <ShieldCheck size={18} /> Nueva entidad
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -372,10 +463,33 @@ export default function CommunitiesPage() {
                             <dd className="mono">{infoCommunity.createdBy ?? '—'}</dd>
                             <dt>Fecha de creación</dt>
                             <dd>{formatFirestoreDate(infoCommunity.createdAt)}</dd>
-                            <dt>Icono (code point / color)</dt>
+                            <dt>Icono</dt>
                             <dd>
-                                {infoCommunity.iconCodePoint != null || infoCommunity.iconColor
-                                    ? `${infoCommunity.iconCodePoint ?? '—'} / ${infoCommunity.iconColor ?? '—'}`
+                                <CommunityIconDisplay
+                                    iconCodePoint={infoCommunity.iconCodePoint}
+                                    iconColor={
+                                        isOfficialEntityCommunity(infoCommunity)
+                                            ? infoCommunity.reportButtonColor
+                                            : infoCommunity.iconColor
+                                    }
+                                    size={40}
+                                />
+                            </dd>
+                            <dt>Color botón reportar</dt>
+                            <dd>
+                                {isOfficialEntityCommunity(infoCommunity) ? (
+                                    <span
+                                        className="admin-color-pill"
+                                        style={{ backgroundColor: infoCommunity.reportButtonColor || '#0D1B3E' }}
+                                    >
+                                        {infoCommunity.reportButtonColor || '#0D1B3E'}
+                                    </span>
+                                ) : '—'}
+                            </dd>
+                            <dt>Tipos de reporte</dt>
+                            <dd>
+                                {isOfficialEntityCommunity(infoCommunity)
+                                    ? formatReportTypes(infoCommunity.reportAlertTypes)
                                     : '—'}
                             </dd>
                             <dt>Miembros</dt>
@@ -406,9 +520,7 @@ export default function CommunitiesPage() {
             {modal && (
                 <div className="admin-modal-overlay" role="dialog">
                     <div className="admin-modal">
-                        <h3 className="admin-modal-title">
-                            {modal === 'create' ? 'Nueva comunidad' : 'Editar comunidad'}
-                        </h3>
+                        <h3 className="admin-modal-title">{modalTitle(modal)}</h3>
                         <form onSubmit={handleSubmit} className="admin-modal-form">
                             <label className="login-label">
                                 Nombre
@@ -417,6 +529,11 @@ export default function CommunitiesPage() {
                                     value={form.name}
                                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                                     required
+                                    placeholder={
+                                        isEntityModal(modal)
+                                            ? 'Una sola palabra (p. ej. Policía)'
+                                            : undefined
+                                    }
                                 />
                             </label>
                             <label className="login-label">
@@ -428,21 +545,52 @@ export default function CommunitiesPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                                 />
                             </label>
-                            {modal === 'create' && (
-                                <label className="admin-checkbox-label">
-                                    <input
-                                        type="checkbox"
-                                        checked={form.isEntity}
-                                        onChange={(e) =>
-                                            setForm((f) => ({ ...f, isEntity: e.target.checked }))
-                                        }
-                                    />
-                                    <span>
-                                        Entidad (reportes) — nombre de una sola palabra; en la app
-                                        aparece como “Reporte {form.name.trim() || 'Nombre'}” y solo
-                                        los miembros oficiales reciben los reportes.
-                                    </span>
+                            <CommunityIconPickerGrid
+                                selectedCodePoint={form.iconCodePoint}
+                                onSelect={(option) =>
+                                    setForm((f) => ({
+                                        ...f,
+                                        iconCodePoint: option.codePoint,
+                                    }))
+                                }
+                            />
+                            {isEntityModal(modal) && (
+                                <label className="login-label">
+                                    Color del botón Reportar
+                                    <div className="admin-color-field">
+                                        <input
+                                            type="color"
+                                            className="admin-color-input"
+                                            value={form.reportButtonColor || '#0D1B3E'}
+                                            onChange={(e) =>
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    reportButtonColor: e.target.value,
+                                                }))
+                                            }
+                                            aria-label="Color del botón reportar"
+                                        />
+                                        <input
+                                            className="login-input admin-color-hex"
+                                            value={form.reportButtonColor || '#0D1B3E'}
+                                            onChange={(e) =>
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    reportButtonColor: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="#0D1B3E"
+                                        />
+                                    </div>
                                 </label>
+                            )}
+                            {isEntityModal(modal) && (
+                                <EntityAlertTypesPicker
+                                    selected={form.reportAlertTypes}
+                                    onChange={(reportAlertTypes) =>
+                                        setForm((f) => ({ ...f, reportAlertTypes }))
+                                    }
+                                />
                             )}
                             {err && <div className="login-error">{err}</div>}
                             <div className="admin-modal-actions">

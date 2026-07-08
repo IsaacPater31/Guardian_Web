@@ -145,6 +145,84 @@ export async function findUserBySearch(searchText) {
 }
 
 /**
+ * Busca usuarios por nombre, correo o UID (hasta 10 coincidencias).
+ * Excluye miembros ya presentes en [excludeCommunityId] si se indica.
+ * @param {string} searchText
+ * @param {{ excludeCommunityId?: string, limit?: number }} [opts]
+ */
+export async function searchUsersByText(searchText, { excludeCommunityId, limit: max = 10 } = {}) {
+    const raw = searchText.trim();
+    if (raw.length < 2) return [];
+
+    const qLower = raw.toLowerCase();
+    const results = [];
+    const added = new Set();
+
+    const pushUser = (u) => {
+        if (!u?.id || added.has(u.id)) return;
+        added.add(u.id);
+        results.push(u);
+    };
+
+    const exact = await findUserBySearch(raw);
+    if (exact) pushUser(exact);
+    if (results.length >= max) return results.slice(0, max);
+
+    let existingMemberIds = new Set();
+    if (excludeCommunityId) {
+        try {
+            const members = await getCommunityMembers(excludeCommunityId);
+            existingMemberIds = new Set(
+                members.map((m) => m.userId).filter(Boolean)
+            );
+        } catch {
+            /* sin permiso */
+        }
+    }
+
+    const tryEmail = async (email) => {
+        if (!email || results.length >= max) return;
+        try {
+            const q = query(
+                collection(db, Collections.USERS),
+                where(UserFields.email, '==', email),
+                limit(5)
+            );
+            const snap = await getDocs(q);
+            for (const d of snap.docs) {
+                if (results.length >= max) break;
+                const u = parseUserSnap(d);
+                if (!existingMemberIds.has(u.id)) pushUser(u);
+            }
+        } catch {
+            /* sin índice */
+        }
+    };
+
+    if (raw.includes('@')) {
+        await tryEmail(raw.trim());
+        await tryEmail(qLower);
+        if (results.length >= max) return results.slice(0, max);
+    }
+
+    try {
+        const snap = await getDocs(
+            query(collection(db, Collections.USERS), orderBy(documentId()), limit(500))
+        );
+        for (const d of snap.docs) {
+            if (results.length >= max) break;
+            const u = parseUserSnap(d);
+            if (existingMemberIds.has(u.id)) continue;
+            if (userMatchesText(u, d, qLower)) pushUser(u);
+        }
+    } catch {
+        /* sin permiso */
+    }
+
+    return results.slice(0, max);
+}
+
+/**
  * Membresías de un usuario con nombre de comunidad.
  * @param {string} userId
  */
