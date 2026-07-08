@@ -17,7 +17,8 @@ export default function EntityAlertTypesPicker({ selected = [], onChange }) {
         <div className="entity-alert-types-picker">
             <p className="community-icon-picker-label">Tipos de reporte aceptados</p>
             <p className="admin-muted" style={{ margin: '0 0 var(--space-2)' }}>
-                Elige uno o más tipos que los ciudadanos podrán enviar a esta entidad.
+                Selecciona los tipos habilitados para reportes. Puede quedar vacío
+                mientras se configura la entidad.
             </p>
             <div className="entity-alert-types-grid">
                 {entries.map(([key, meta]) => {

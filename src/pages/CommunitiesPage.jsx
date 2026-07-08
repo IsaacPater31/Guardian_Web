@@ -221,12 +221,6 @@ export default function CommunitiesPage() {
             setSaving(false);
             return;
         }
-        if (entityFlow && (!form.reportAlertTypes || form.reportAlertTypes.length === 0)) {
-            setErr('Selecciona al menos un tipo de reporte para la entidad.');
-            setSaving(false);
-            return;
-        }
-
         try {
             if (modal === 'create-community') {
                 await adminCreateCommunity({

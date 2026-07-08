@@ -7,6 +7,7 @@ import {
     query,
     where,
     getDocs,
+    getDoc,
     doc,
     addDoc,
     updateDoc,
@@ -24,6 +25,14 @@ import { extractUserProfileFields } from '../utils/userDocParse';
 
 const communitiesCol = () => collection(db, Collections.COMMUNITIES);
 const membersCol = () => collection(db, Collections.COMMUNITY_MEMBERS);
+const NON_ENTITY_ROLES = new Set([
+    MemberFields.roleMember,
+    MemberFields.roleAdmin,
+]);
+const ENTITY_ROLES = new Set([
+    MemberFields.roleMember,
+    MemberFields.roleOfficial,
+]);
 
 // ─── Communities ────────────────────────────────────────────────────────────
 
@@ -49,8 +58,10 @@ export async function adminCreateCommunity({
     if (iconCodePoint != null) payload[CommunityFields.iconCodePoint] = Number(iconCodePoint);
     if (iconColor) payload[CommunityFields.iconColor] = String(iconColor);
     if (reportButtonColor) payload[CommunityFields.reportButtonColor] = String(reportButtonColor);
-    if (isEntity && Array.isArray(reportAlertTypes) && reportAlertTypes.length) {
-        payload[CommunityFields.reportAlertTypes] = reportAlertTypes;
+    if (isEntity) {
+        payload[CommunityFields.reportAlertTypes] = Array.isArray(reportAlertTypes)
+            ? reportAlertTypes
+            : [];
     }
 
     const ref = await addDoc(communitiesCol(), payload);
@@ -102,7 +113,21 @@ export async function adminDeleteCommunityCascade(communityId) {
 
 // ─── Members ────────────────────────────────────────────────────────────────
 
-const VALID_ROLES = new Set(['member', 'admin', 'official']);
+function normalizeRole(role) {
+    return String(role || '').trim().toLowerCase() || MemberFields.roleMember;
+}
+
+async function getAllowedRolesForCommunity(communityId) {
+    const communityRef = doc(db, Collections.COMMUNITIES, communityId);
+    const communitySnap = await getDoc(communityRef);
+    if (!communitySnap.exists()) {
+        throw new Error('Comunidad no encontrada');
+    }
+    const data = communitySnap.data() || {};
+    return data[CommunityFields.isEntity] === true
+        ? ENTITY_ROLES
+        : NON_ENTITY_ROLES;
+}
 
 /**
  * @param {string} communityId
@@ -110,7 +135,11 @@ const VALID_ROLES = new Set(['member', 'admin', 'official']);
  * @param {'member'|'admin'|'official'} role
  */
 export async function adminAddCommunityMember(communityId, userId, role) {
-    const r = VALID_ROLES.has(role) ? role : MemberFields.roleMember;
+    const r = normalizeRole(role);
+    const allowedRoles = await getAllowedRolesForCommunity(communityId);
+    if (!allowedRoles.has(r)) {
+        throw new Error('Rol inválido para esta comunidad');
+    }
     await addDoc(membersCol(), {
         [MemberFields.communityId]: communityId,
         [MemberFields.userId]: userId,
@@ -124,9 +153,23 @@ export async function adminRemoveMember(memberDocId) {
 }
 
 export async function adminUpdateMemberRole(memberDocId, role) {
-    if (!VALID_ROLES.has(role)) return;
-    await updateDoc(doc(db, Collections.COMMUNITY_MEMBERS, memberDocId), {
-        [MemberFields.role]: role,
+    const r = normalizeRole(role);
+    const memberRef = doc(db, Collections.COMMUNITY_MEMBERS, memberDocId);
+    const memberSnap = await getDoc(memberRef);
+    if (!memberSnap.exists()) {
+        throw new Error('Miembro no encontrado');
+    }
+    const memberData = memberSnap.data() || {};
+    const communityId = memberData[MemberFields.communityId];
+    if (!communityId) {
+        throw new Error('Miembro inválido: falta community_id');
+    }
+    const allowedRoles = await getAllowedRolesForCommunity(communityId);
+    if (!allowedRoles.has(r)) {
+        throw new Error('Rol inválido para esta comunidad');
+    }
+    await updateDoc(memberRef, {
+        [MemberFields.role]: r,
     });
 }
 

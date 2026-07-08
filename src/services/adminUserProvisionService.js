@@ -21,10 +21,10 @@ import {
     updateProfile,
     signOut,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Collections } from '../config/collections';
-import { UserFields, MemberFields } from '../config/firestoreFields';
+import { UserFields, MemberFields, CommunityFields } from '../config/firestoreFields';
 import { adminAddCommunityMember } from './adminCrudService';
 
 const SECONDARY_APP_NAME = 'admin-user-provision';
@@ -53,7 +53,6 @@ function getSecondaryAuth() {
  * @param {string} params.password — contraseña inicial (el funcionario puede cambiarla luego)
  * @param {string} params.displayName
  * @param {string} params.communityId — entidad a la que se vincula como oficial
- * @param {'official'|'admin'} [params.role='official']
  * @returns {Promise<string>} UID del usuario creado
  */
 export async function adminCreateOfficialUser({
@@ -61,7 +60,6 @@ export async function adminCreateOfficialUser({
     password,
     displayName,
     communityId,
-    role = MemberFields.roleOfficial,
 }) {
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanName = String(displayName || '').trim();
@@ -70,6 +68,14 @@ export async function adminCreateOfficialUser({
     }
     if (!communityId) {
         throw new Error('Debe indicar la entidad a la que pertenece el usuario');
+    }
+    const communityRef = doc(db, Collections.COMMUNITIES, communityId);
+    const communitySnap = await getDoc(communityRef);
+    if (!communitySnap.exists()) {
+        throw new Error('Entidad no encontrada');
+    }
+    if (communitySnap.data()?.[CommunityFields.isEntity] !== true) {
+        throw new Error('Solo se pueden crear oficiales en entidades');
     }
 
     const secondaryAuth = getSecondaryAuth();
@@ -103,7 +109,7 @@ export async function adminCreateOfficialUser({
         { merge: true }
     );
 
-    await adminAddCommunityMember(communityId, uid, role);
+    await adminAddCommunityMember(communityId, uid, MemberFields.roleOfficial);
 
     return uid;
 }

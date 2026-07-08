@@ -16,12 +16,12 @@ const BASE_ROLES = [
     { value: 'admin', label: 'Administrador' },
 ];
 
-// El rol "oficial" solo aplica en entidades: junto con admin, son quienes
-// reciben los reportes enviados a la entidad.
+// En entidades solo existen dos roles:
+// - member: ciudadano
+// - official: staff que gestiona reportes
 const ENTITY_ROLES = [
     { value: 'member', label: 'Miembro' },
     { value: 'official', label: 'Oficial' },
-    { value: 'admin', label: 'Administrador' },
 ];
 
 const emptyOfficialForm = {
@@ -73,6 +73,13 @@ export default function CommunityDetailPage() {
     useEffect(() => {
         load();
     }, [load]);
+
+    useEffect(() => {
+        if (!isEntity) return;
+        if (newRole !== 'member' && newRole !== 'official') {
+            setNewRole('member');
+        }
+    }, [isEntity, newRole]);
 
     useEffect(() => {
         if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -149,6 +156,7 @@ export default function CommunityDetailPage() {
 
     async function createOfficial(e) {
         e.preventDefault();
+        if (!isEntity) return;
         setOfficialErr('');
         setOfficialOk('');
         setBusy(true);
@@ -399,7 +407,9 @@ export default function CommunityDetailPage() {
                                                 <select
                                                     className="login-input admin-select-inline"
                                                     value={
-                                                        !isEntity && m.role === 'official'
+                                                        isEntity && m.role === 'admin'
+                                                            ? 'official'
+                                                            : !isEntity && m.role === 'official'
                                                             ? 'member'
                                                             : m.role
                                                     }
