@@ -1,16 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
 import {
-    fetchAlertsPage,
-    fetchActivePendingAlertId,
+    subscribeToAlertsFiltered,
     isActivePendingAlert,
 } from '../services/alertService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
 import AlertFilterPanel from '../components/AlertFilterPanel';
-import AdminPaginationBar from '../components/admin/AdminPaginationBar';
-import { ALERTS_LIST_PAGE_SIZE } from '../config/adminPagination';
 import { EMPTY_FILTERS, countActiveFilters } from '../config/filterOptions';
 
 const STATUS_LABELS = {
@@ -34,75 +31,23 @@ export default function AlertsPage() {
     const [filters, setFilters]             = useState(EMPTY_FILTERS);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(false);
-    const cursorsRef = useRef([null]);
-    const listAnchorRef = useRef(null);
 
-    const resetToFirstPage = useCallback(() => {
-        cursorsRef.current = [null];
-        setPage(1);
-    }, []);
-
-    const goToPage = useCallback((nextPage) => {
-        setPage(nextPage);
-        requestAnimationFrame(() => {
-            listAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const subscribe = useCallback((activeFilters) => {
+        setLoading(true);
+        const unsub = subscribeToAlertsFiltered(activeFilters, (data, meta = {}) => {
+            setAlerts(data);
+            setLatestContextAlertId(meta.latestContextAlertId ?? null);
+            setLoading(false);
         });
+        return unsub;
     }, []);
 
     useEffect(() => {
-        let cancelled = false;
-
-        async function loadActiveId() {
-            try {
-                const id = await fetchActivePendingAlertId();
-                if (!cancelled) setLatestContextAlertId(id);
-            } catch {
-                if (!cancelled) setLatestContextAlertId(null);
-            }
-        }
-
-        loadActiveId();
-        return () => {
-            cancelled = true;
-        };
-    }, [filters]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function loadPage() {
-            setLoading(true);
-            const cursor = page > 1 ? cursorsRef.current[page - 1] : null;
-            try {
-                const result = await fetchAlertsPage(filters, {
-                    pageSize: ALERTS_LIST_PAGE_SIZE,
-                    cursor,
-                });
-                if (cancelled) return;
-                cursorsRef.current[page] = result.lastDoc;
-                setAlerts(result.items);
-                setHasMore(result.hasMore);
-            } catch (e) {
-                if (!cancelled) {
-                    console.error('[AlertsPage] fetchAlertsPage', e);
-                    setAlerts([]);
-                    setHasMore(false);
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-
-        loadPage();
-        return () => {
-            cancelled = true;
-        };
-    }, [filters, page]);
+        const unsub = subscribe(filters);
+        return unsub;
+    }, [filters, subscribe]);
 
     const applyFilters = (newFilters) => {
-        resetToFirstPage();
         setFilters(newFilters);
     };
 
@@ -120,7 +65,6 @@ export default function AlertsPage() {
                 label: getAlertLabel(type),
                 color: getAlertColor(type),
                 onRemove: () => {
-                    resetToFirstPage();
                     setFilters((prev) => ({
                         ...prev,
                         types: prev.types.filter((t) => t !== type),
@@ -135,10 +79,7 @@ export default function AlertsPage() {
             key: 'status',
             label: STATUS_LABELS[filters.status],
             color: filters.status === 'attended' ? '#34C759' : '#FF9500',
-            onRemove: () => {
-                resetToFirstPage();
-                setFilters((prev) => ({ ...prev, status: 'all' }));
-            },
+            onRemove: () => setFilters((prev) => ({ ...prev, status: 'all' })),
         });
     }
 
@@ -148,7 +89,6 @@ export default function AlertsPage() {
             label: DATE_LABELS[filters.dateRange] ?? 'Fecha',
             color: '#3F51B5',
             onRemove: () => {
-                resetToFirstPage();
                 setFilters((prev) => ({
                     ...prev,
                     dateRange: 'all',
@@ -207,7 +147,7 @@ export default function AlertsPage() {
             </div>
             </div>
 
-            <div className="section section--dash" ref={listAnchorRef}>
+            <div className="section section--dash">
                 <div className="section-header">
                     <div className="section-header-left">
                         <div className="section-icon" style={{ background: 'rgba(255, 59, 48, 0.08)' }}>
@@ -218,24 +158,20 @@ export default function AlertsPage() {
                                 {hasFilters ? 'Resultados filtrados' : 'Todas las alertas'}
                             </h3>
                             <p className="section-subtitle">
-                                {hasFilters
-                                    ? 'Mostrando alertas que coinciden con tus filtros, de más reciente a más antigua'
-                                    : 'Historial de alertas de la comunidad, de más reciente a más antigua'}
+                                Actualización en tiempo real — de más reciente a más antigua
                             </p>
                         </div>
                     </div>
-                    {!loading && (
-                        <span
-                            className="section-badge"
-                            style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }}
-                        >
-                            {alerts.length}
-                        </span>
-                    )}
+                    <span
+                        className="section-badge"
+                        style={{ background: 'rgba(255, 59, 48, 0.1)', color: '#FF3B30' }}
+                    >
+                        {alerts.length}
+                    </span>
                 </div>
 
                 <div className="section-body section-body--flush">
-                    {alerts.length === 0 && !loading ? (
+                    {alerts.length === 0 ? (
                         <div className="empty-state">
                             <div className="empty-state-icon">
                                 <LucideIcons.CheckCircle />
@@ -243,10 +179,8 @@ export default function AlertsPage() {
                             <div className="empty-state-title">Sin alertas</div>
                             <div className="empty-state-desc">
                                 {hasFilters
-                                    ? 'Ninguna alerta coincide con los filtros en esta página.'
-                                    : page > 1
-                                      ? 'No hay alertas en esta página. Prueba volver a la anterior.'
-                                      : 'Aún no hay alertas registradas.'}
+                                    ? 'Ninguna alerta coincide con los filtros.'
+                                    : 'Aún no hay alertas registradas.'}
                             </div>
                             {hasFilters && (
                                 <button
@@ -266,7 +200,7 @@ export default function AlertsPage() {
                                 </button>
                             )}
                         </div>
-                    ) : alerts.length > 0 ? (
+                    ) : (
                         <div className={`alerts-feed-grid${loading ? ' alerts-feed-grid--loading' : ''}`}>
                             {alerts.map((alert) => (
                                 <AlertCard
@@ -277,21 +211,6 @@ export default function AlertsPage() {
                                 />
                             ))}
                         </div>
-                    ) : null}
-
-                    {(page > 1 || hasMore || alerts.length > 0) && (
-                        <AdminPaginationBar
-                            page={page}
-                            hasMore={hasMore}
-                            loading={loading}
-                            onPrev={() => page > 1 && goToPage(page - 1)}
-                            onNext={() => hasMore && goToPage(page + 1)}
-                            pageSize={ALERTS_LIST_PAGE_SIZE}
-                            shownCount={alerts.length}
-                            label="alertas"
-                            labelSingular="alerta"
-                            filterActive={hasFilters}
-                        />
                     )}
                 </div>
             </div>

@@ -4,7 +4,7 @@
  */
 
 import {
-    collection, getDocs, getCountFromServer, query, where,
+    collection, doc, getDocs, getCountFromServer, query, where,
     onSnapshot, documentId, orderBy, limit, startAfter,
 } from 'firebase/firestore';
 import { db }          from '../firebase';
@@ -133,26 +133,11 @@ export function subscribeToCommunities(callback) {
     });
 }
 
-/**
- * Fetch members of a community, enriched with display names from users/alerts.
- *
- * @param {string} communityId
- * @returns {Promise<Array<{
- *   id: string, userId: string|null, role: string,
- *   joinedAt: any, displayName: string|null, email: string|null,
- * }>>}
- */
-export async function getCommunityMembers(communityId) {
-    const q        = query(
-        collection(db, Collections.COMMUNITY_MEMBERS),
-        where('community_id', '==', communityId)
-    );
-    const snapshot = await getDocs(q);
-
-    const members = snapshot.docs.map((doc) => {
-        const d = doc.data();
+function membersFromSnapshot(snapshot) {
+    return snapshot.docs.map((memberDoc) => {
+        const d = memberDoc.data();
         return {
-            id:          doc.id,
+            id:          memberDoc.id,
             userId:      d.user_id      || d.userId      || null,
             role:        d.role                          || 'member',
             joinedAt:    d.joined_at    || d.joinedAt    || null,
@@ -160,11 +145,12 @@ export async function getCommunityMembers(communityId) {
             email:       d.email        || d.user_email  || null,
         };
     });
+}
 
+async function enrichMembers(members) {
     const userIds = [...new Set(members.map((m) => m.userId).filter(Boolean))];
     if (userIds.length === 0) return members;
 
-    // Enrich names from the users collection (batched in groups of 10 — Firestore `in` limit)
     const userMap = new Map();
     try {
         for (let i = 0; i < userIds.length; i += 10) {
@@ -176,7 +162,6 @@ export async function getCommunityMembers(communityId) {
         }
     } catch { /* users collection may not be public */ }
 
-    // Fallback: enrich from alert documents (they store userName/userEmail)
     const alertUserMap = new Map();
     try {
         for (let i = 0; i < userIds.length; i += 10) {
@@ -210,4 +195,75 @@ export async function getCommunityMembers(communityId) {
                 null,
         };
     });
+}
+
+/**
+ * Fetch members of a community, enriched with display names from users/alerts.
+ *
+ * @param {string} communityId
+ * @returns {Promise<Array<{
+ *   id: string, userId: string|null, role: string,
+ *   joinedAt: any, displayName: string|null, email: string|null,
+ * }>>}
+ */
+export async function getCommunityMembers(communityId) {
+    const q        = query(
+        collection(db, Collections.COMMUNITY_MEMBERS),
+        where('community_id', '==', communityId)
+    );
+    const snapshot = await getDocs(q);
+    return enrichMembers(membersFromSnapshot(snapshot));
+}
+
+/** Real-time subscription to community members (enriched). */
+export function subscribeCommunityMembers(communityId, callback) {
+    const q = query(
+        collection(db, Collections.COMMUNITY_MEMBERS),
+        where('community_id', '==', communityId),
+    );
+    return onSnapshot(
+        q,
+        async (snapshot) => {
+            try {
+                callback(await enrichMembers(membersFromSnapshot(snapshot)));
+            } catch (e) {
+                console.error('[communityService] subscribeCommunityMembers', e);
+                callback(membersFromSnapshot(snapshot));
+            }
+        },
+        (e) => {
+            console.error('[communityService] subscribeCommunityMembers', e);
+            callback([]);
+        },
+    );
+}
+
+/** Real-time member count for a community. */
+export function subscribeCommunityMemberCount(communityId, callback) {
+    const q = query(
+        collection(db, Collections.COMMUNITY_MEMBERS),
+        where('community_id', '==', communityId),
+    );
+    return onSnapshot(
+        q,
+        (snapshot) => callback(snapshot.size),
+        () => callback(0),
+    );
+}
+
+/** Real-time subscription to a single community document. */
+export function subscribeCommunity(communityId, callback) {
+    return onSnapshot(
+        doc(db, Collections.COMMUNITIES, communityId),
+        (snap) => {
+            if (!snap.exists()) {
+                callback(null);
+                return;
+            }
+            const community = parseCommunity(snap);
+            _nameCache[community.id] = community.name;
+            callback(community);
+        },
+        () => callback(null),
+    );
 }

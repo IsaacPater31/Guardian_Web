@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, UserMinus, UserPlus, Users } from 'lucide-react';
-import { getAllCommunities, getCommunityMembers } from '../services/communityService';
+import { subscribeCommunity, subscribeCommunityMembers } from '../services/communityService';
 import {
     adminAddCommunityMember,
     adminRemoveMember,
@@ -52,27 +52,32 @@ export default function CommunityDetailPage() {
 
     const roles = isEntity ? ENTITY_ROLES : BASE_ROLES;
 
-    const load = useCallback(async () => {
-        if (!communityId) return;
+    useEffect(() => {
+        if (!communityId) return undefined;
         setLoading(true);
-        try {
-            const all = await getAllCommunities();
-            const c = all.find((x) => x.id === communityId);
+        let communityReady = false;
+        let membersReady = false;
+        const markReady = () => {
+            if (communityReady && membersReady) setLoading(false);
+        };
+
+        const unsubCommunity = subscribeCommunity(communityId, (c) => {
             setCommunityName(c?.name || communityId);
             setIsEntity(c ? isOfficialEntityCommunity(c) : false);
-            const m = await getCommunityMembers(communityId);
+            communityReady = true;
+            markReady();
+        });
+        const unsubMembers = subscribeCommunityMembers(communityId, (m) => {
             setMembers(m);
-        } catch (e) {
-            console.error(e);
-            setMembers([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [communityId]);
+            membersReady = true;
+            markReady();
+        });
 
-    useEffect(() => {
-        load();
-    }, [load]);
+        return () => {
+            unsubCommunity();
+            unsubMembers();
+        };
+    }, [communityId]);
 
     useEffect(() => {
         if (!isEntity) return;
@@ -121,7 +126,6 @@ export default function CommunityDetailPage() {
             await adminAddCommunityMember(communityId, user.id, newRole);
             setMemberSearch('');
             setSearchResults([]);
-            await load();
         } catch (err) {
             setSearchErr(err?.message || 'No se pudo agregar');
         } finally {
@@ -134,7 +138,6 @@ export default function CommunityDetailPage() {
         setBusy(true);
         try {
             await adminRemoveMember(memberDocId);
-            await load();
         } catch (err) {
             alert(err?.message || 'Error');
         } finally {
@@ -146,7 +149,6 @@ export default function CommunityDetailPage() {
         setBusy(true);
         try {
             await adminUpdateMemberRole(memberId, role);
-            await load();
         } catch (err) {
             alert(err?.message || 'Error');
         } finally {
@@ -169,7 +171,6 @@ export default function CommunityDetailPage() {
             });
             setOfficialOk(`Usuario oficial creado (UID: ${uid}).`);
             setOfficialForm({ ...emptyOfficialForm });
-            await load();
         } catch (err) {
             setOfficialErr(err?.message || 'No se pudo crear el usuario oficial');
         } finally {

@@ -17,6 +17,7 @@ import {
     orderBy,
     limit,
     Timestamp,
+    onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Collections } from '../config/collections';
@@ -243,4 +244,62 @@ export async function adminListUsersInCreatedRange(startDate, endDate, limitCoun
             .filter((u) => u.createdAtMs > 0 && u.createdAtMs >= t0 && u.createdAtMs <= t1)
             .slice(0, limitCount);
     }
+}
+
+/**
+ * Real-time subscription to users created within a date range.
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @param {(users: ReturnType<typeof parseUserDoc>[]) => void} callback
+ * @param {number} [limitCount=120]
+ * @returns {() => void}
+ */
+export function subscribeUsersInCreatedRange(startDate, endDate, callback, limitCount = 120) {
+    const start = Timestamp.fromDate(startDate);
+    const end = Timestamp.fromDate(endDate);
+    const endMs = endDate.getTime();
+    let unsub = () => {};
+    let fallbackApplied = false;
+
+    const attach = (withUpperBound) => {
+        unsub();
+        const constraints = [
+            where(UserFields.createdAt, '>=', start),
+            orderBy(UserFields.createdAt, 'desc'),
+            limit(withUpperBound ? limitCount : Math.max(limitCount * 4, 200)),
+        ];
+        if (withUpperBound) {
+            constraints.splice(1, 0, where(UserFields.createdAt, '<=', end));
+        }
+
+        unsub = onSnapshot(
+            query(collection(db, Collections.USERS), ...constraints),
+            (snap) => {
+                let users = snap.docs.map(parseUserDoc);
+                if (!withUpperBound) {
+                    users = users.filter(
+                        (u) => u.createdAtMs > 0 && u.createdAtMs >= startDate.getTime() && u.createdAtMs <= endMs,
+                    );
+                }
+                callback(users.slice(0, limitCount));
+            },
+            async (error) => {
+                if (withUpperBound && !fallbackApplied) {
+                    fallbackApplied = true;
+                    console.warn('[subscribeUsersInCreatedRange] fallback:', error?.message);
+                    attach(false);
+                    return;
+                }
+                console.error('[subscribeUsersInCreatedRange]', error?.message);
+                try {
+                    callback(await adminListUsersInCreatedRange(startDate, endDate, limitCount));
+                } catch {
+                    callback([]);
+                }
+            },
+        );
+    };
+
+    attach(true);
+    return () => unsub();
 }

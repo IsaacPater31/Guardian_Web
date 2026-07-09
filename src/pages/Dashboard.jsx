@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Area,
     AreaChart,
@@ -22,7 +22,7 @@ import {
     Users,
 } from 'lucide-react';
 import { subscribeToAlertsInDateRange, isActivePendingAlert } from '../services/alertService';
-import { adminListUsersInCreatedRange } from '../services/adminCrudService';
+import { subscribeUsersInCreatedRange } from '../services/adminCrudService';
 import { getAlertColor, getAlertLabel } from '../config/alertTypes';
 import AlertCard from '../components/AlertCard';
 import AlertDetailModal from '../components/AlertDetailModal';
@@ -70,7 +70,7 @@ function computeAnalysisRange(mode, presetDays, customStart, customEnd) {
         if (e.getTime() > now.getTime()) e = now;
         return { start: s, end: e, incomplete: false };
     }
-    return { start: daysAgo(presetDays), end: now, incomplete: false };
+    return { start: daysAgo(presetDays), end: endOfDay(now), incomplete: false };
 }
 
 function localDateKey(d) {
@@ -182,13 +182,11 @@ export default function Dashboard() {
     const [presetDays, setPresetDays] = useState(30);
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
-    const [loading, setLoading] = useState(true);
     const [bootstrapping, setBootstrapping] = useState(true);
     const [alerts, setAlerts] = useState([]);
     const [newUsers, setNewUsers] = useState([]);
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
-    const [manualRefreshKey, setManualRefreshKey] = useState(0);
     const hasBootstrappedRef = useRef(false);
     const [chartH, setChartH] = useState(320);
     useEffect(() => {
@@ -205,29 +203,12 @@ export default function Dashboard() {
         [rangeMode, presetDays, customStart, customEnd],
     );
 
-    const loadUsers = useCallback(async () => {
-        setLoading(true);
-        try {
-            const users = await adminListUsersInCreatedRange(rangeStart, rangeEnd, 120);
-            setNewUsers(users);
-        } catch (e) {
-            console.error(e);
-            setNewUsers([]);
-        } finally {
-            if (hasBootstrappedRef.current) {
-                setLoading(false);
-            }
-        }
+    useEffect(() => {
+        const unsub = subscribeUsersInCreatedRange(rangeStart, rangeEnd, setNewUsers, 120);
+        return unsub;
     }, [rangeStart, rangeEnd]);
 
     useEffect(() => {
-        loadUsers();
-    }, [loadUsers, manualRefreshKey]);
-
-    useEffect(() => {
-        if (hasBootstrappedRef.current) {
-            setLoading(true);
-        }
         const unsub = subscribeToAlertsInDateRange(rangeStart, rangeEnd, (alData, meta = {}) => {
             setAlerts(alData);
             setLatestContextAlertId(meta.latestContextAlertId ?? null);
@@ -236,11 +217,10 @@ export default function Dashboard() {
                 hasBootstrappedRef.current = true;
                 setBootstrapping(false);
             }
-            setLoading(false);
         }, 2500);
 
         return unsub;
-    }, [rangeStart, rangeEnd, manualRefreshKey]);
+    }, [rangeStart, rangeEnd]);
 
     const stats = useMemo(() => {
         const byType = {};
@@ -311,11 +291,10 @@ export default function Dashboard() {
     }
 
     const periodKey = `${rangeStart.getTime()}-${rangeEnd.getTime()}-${rangeMode}`;
-    const isRefreshing = loading && !bootstrapping;
 
     return (
         <>
-            <div className={`dash-period-card${isRefreshing ? ' dash-period-card--busy' : ''}`}>
+            <div className="dash-period-card">
                 <div className="dash-period-head">
                     <div className="dash-period-head-main">
                         <div className="dash-period-title">Periodo</div>
@@ -323,14 +302,6 @@ export default function Dashboard() {
                             {periodSummary}
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        className={`dash-refresh-btn${isRefreshing ? ' dash-refresh-btn--busy' : ''}`}
-                        onClick={() => setManualRefreshKey((v) => v + 1)}
-                        disabled={loading}
-                    >
-                        {loading ? 'Actualizando…' : 'Actualizar'}
-                    </button>
                 </div>
                 <div className="admin-toolbar-ranges dash-period-ranges">
                     <div className="admin-segmented admin-segmented--ios admin-segmented--scroll">
@@ -391,10 +362,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <div
-                className={`dash-main${isRefreshing ? ' dash-main--refreshing' : ''}`}
-                aria-busy={isRefreshing}
-            >
+            <div className="dash-main">
             <div className="stats-grid admin-stats-grid">
                 {[
                     {

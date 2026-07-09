@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Users, Building2, Info, ShieldCheck } from 'lucide-react';
 import AdminPaginationBar from '../components/admin/AdminPaginationBar';
 import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
 import {
-    fetchCommunitiesPage,
-    getCommunitiesCount,
-    getCommunityMemberCount,
+    subscribeToCommunities,
+    subscribeCommunityMemberCount,
 } from '../services/communityService';
 import {
     adminCreateCommunity,
@@ -82,10 +81,8 @@ function formatFirestoreDate(val) {
 }
 
 export default function CommunitiesPage() {
-    const [list, setList] = useState([]);
+    const [allCommunities, setAllCommunities] = useState([]);
     const [page, setPage] = useState(1);
-    const cursorsRef = useRef([null]);
-    const [hasMore, setHasMore] = useState(false);
     const [total, setTotal] = useState(null);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
@@ -96,6 +93,13 @@ export default function CommunitiesPage() {
     const [infoMemberCount, setInfoMemberCount] = useState(null);
     const listAnchorRef = useRef(null);
 
+    const list = useMemo(() => {
+        const start = (page - 1) * ADMIN_LIST_PAGE_SIZE;
+        return allCommunities.slice(start, start + ADMIN_LIST_PAGE_SIZE);
+    }, [allCommunities, page]);
+
+    const hasMore = page * ADMIN_LIST_PAGE_SIZE < allCommunities.length;
+
     function goToPage(nextPage) {
         setPage(nextPage);
         requestAnimationFrame(() => {
@@ -103,80 +107,26 @@ export default function CommunitiesPage() {
         });
     }
 
-    async function refresh({ targetPage = page } = {}) {
-        setLoading(true);
-        try {
-            const cursor = targetPage > 1 ? cursorsRef.current[targetPage - 1] : null;
-            const [result, count] = await Promise.all([
-                fetchCommunitiesPage({ pageSize: ADMIN_LIST_PAGE_SIZE, cursor }),
-                total == null ? getCommunitiesCount().catch(() => null) : Promise.resolve(total),
-            ]);
-            cursorsRef.current[targetPage] = result.lastDoc;
-            // El panel admin muestra también entidades (a diferencia del móvil).
-            setList(result.items);
-            setHasMore(result.hasMore);
-            if (count != null) setTotal(count);
-            if (targetPage !== page) setPage(targetPage);
-        } catch (e) {
-            console.error(e);
-            setList([]);
-            setHasMore(false);
-        } finally {
-            setLoading(false);
-        }
-    }
-
     useEffect(() => {
-        let cancelled = false;
-
-        async function load() {
-            setLoading(true);
-            try {
-                const cursor = page > 1 ? cursorsRef.current[page - 1] : null;
-                const [result, count] = await Promise.all([
-                    fetchCommunitiesPage({ pageSize: ADMIN_LIST_PAGE_SIZE, cursor }),
-                    getCommunitiesCount().catch(() => null),
-                ]);
-                if (cancelled) return;
-                cursorsRef.current[page] = result.lastDoc;
-                setList(result.items);
-                setHasMore(result.hasMore);
-                if (count != null) setTotal(count);
-            } catch (e) {
-                if (!cancelled) {
-                    console.error(e);
-                    setList([]);
-                    setHasMore(false);
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-
-        load();
-        return () => {
-            cancelled = true;
-        };
-    }, [page]);
+        setLoading(true);
+        const unsub = subscribeToCommunities((communities) => {
+            const sorted = [...communities].sort((a, b) =>
+                (a.name || '').localeCompare(b.name || '', 'es'),
+            );
+            setAllCommunities(sorted);
+            setTotal(sorted.length);
+            setLoading(false);
+        });
+        return unsub;
+    }, []);
 
     useEffect(() => {
         if (!infoCommunity) {
             setInfoMemberCount(null);
-            return;
+            return undefined;
         }
-        let cancelled = false;
         setInfoMemberCount('loading');
-        (async () => {
-            try {
-                const n = await getCommunityMemberCount(infoCommunity.id);
-                if (!cancelled) setInfoMemberCount(n);
-            } catch {
-                if (!cancelled) setInfoMemberCount(null);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
+        return subscribeCommunityMemberCount(infoCommunity.id, (n) => setInfoMemberCount(n));
     }, [infoCommunity]);
 
     function openCreateCommunity() {
@@ -263,9 +213,7 @@ export default function CommunitiesPage() {
                 });
             }
             setModal(null);
-            cursorsRef.current = [null];
             setPage(1);
-            await refresh({ targetPage: 1 });
         } catch (e) {
             setErr(e?.message || 'Error al guardar');
         } finally {
@@ -284,9 +232,7 @@ export default function CommunitiesPage() {
         setSaving(true);
         try {
             await adminDeleteCommunityCascade(c.id);
-            cursorsRef.current = [null];
             setPage(1);
-            await refresh({ targetPage: 1 });
         } catch (e) {
             alert(e?.message || 'No se pudo eliminar');
         } finally {

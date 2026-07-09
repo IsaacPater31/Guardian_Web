@@ -563,12 +563,36 @@ export async function getCommunityAlerts(communityId) {
     const snapshot = await getDocs(q);
     return snapshot.docs
         .map(parseAlert)
-        .sort((a, b) => {
-            const tA = a.timestamp?.toDate?.() ?? new Date(0);
-            const tB = b.timestamp?.toDate?.() ?? new Date(0);
-            return tB - tA;
-        })
+        .sort((a, b) => alertTimeMs(b) - alertTimeMs(a))
         .slice(0, QUERY_CONFIG.communityAlertsLimit);
+}
+
+/**
+ * Real-time subscription to alerts for a specific community.
+ * @param {string} communityId
+ * @param {(alerts: AlertObject[]) => void} callback
+ * @returns {() => void}
+ */
+export function subscribeToCommunityAlerts(communityId, callback) {
+    const q = query(
+        alertsCol(),
+        where(AlertFields.communityIds, 'array-contains', communityId),
+    );
+
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            const alerts = snapshot.docs
+                .map(parseAlert)
+                .sort((a, b) => alertTimeMs(b) - alertTimeMs(a))
+                .slice(0, QUERY_CONFIG.communityAlertsLimit);
+            callback(alerts);
+        },
+        (error) => {
+            console.error('[alertService] subscribeToCommunityAlerts', error.message);
+            callback([]);
+        },
+    );
 }
 
 /**
