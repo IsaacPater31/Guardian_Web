@@ -58,7 +58,9 @@ export function LocateMeButton({ userPosition, onLocate }) {
     }
 
     return (
-        <div style={{
+        <div
+            className="map-locate-btn"
+            style={{
             position: 'absolute',
             bottom: 'var(--space-8, 32px)',
             right: 'var(--space-4, 16px)',
@@ -66,6 +68,7 @@ export function LocateMeButton({ userPosition, onLocate }) {
         }}>
             <button
                 title={userPosition ? 'Centrar en mi ubicación' : 'Obtener mi ubicación'}
+                aria-label={userPosition ? 'Centrar en mi ubicación' : 'Obtener mi ubicación'}
                 onClick={handleClick}
                 style={{
                     width: 42,

@@ -15,8 +15,11 @@ import SelectedAlertPanel from '../components/Map/SelectedAlertPanel';
 import MapAlertCountBadge from '../components/Map/MapAlertCountBadge';
 import RequestLocationOnFirstInteraction from '../components/Map/RequestLocationOnFirstInteraction';
 import MapFilterPanel from '../components/Map/MapFilterPanel';
+import MapCommunityFilterBar from '../components/Map/MapCommunityFilterBar';
 import { DEFAULT_FILTERS } from '../config/filterOptions';
 import { ACTIVE_ALERT_FEEDBACK_MS } from '../config/alertTypes';
+import { getAllCommunities } from '../services/communityService';
+import { filterAlertsByCommunities } from '../utils/alertScope';
 
 function MapFocusController({ focusAlert }) {
     const map = useMap();
@@ -46,20 +49,41 @@ function MapFocusController({ focusAlert }) {
 
 // ─── MapPage ──────────────────────────────────────────────────────────────────
 export default function MapPage() {
-    const [alerts, setAlerts] = useState([]);
+    const [rawAlerts, setRawAlerts] = useState([]);
     const [alertsLoading, setAlertsLoading] = useState(true);
     const [selectedAlertId, setSelectedAlertId] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [timedPriorityAlertId, setTimedPriorityAlertId] = useState(null);
     const [focusedAlert, setFocusedAlert] = useState(null);
+    const [communities, setCommunities] = useState([]);
+    /** null = all; [] = none; [ids] = subset */
+    const [selectedCommunityIds, setSelectedCommunityIds] = useState(null);
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
     const unsubRef = useRef(null);
     const isInitialSnapshotRef = useRef(true);
     const lastAutoFocusIdRef = useRef(null);
+    const selectedCommunityIdsRef = useRef(selectedCommunityIds);
+    selectedCommunityIdsRef.current = selectedCommunityIds;
 
-    // Re-subscribe every time filters change
+    useEffect(() => {
+        let cancelled = false;
+        getAllCommunities()
+            .then((list) => {
+                if (cancelled) return;
+                const mapped = (list || [])
+                    .map((c) => ({ id: c.id, name: c.name || 'Comunidad' }))
+                    .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+                setCommunities(mapped);
+            })
+            .catch((err) => {
+                console.error('[MapPage] getAllCommunities', err);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    // Type / status / date → Firestore only (community is client AND via useMemo)
     useEffect(() => {
         if (unsubRef.current) {
             unsubRef.current();
@@ -73,7 +97,7 @@ export default function MapPage() {
         setAlertsLoading(true);
 
         const unsub = subscribeToMapAlertsFiltered(filters, (data, meta = {}) => {
-            setAlerts(data);
+            setRawAlerts(data);
             setAlertsLoading(false);
 
             if (isInitialSnapshotRef.current) {
@@ -81,11 +105,16 @@ export default function MapPage() {
                 return;
             }
 
+            const communityFilter = selectedCommunityIdsRef.current;
+            const scoped = communityFilter == null
+                ? data
+                : filterAlertsByCommunities(data, communityFilter);
+
             const changedIds = Array.isArray(meta.changedIds) ? meta.changedIds : [];
-            const newestChanged = findNewestPendingAmongChanges(data, changedIds);
+            const newestChanged = findNewestPendingAmongChanges(scoped, changedIds);
             if (!newestChanged?.id) return;
 
-            const nextActiveId = sortPendingAlertsNewestFirst(data)[0]?.id ?? null;
+            const nextActiveId = sortPendingAlertsNewestFirst(scoped)[0]?.id ?? null;
             if (newestChanged.id !== nextActiveId) return;
 
             setTimedPriorityAlertId(newestChanged.id);
@@ -110,6 +139,11 @@ export default function MapPage() {
             }
         };
     }, [filters]);
+
+    const alerts = useMemo(() => {
+        if (selectedCommunityIds == null) return rawAlerts;
+        return filterAlertsByCommunities(rawAlerts, selectedCommunityIds);
+    }, [rawAlerts, selectedCommunityIds]);
 
     useEffect(() => {
         if (!timedPriorityAlertId) return undefined;
@@ -162,7 +196,7 @@ export default function MapPage() {
     }, [selectedAlertId]);
 
     return (
-        <div className="map-page">
+        <div className="map-page has-community-filter">
             <div className="map-container">
                 <MapContainer
                     center={userPosition || DEFAULT_CENTER}
@@ -223,6 +257,12 @@ export default function MapPage() {
                     }
                     selectedAlertId={selectedAlertId}
                     onRecentAlertSelect={handleRecentAlertSelect}
+                />
+
+                <MapCommunityFilterBar
+                    communities={communities}
+                    selectedIds={selectedCommunityIds}
+                    onChange={setSelectedCommunityIds}
                 />
 
                 {/* Alert count badge */}

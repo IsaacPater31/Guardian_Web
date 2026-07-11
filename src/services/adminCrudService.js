@@ -23,6 +23,7 @@ import { db } from '../firebase';
 import { Collections } from '../config/collections';
 import { CommunityFields, MemberFields, UserFields } from '../config/firestoreFields';
 import { extractUserProfileFields } from '../utils/userDocParse';
+import { InboxKinds, notifyMembershipEvent } from './inboxNotifyService';
 
 const communitiesCol = () => collection(db, Collections.COMMUNITIES);
 const membersCol = () => collection(db, Collections.COMMUNITY_MEMBERS);
@@ -130,12 +131,18 @@ async function getAllowedRolesForCommunity(communityId) {
         : NON_ENTITY_ROLES;
 }
 
+async function getCommunityName(communityId) {
+    const communitySnap = await getDoc(doc(db, Collections.COMMUNITIES, communityId));
+    if (!communitySnap.exists()) return 'Comunidad';
+    return String(communitySnap.data()?.[CommunityFields.name] || 'Comunidad').trim() || 'Comunidad';
+}
+
 /**
  * @param {string} communityId
  * @param {string} userId — Firebase Auth UID
  * @param {'member'|'admin'|'official'} role
  */
-export async function adminAddCommunityMember(communityId, userId, role) {
+export async function adminAddCommunityMember(communityId, userId, role, actor = {}) {
     const r = normalizeRole(role);
     const allowedRoles = await getAllowedRolesForCommunity(communityId);
     if (!allowedRoles.has(r)) {
@@ -147,13 +154,44 @@ export async function adminAddCommunityMember(communityId, userId, role) {
         [MemberFields.role]: r,
         [MemberFields.joinedAt]: serverTimestamp(),
     });
+    const communityName = await getCommunityName(communityId);
+    await notifyMembershipEvent({
+        targetUserId: userId,
+        kind: InboxKinds.memberAdded,
+        communityId,
+        communityName,
+        actorId: actor.actorId ?? null,
+        actorName: actor.actorName ?? null,
+        role: r,
+    });
 }
 
-export async function adminRemoveMember(memberDocId) {
-    await deleteDoc(doc(db, Collections.COMMUNITY_MEMBERS, memberDocId));
+export async function adminRemoveMember(memberDocId, actor = {}) {
+    const memberRef = doc(db, Collections.COMMUNITY_MEMBERS, memberDocId);
+    const memberSnap = await getDoc(memberRef);
+    if (!memberSnap.exists()) {
+        await deleteDoc(memberRef);
+        return;
+    }
+    const data = memberSnap.data() || {};
+    const targetUserId = data[MemberFields.userId];
+    const communityId = data[MemberFields.communityId];
+    // Notify BEFORE delete so membership-gated rules still allow the inbox write.
+    if (targetUserId && communityId) {
+        const communityName = await getCommunityName(communityId);
+        await notifyMembershipEvent({
+            targetUserId,
+            kind: InboxKinds.memberRemoved,
+            communityId,
+            communityName,
+            actorId: actor.actorId ?? null,
+            actorName: actor.actorName ?? null,
+        });
+    }
+    await deleteDoc(memberRef);
 }
 
-export async function adminUpdateMemberRole(memberDocId, role) {
+export async function adminUpdateMemberRole(memberDocId, role, actor = {}) {
     const r = normalizeRole(role);
     const memberRef = doc(db, Collections.COMMUNITY_MEMBERS, memberDocId);
     const memberSnap = await getDoc(memberRef);
@@ -169,9 +207,24 @@ export async function adminUpdateMemberRole(memberDocId, role) {
     if (!allowedRoles.has(r)) {
         throw new Error('Rol inválido para esta comunidad');
     }
+    const previousRole = memberData[MemberFields.role];
+    const targetUserId = memberData[MemberFields.userId];
     await updateDoc(memberRef, {
         [MemberFields.role]: r,
     });
+    if (targetUserId && previousRole !== r) {
+        const communityName = await getCommunityName(communityId);
+        await notifyMembershipEvent({
+            targetUserId,
+            kind: InboxKinds.roleChanged,
+            communityId,
+            communityName,
+            actorId: actor.actorId ?? null,
+            actorName: actor.actorName ?? null,
+            role: r,
+            previousRole,
+        });
+    }
 }
 
 /** @param {import('firebase/firestore').DocumentSnapshot} docSnap */

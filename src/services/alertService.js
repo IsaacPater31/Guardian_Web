@@ -630,13 +630,20 @@ export async function getAlertStats() {
  * Si falla la consulta compuesta, reintenta solo con límite inferior.
  */
 /**
- * Actualiza el estado de atención (`alert_status`) de una alerta.
+ * Marca una alerta como atendida (solo ida; no se puede volver a pending desde web).
  * @param {string} alertId
- * @param {'pending'|'attended'} status
+ * @param {'attended'|string} status — solo se acepta `attended` / AlertStatus.ATTENDED
  */
 export async function updateAlertStatus(alertId, status) {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized !== AlertStatus.ATTENDED && normalized !== 'attended') {
+        throw new Error('Desde el panel web solo se puede marcar una alerta como atendida.');
+    }
+    if (!alertId) {
+        throw new Error('Falta el id de la alerta');
+    }
     const ref = doc(db, Collections.ALERTS, alertId);
-    await updateDoc(ref, { [AlertFields.alertStatus]: status });
+    await updateDoc(ref, { [AlertFields.alertStatus]: AlertStatus.ATTENDED });
 }
 
 export async function fetchAlertsInDateRange(start, end, maxDocs = 2000) {

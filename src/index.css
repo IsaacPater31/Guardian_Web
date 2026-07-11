@@ -1162,6 +1162,194 @@ body {
   line-height: 1.4;
 }
 
+/* ── Community filter bar (bottom map strip) ─────────────────────────────── */
+.map-community-filter-bar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--space-4);
+  z-index: 450;
+  width: min(720px, calc(100% - 112px));
+  padding: 10px 12px;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+.map-page.has-community-filter .map-alert-count-badge-wrap {
+  bottom: 108px;
+}
+
+.map-page.has-community-filter .map-geo-hint {
+  bottom: 108px;
+}
+
+.map-page.has-community-filter .map-locate-btn {
+  bottom: 112px !important;
+}
+
+.map-community-filter-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.map-community-filter-bar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.map-community-filter-bar-count {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+  color: #007AFF;
+  background: rgba(0, 122, 255, 0.1);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.map-community-filter-bar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-community-filter-link {
+  border: none;
+  background: transparent;
+  color: #007AFF;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-family);
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.map-community-filter-link:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.map-community-filter-link:focus-visible,
+.map-community-filter-page-btn:focus-visible,
+.map-community-filter-chip:focus-visible {
+  outline: 2px solid #007AFF;
+  outline-offset: 2px;
+}
+
+.map-community-filter-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.map-community-filter-page-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.map-community-filter-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.map-community-filter-page-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  min-width: 36px;
+  text-align: center;
+}
+
+.map-community-filter-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-community-filter-chip {
+  flex: 0 0 auto;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-family);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.map-community-filter-chip.all-mode {
+  border-color: rgba(0, 122, 255, 0.28);
+  color: var(--color-text-secondary);
+}
+
+.map-community-filter-chip.active {
+  background: rgba(0, 122, 255, 0.12);
+  border-color: #007AFF;
+  color: #007AFF;
+}
+
+@media (max-width: 768px) {
+  .map-community-filter-bar {
+    left: var(--space-3);
+    right: var(--space-3);
+    transform: none;
+    width: auto;
+    bottom: var(--space-3);
+    padding: 8px 10px;
+  }
+
+  .map-page.has-community-filter .map-alert-count-badge-wrap {
+    bottom: 128px;
+  }
+
+  .map-page.has-community-filter .map-geo-hint {
+    bottom: 128px;
+  }
+
+  .map-page.has-community-filter .map-locate-btn {
+    bottom: 132px !important;
+  }
+
+  .map-community-filter-chip {
+    max-width: 132px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+
 
 /* ─── Map Filter Panel ─── */
 .map-filter-panel {
@@ -2229,7 +2417,11 @@ body {
     right: var(--space-3);
     left: auto;
     transform: none;
-    z-index: 300;
+    z-index: 460;
+  }
+
+  .map-page.has-community-filter .map-filter-body {
+    max-height: min(48vh, 420px);
   }
 
   .map-alert-count-badge-wrap {
@@ -2287,7 +2479,7 @@ body {
     left: auto;
     transform: none;
     top: 8px;
-    z-index: 300;
+    z-index: 460;
   }
 
   .map-alert-panel {
