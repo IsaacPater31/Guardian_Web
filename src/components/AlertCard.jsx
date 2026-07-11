@@ -10,10 +10,10 @@ export default function AlertCard({
     onClick,
     isActive = false,
 }) {
-    const color      = getAlertColor(alert.alertType);
-    const iconName   = getAlertIcon(alert.alertType);
+    const color      = getAlertColor(alert.alertType, alert);
+    const iconName   = getAlertIcon(alert.alertType, alert);
     const Icon       = LucideIcons[iconName] || LucideIcons.AlertTriangle;
-    const main       = getAlertLabel(alert.alertType);
+    const main       = getAlertLabel(alert.alertType, alert);
     const sub        = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo    = getTimeAgo(alert.timestamp);
     const isAttended = alert.alertStatus === AlertStatus.ATTENDED;

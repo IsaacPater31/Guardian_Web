@@ -16,7 +16,7 @@ import { isOfficialEntityCommunity } from '../utils/communityVisibility';
 import CommunityIconPickerGrid from '../components/community/CommunityIconPickerGrid';
 import CommunityIconDisplay from '../components/community/CommunityIconDisplay';
 import EntityAlertTypesPicker from '../components/community/EntityAlertTypesPicker';
-import { ACTIVE_ALERT_TYPES } from '../config/alertTypes';
+import { formatEntityReportTypeNames, normalizeEntityReportTypes } from '../utils/entityReportTypes';
 import {
     DEFAULT_ICON_CODE_POINT,
     DEFAULT_ICON_COLOR,
@@ -51,10 +51,7 @@ function modalTitle(modal) {
 }
 
 function formatReportTypes(types) {
-    if (!types?.length) return '—';
-    return types
-        .map((t) => ACTIVE_ALERT_TYPES[t]?.labelEs || t)
-        .join(', ');
+    return formatEntityReportTypeNames(types);
 }
 
 function normalizeHexColor(value, fallback = '#0D1B3E') {
@@ -92,6 +89,22 @@ export default function CommunitiesPage() {
     const [infoCommunity, setInfoCommunity] = useState(null);
     const [infoMemberCount, setInfoMemberCount] = useState(null);
     const listAnchorRef = useRef(null);
+
+    function closeModal() {
+        setModal(null);
+        setErr('');
+    }
+
+    useEffect(() => {
+        if (!modal && !infoCommunity) return undefined;
+        function onKeyDown(e) {
+            if (e.key !== 'Escape') return;
+            if (infoCommunity) setInfoCommunity(null);
+            else closeModal();
+        }
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [modal, infoCommunity]);
 
     const list = useMemo(() => {
         const start = (page - 1) * ADMIN_LIST_PAGE_SIZE;
@@ -151,7 +164,7 @@ export default function CommunitiesPage() {
             iconCodePoint: c.iconCodePoint ?? DEFAULT_ICON_CODE_POINT,
             iconColor: entity ? null : c.iconColor || DEFAULT_ICON_COLOR,
             reportButtonColor: c.reportButtonColor || '#0D1B3E',
-            reportAlertTypes: Array.isArray(c.reportAlertTypes) ? [...c.reportAlertTypes] : [],
+            reportAlertTypes: normalizeEntityReportTypes(c.reportAlertTypes),
         });
         setModal(entity ? 'edit-entity' : 'edit-community');
     }
@@ -458,9 +471,27 @@ export default function CommunitiesPage() {
             )}
 
             {modal && (
-                <div className="admin-modal-overlay" role="dialog">
-                    <div className="admin-modal">
-                        <h3 className="admin-modal-title">{modalTitle(modal)}</h3>
+                <div
+                    className="admin-modal-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="community-form-title"
+                    onClick={closeModal}
+                >
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-modal-head-row">
+                            <h3 className="admin-modal-title" id="community-form-title">
+                                {modalTitle(modal)}
+                            </h3>
+                            <button
+                                type="button"
+                                className="admin-icon-btn"
+                                onClick={closeModal}
+                                aria-label="Cerrar"
+                            >
+                                ×
+                            </button>
+                        </div>
                         <form onSubmit={handleSubmit} className="admin-modal-form">
                             <label className="login-label">
                                 Nombre
@@ -534,7 +565,7 @@ export default function CommunitiesPage() {
                             )}
                             {err && <div className="login-error">{err}</div>}
                             <div className="admin-modal-actions">
-                                <button type="button" className="admin-btn-ghost" onClick={() => setModal(null)}>
+                                <button type="button" className="admin-btn-ghost" onClick={closeModal}>
                                     Cancelar
                                 </button>
                                 <button type="submit" className="admin-btn-primary" disabled={saving}>

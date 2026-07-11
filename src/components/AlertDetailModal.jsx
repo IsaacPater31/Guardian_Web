@@ -85,10 +85,10 @@ export default function AlertDetailModal({ alert, onClose }) {
 
     if (!alert) return null;
 
-    const color     = getAlertColor(alert.alertType);
-    const iconName  = getAlertIcon(alert.alertType);
+    const color     = getAlertColor(alert.alertType, alert);
+    const iconName  = getAlertIcon(alert.alertType, alert);
     const Icon      = LucideIcons[iconName] || LucideIcons.AlertTriangle;
-    const mainLabel = getAlertLabel(alert.alertType);
+    const mainLabel = getAlertLabel(alert.alertType, alert);
     const subLabel  = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo   = getTimeAgo(alert.timestamp);
     const isAttended= localStatus === AlertStatus.ATTENDED;

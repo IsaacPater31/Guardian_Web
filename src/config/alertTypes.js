@@ -325,17 +325,22 @@ export const QUERY_CONFIG = Object.freeze({
 /** Marker/card highlight pulse window (web: animation only; mobile vibrates separately). */
 export const ACTIVE_ALERT_FEEDBACK_MS = 10_000;
 
-export function getAlertColor(alertType) {
+export function getAlertColor(alertType, alert = null) {
+    const override = alert?.alertTypeColor || alert?.alert_type_color;
+    if (override) return override;
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.color ?? ALERT_TYPES[alertType]?.color ?? '#9E9E9E';
 }
 
-export function getAlertIcon(alertType) {
+export function getAlertIcon(alertType, alert = null) {
+    if (alert?.alertTypeLabel || alert?.alert_type_label) return 'AlertTriangle';
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.icon ?? ALERT_TYPES[alertType]?.icon ?? 'AlertTriangle';
 }
 
-export function getAlertLabel(alertType) {
+export function getAlertLabel(alertType, alert = null) {
+    const override = alert?.alertTypeLabel || alert?.alert_type_label;
+    if (override) return override;
     const key = normalizeAlertType(alertType);
     return ALERT_TYPES[key]?.labelEs ?? ALERT_TYPES[alertType]?.labelEs ?? alertType;
 }

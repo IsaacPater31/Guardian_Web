@@ -124,6 +124,8 @@ En producción (por ejemplo en `https://guardian-web-alpha.vercel.app/`) el clie
 - Datos de Firestore según reglas de seguridad.
 - Sin ningún secreto de servidor ni tokens privados.
 
+Deploy / SPA / dominios autorizados: ver **[DEPLOY.md](./DEPLOY.md)**.
+
 ---
 
 ## 📱 App Móvil

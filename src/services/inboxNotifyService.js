@@ -13,12 +13,14 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Collections } from '../config/collections';
+import { MemberFields } from '../config/firestoreFields';
 
 export const InboxKinds = Object.freeze({
     communityMessage: 'community_message',
     memberAdded: 'member_added',
     memberRemoved: 'member_removed',
     roleChanged: 'role_changed',
+    memberLeft: 'member_left',
 });
 
 const ROLE_LABELS = Object.freeze({
@@ -29,6 +31,124 @@ const ROLE_LABELS = Object.freeze({
 
 function roleLabel(role) {
     return ROLE_LABELS[String(role || '').toLowerCase()] || String(role || 'Miembro');
+}
+
+function subjectLabel(subjectName) {
+    const n = String(subjectName || '').trim();
+    return n || 'Alguien';
+}
+
+/**
+ * Target-facing copy (the affected member).
+ */
+function buildTargetCopy({ kind, isEntity, name, role, previousRole }) {
+    if (isEntity) {
+        switch (kind) {
+            case InboxKinds.memberAdded:
+                return {
+                    title: 'Te agregaron a un reporte',
+                    body: `Ahora formas parte de ${name}.`,
+                };
+            case InboxKinds.memberRemoved:
+                return {
+                    title: 'Te eliminaron de un reporte',
+                    body: `Ya no formas parte del reporte ${name}.`,
+                };
+            case InboxKinds.roleChanged:
+                return {
+                    title: 'Tu rol cambió',
+                    body: previousRole
+                        ? `En el reporte ${name} pasaste de ${roleLabel(previousRole)} a ${roleLabel(role)}.`
+                        : `Tu rol cambió en el reporte ${name}. Ahora eres ${roleLabel(role)}.`,
+                };
+            default:
+                return null;
+        }
+    }
+
+    switch (kind) {
+        case InboxKinds.memberAdded:
+            return {
+                title: 'Te agregaron a una comunidad',
+                body: `Ahora formas parte de ${name}.`,
+            };
+        case InboxKinds.memberRemoved:
+            return {
+                title: 'Te eliminaron de una comunidad',
+                body: `Ya no formas parte de ${name}.`,
+            };
+        case InboxKinds.roleChanged:
+            return {
+                title: 'Tu rol cambió',
+                body: previousRole
+                    ? `En ${name} pasaste de ${roleLabel(previousRole)} a ${roleLabel(role)}.`
+                    : `En ${name} tu rol ahora es ${roleLabel(role)}.`,
+            };
+        default:
+            return null;
+    }
+}
+
+/**
+ * Manager-facing copy (admins / officials).
+ */
+function buildManagerCopy({ kind, isEntity, name, subjectName, role, previousRole }) {
+    const who = subjectLabel(subjectName);
+    if (isEntity) {
+        switch (kind) {
+            case InboxKinds.memberAdded:
+                return {
+                    title: 'Nuevo miembro en reporte',
+                    body: `${who} se unió al reporte ${name}.`,
+                };
+            case InboxKinds.memberRemoved:
+                return {
+                    title: 'Miembro eliminado',
+                    body: `${who} fue eliminado/a del reporte ${name}.`,
+                };
+            case InboxKinds.memberLeft:
+                return {
+                    title: 'Miembro salió',
+                    body: `${who} abandonó el reporte ${name}.`,
+                };
+            case InboxKinds.roleChanged:
+                return {
+                    title: 'Cambio de rol',
+                    body: previousRole
+                        ? `${who} pasó de ${roleLabel(previousRole)} a ${roleLabel(role)} en el reporte ${name}.`
+                        : `${who} ahora es ${roleLabel(role)} en el reporte ${name}.`,
+                };
+            default:
+                return null;
+        }
+    }
+
+    switch (kind) {
+        case InboxKinds.memberAdded:
+            return {
+                title: 'Nuevo miembro',
+                body: `${who} se unió a la comunidad ${name}.`,
+            };
+        case InboxKinds.memberRemoved:
+            return {
+                title: 'Miembro eliminado',
+                body: `${who} fue eliminado/a de la comunidad ${name}.`,
+            };
+        case InboxKinds.memberLeft:
+            return {
+                title: 'Miembro salió',
+                body: `${who} abandonó la comunidad ${name}.`,
+            };
+        case InboxKinds.roleChanged:
+            return {
+                title: 'Cambio de rol',
+                body: previousRole
+                    ? `${who} pasó de ${roleLabel(previousRole)} a ${roleLabel(role)} en ${name}.`
+                    : `${who} ahora es ${roleLabel(role)} en ${name}.`,
+            };
+        default:
+            return null;
+    }
 }
 
 /**
@@ -98,59 +218,131 @@ export async function purgeCommunityAccessForUser(userId, communityId) {
     }
 }
 
+async function queryManagerUserIds(communityId, isEntity) {
+    const managerRole = isEntity ? MemberFields.roleOfficial : MemberFields.roleAdmin;
+    const snap = await getDocs(
+        query(
+            collection(db, Collections.COMMUNITY_MEMBERS),
+            where(MemberFields.communityId, '==', communityId),
+            where(MemberFields.role, '==', managerRole),
+        ),
+    );
+    return snap.docs
+        .map((d) => d.data()?.[MemberFields.userId])
+        .filter(Boolean)
+        .map(String);
+}
+
+function newInboxDocId(kind, communityId) {
+    return `${kind}_${communityId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Notify target user and/or managers about a membership event.
+ *
+ * @param {object} opts
+ * @param {string} opts.targetUserId - Affected member
+ * @param {string} opts.kind
+ * @param {string} opts.communityId
+ * @param {string} [opts.communityName]
+ * @param {boolean} [opts.isEntity=false]
+ * @param {string|null} [opts.actorId]
+ * @param {string|null} [opts.actorName]
+ * @param {string|null} [opts.subjectName] - Display name of affected member (for managers)
+ * @param {string|null} [opts.role]
+ * @param {string|null} [opts.previousRole]
+ * @param {boolean} [opts.notifyTarget=true]
+ * @param {boolean} [opts.notifyManagers=true]
+ * @param {boolean} [opts.purgeTargetOnRemove=true]
+ */
 export async function notifyMembershipEvent({
     targetUserId,
     kind,
     communityId,
     communityName,
+    isEntity = false,
     actorId = null,
     actorName = null,
+    subjectName = null,
     role = null,
     previousRole = null,
+    notifyTarget = true,
+    notifyManagers = true,
+    purgeTargetOnRemove = true,
 }) {
-    if (!targetUserId || !communityId || !kind) return;
+    if (!communityId || !kind) return;
+    if (!targetUserId && notifyTarget) return;
 
-    const name = (communityName || 'tu comunidad').trim() || 'tu comunidad';
-    let title = 'Comunidad';
-    let body = '';
+    const name = (communityName || (isEntity ? 'tu reporte' : 'tu comunidad')).trim()
+        || (isEntity ? 'tu reporte' : 'tu comunidad');
 
-    switch (kind) {
-        case InboxKinds.memberAdded:
-            title = 'Te agregaron a una comunidad';
-            body = `Ahora formas parte de ${name}.`;
-            break;
-        case InboxKinds.memberRemoved:
-            title = 'Te eliminaron de una comunidad';
-            body = `Ya no formas parte de ${name}.`;
-            break;
-        case InboxKinds.roleChanged:
-            title = 'Tu rol cambió';
-            body = previousRole
-                ? `En ${name} pasaste de ${roleLabel(previousRole)} a ${roleLabel(role)}.`
-                : `En ${name} tu rol ahora es ${roleLabel(role)}.`;
-            break;
-        default:
-            return;
-    }
-
-    const batch = writeBatch(db);
-    const docId = `${kind}_${communityId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    batchSetInboxDoc(batch, targetUserId, docId, {
+    const basePayload = {
         kind,
         community_id: communityId,
         community_name: name,
         community_ids: [communityId],
-        title,
-        body,
         sender_id: actorId,
         sender_name: actorName,
         role: role || null,
         previous_role: previousRole || null,
-        target_user_id: targetUserId,
-    });
-    await batch.commit();
+        target_user_id: targetUserId || null,
+        subject_name: subjectName || null,
+        is_entity: Boolean(isEntity),
+    };
 
-    if (kind === InboxKinds.memberRemoved) {
+    const batch = writeBatch(db);
+    let writes = 0;
+
+    if (notifyTarget && targetUserId) {
+        const copy = buildTargetCopy({ kind, isEntity, name, role, previousRole });
+        if (copy) {
+            batchSetInboxDoc(batch, targetUserId, newInboxDocId(kind, communityId), {
+                ...basePayload,
+                title: copy.title,
+                body: copy.body,
+            });
+            writes += 1;
+        }
+    }
+
+    if (notifyManagers) {
+        const managerKind = kind === InboxKinds.memberLeft ? InboxKinds.memberLeft : kind;
+        const copy = buildManagerCopy({
+            kind: managerKind,
+            isEntity,
+            name,
+            subjectName: subjectName || actorName,
+            role,
+            previousRole,
+        });
+        if (copy) {
+            const managers = await queryManagerUserIds(communityId, isEntity);
+            const exclude = new Set(
+                [targetUserId, actorId].filter(Boolean).map(String),
+            );
+            for (const managerId of managers) {
+                if (exclude.has(managerId)) continue;
+                batchSetInboxDoc(batch, managerId, newInboxDocId(managerKind, communityId), {
+                    ...basePayload,
+                    kind: managerKind,
+                    title: copy.title,
+                    body: copy.body,
+                });
+                writes += 1;
+            }
+        }
+    }
+
+    if (writes > 0) {
+        await batch.commit();
+    }
+
+    if (
+        purgeTargetOnRemove
+        && notifyTarget
+        && targetUserId
+        && kind === InboxKinds.memberRemoved
+    ) {
         await purgeCommunityAccessForUser(targetUserId, communityId);
     }
 }

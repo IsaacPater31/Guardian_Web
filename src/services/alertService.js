@@ -70,6 +70,10 @@ export function parseAlert(doc) {
         id:           doc.id,
         type:         flowType,
         alertType,
+        alertTypeLabel: d.alertTypeLabel ?? d.alert_type_label ?? null,
+        alertTypeColor: d.alertTypeColor ?? d.alert_type_color ?? null,
+        alertTypeIconCodePoint:
+            d.alertTypeIconCodePoint ?? d.alert_type_icon_code_point ?? null,
         description:  d[AlertFields.description]   ?? null,
         subtype,
         customDetail,

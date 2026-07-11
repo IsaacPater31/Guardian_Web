@@ -23,6 +23,7 @@ import { db } from '../firebase';
 import { Collections } from '../config/collections';
 import { CommunityFields, MemberFields, UserFields } from '../config/firestoreFields';
 import { extractUserProfileFields } from '../utils/userDocParse';
+import { normalizeEntityReportTypes } from '../utils/entityReportTypes';
 import { InboxKinds, notifyMembershipEvent } from './inboxNotifyService';
 
 const communitiesCol = () => collection(db, Collections.COMMUNITIES);
@@ -61,9 +62,7 @@ export async function adminCreateCommunity({
     if (iconColor) payload[CommunityFields.iconColor] = String(iconColor);
     if (reportButtonColor) payload[CommunityFields.reportButtonColor] = String(reportButtonColor);
     if (isEntity) {
-        payload[CommunityFields.reportAlertTypes] = Array.isArray(reportAlertTypes)
-            ? reportAlertTypes
-            : [];
+        payload[CommunityFields.reportAlertTypes] = normalizeEntityReportTypes(reportAlertTypes);
     }
 
     const ref = await addDoc(communitiesCol(), payload);
@@ -88,9 +87,7 @@ export async function adminUpdateCommunity(communityId, patch) {
         data[CommunityFields.reportButtonColor] = patch.reportButtonColor;
     }
     if (patch.reportAlertTypes !== undefined) {
-        data[CommunityFields.reportAlertTypes] = Array.isArray(patch.reportAlertTypes)
-            ? patch.reportAlertTypes
-            : [];
+        data[CommunityFields.reportAlertTypes] = normalizeEntityReportTypes(patch.reportAlertTypes);
     }
     await updateDoc(ref, data);
 }
@@ -131,10 +128,35 @@ async function getAllowedRolesForCommunity(communityId) {
         : NON_ENTITY_ROLES;
 }
 
-async function getCommunityName(communityId) {
+async function getCommunityMeta(communityId) {
     const communitySnap = await getDoc(doc(db, Collections.COMMUNITIES, communityId));
-    if (!communitySnap.exists()) return 'Comunidad';
-    return String(communitySnap.data()?.[CommunityFields.name] || 'Comunidad').trim() || 'Comunidad';
+    if (!communitySnap.exists()) {
+        return { name: 'Comunidad', isEntity: false };
+    }
+    const data = communitySnap.data() || {};
+    const isEntity = data[CommunityFields.isEntity] === true;
+    const name =
+        String(data[CommunityFields.name] || (isEntity ? 'Reporte' : 'Comunidad')).trim()
+        || (isEntity ? 'Reporte' : 'Comunidad');
+    return { name, isEntity };
+}
+
+async function getUserDisplayName(userId) {
+    if (!userId) return null;
+    try {
+        const snap = await getDoc(doc(db, Collections.USERS, userId));
+        if (!snap.exists()) return null;
+        const d = snap.data() || {};
+        return (
+            d[UserFields.displayName]
+            || d[UserFields.fullName]
+            || d[UserFields.name]
+            || d[UserFields.email]
+            || null
+        );
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -154,14 +176,17 @@ export async function adminAddCommunityMember(communityId, userId, role, actor =
         [MemberFields.role]: r,
         [MemberFields.joinedAt]: serverTimestamp(),
     });
-    const communityName = await getCommunityName(communityId);
+    const { name: communityName, isEntity } = await getCommunityMeta(communityId);
+    const subjectName = actor.subjectName ?? (await getUserDisplayName(userId));
     await notifyMembershipEvent({
         targetUserId: userId,
         kind: InboxKinds.memberAdded,
         communityId,
         communityName,
+        isEntity,
         actorId: actor.actorId ?? null,
         actorName: actor.actorName ?? null,
+        subjectName,
         role: r,
     });
 }
@@ -178,14 +203,17 @@ export async function adminRemoveMember(memberDocId, actor = {}) {
     const communityId = data[MemberFields.communityId];
     // Notify BEFORE delete so membership-gated rules still allow the inbox write.
     if (targetUserId && communityId) {
-        const communityName = await getCommunityName(communityId);
+        const { name: communityName, isEntity } = await getCommunityMeta(communityId);
+        const subjectName = actor.subjectName ?? (await getUserDisplayName(targetUserId));
         await notifyMembershipEvent({
             targetUserId,
             kind: InboxKinds.memberRemoved,
             communityId,
             communityName,
+            isEntity,
             actorId: actor.actorId ?? null,
             actorName: actor.actorName ?? null,
+            subjectName,
         });
     }
     await deleteDoc(memberRef);
@@ -213,14 +241,17 @@ export async function adminUpdateMemberRole(memberDocId, role, actor = {}) {
         [MemberFields.role]: r,
     });
     if (targetUserId && previousRole !== r) {
-        const communityName = await getCommunityName(communityId);
+        const { name: communityName, isEntity } = await getCommunityMeta(communityId);
+        const subjectName = actor.subjectName ?? (await getUserDisplayName(targetUserId));
         await notifyMembershipEvent({
             targetUserId,
             kind: InboxKinds.roleChanged,
             communityId,
             communityName,
+            isEntity,
             actorId: actor.actorId ?? null,
             actorName: actor.actorName ?? null,
+            subjectName,
             role: r,
             previousRole,
         });

@@ -3956,6 +3956,79 @@ body {
   gap: var(--space-1);
 }
 
+.entity-custom-types-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entity-custom-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.entity-custom-type-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entity-custom-type-icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.entity-custom-type-icon-btn .community-icon-glyph {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.entity-custom-type-icon-edit {
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+}
+
+.entity-custom-type-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.entity-custom-type-name {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.entity-custom-type-remove {
+  flex-shrink: 0;
+}
+
+.entity-custom-type-draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+}
+
 .entity-alert-types-grid {
   display: flex;
   flex-wrap: wrap;

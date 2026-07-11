@@ -11,6 +11,7 @@ import { db }          from '../firebase';
 import { Collections } from '../config/collections';
 import { CommunityFields } from '../config/firestoreFields';
 import { ADMIN_LIST_PAGE_SIZE } from '../config/adminPagination';
+import { normalizeEntityReportTypes } from '../utils/entityReportTypes';
 
 // ─── In-memory name cache: communityId → name ─────────────────────────────────
 let _nameCache  = {};
@@ -72,9 +73,7 @@ function parseCommunity(doc) {
         iconCodePoint:          d.icon_code_point          ?? null,
         iconColor:              d.icon_color               ?? null,
         reportButtonColor:      d.report_button_color      ?? null,
-        reportAlertTypes:       Array.isArray(d.report_alert_types)
-            ? d.report_alert_types.filter((t) => typeof t === 'string' && t)
-            : [],
+        reportAlertTypes:       normalizeEntityReportTypes(d.report_alert_types),
     };
 }
 
