@@ -5,10 +5,6 @@ import {
     Bar,
     BarChart,
     CartesianGrid,
-    Cell,
-    Legend,
-    Pie,
-    PieChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -23,19 +19,33 @@ import {
 } from 'lucide-react';
 import { subscribeToAlertsInDateRange, isActivePendingAlert } from '@/features/alerts/repository/alertRepository';
 import { subscribeUsersInCreatedRange } from '@/features/admin/repository/adminDirectoryRepository';
-import { getAlertColor, getAlertLabel } from '@/shared/config/alertTypes';
+import { subscribeToCommunities } from '@/features/communities/repository/communityRepository';
 import AlertCard from '@/features/alerts/ui/AlertCard';
 import AlertDetailModal from '@/features/alerts/ui/AlertDetailModal';
+import DashFilterBar from '@/features/dashboard/ui/DashFilterBar';
+import TypeHistogramChart from '@/features/dashboard/ui/TypeHistogramChart';
 import {
-    PRESET_DAYS,
     computeAnalysisRange,
-    formatPeriodSummary,
+    daysAgo,
     userInitials,
-    aggregateByDay,
     aggregateActiveUsersByDay,
     topContributorsFromAlerts,
     formatDayLabel,
+    buildScopedAlertStats,
 } from '@/features/dashboard/utils/analysisHelpers';
+import {
+    scopeAlertsByCommunities,
+    buildStatsCommunityOptions,
+    filterStatsOptionsByKind,
+} from '@/features/dashboard/utils/statsScope';
+
+function toIsoDate(d) {
+    const x = new Date(d);
+    const y = x.getFullYear();
+    const m = String(x.getMonth() + 1).padStart(2, '0');
+    const day = String(x.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
 
 export default function Dashboard() {
     const [rangeMode, setRangeMode] = useState('preset');
@@ -43,34 +53,56 @@ export default function Dashboard() {
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
     const [bootstrapping, setBootstrapping] = useState(true);
-    const [alerts, setAlerts] = useState([]);
+    const [rawAlerts, setRawAlerts] = useState([]);
     const [newUsers, setNewUsers] = useState([]);
+    const [communities, setCommunities] = useState([]);
+    const [selectedCommunityIds, setSelectedCommunityIds] = useState(null);
+    const [kindFilter, setKindFilter] = useState('all');
     const [selectedAlert, setSelectedAlert] = useState(null);
     const [latestContextAlertId, setLatestContextAlertId] = useState(null);
     const hasBootstrappedRef = useRef(false);
-    const [chartH, setChartH] = useState(320);
+    const [chartH, setChartH] = useState(280);
+
     useEffect(() => {
         const update = () => {
-            setChartH(Math.min(520, Math.max(260, Math.round(window.innerHeight * 0.32))));
+            setChartH(Math.min(420, Math.max(220, Math.round(window.innerHeight * 0.28))));
         };
         update();
         window.addEventListener('resize', update);
         return () => window.removeEventListener('resize', update);
     }, []);
 
-    const { start: rangeStart, end: rangeEnd } = useMemo(
+    useEffect(() => subscribeToCommunities(setCommunities), []);
+
+    const {
+        start: rangeStart,
+        end: rangeEnd,
+        incomplete: rangeIncomplete,
+    } = useMemo(
         () => computeAnalysisRange(rangeMode, presetDays, customStart, customEnd),
         [rangeMode, presetDays, customStart, customEnd],
     );
 
     useEffect(() => {
+        if (rangeIncomplete) {
+            setNewUsers([]);
+            return undefined;
+        }
         const unsub = subscribeUsersInCreatedRange(rangeStart, rangeEnd, setNewUsers, 120);
         return unsub;
-    }, [rangeStart, rangeEnd]);
+    }, [rangeStart, rangeEnd, rangeIncomplete]);
 
     useEffect(() => {
+        if (rangeIncomplete) {
+            setRawAlerts([]);
+            if (!hasBootstrappedRef.current) {
+                hasBootstrappedRef.current = true;
+                setBootstrapping(false);
+            }
+            return undefined;
+        }
         const unsub = subscribeToAlertsInDateRange(rangeStart, rangeEnd, (alData, meta = {}) => {
-            setAlerts(alData);
+            setRawAlerts(alData);
             setLatestContextAlertId(meta.latestContextAlertId ?? null);
 
             if (!hasBootstrappedRef.current) {
@@ -80,47 +112,48 @@ export default function Dashboard() {
         }, 2500);
 
         return unsub;
-    }, [rangeStart, rangeEnd]);
+    }, [rangeStart, rangeEnd, rangeIncomplete]);
 
-    const stats = useMemo(() => {
-        const byType = {};
-        let forwards = 0;
-        let reports = 0;
-        for (const a of alerts) {
-            byType[a.alertType] = (byType[a.alertType] || 0) + 1;
-            forwards += a.forwardsCount || 0;
-            reports += a.reportsCount || 0;
+    function enterCustomRange() {
+        setRangeMode('custom');
+        if (!customStart || !customEnd) {
+            setCustomStart(toIsoDate(daysAgo(30)));
+            setCustomEnd(toIsoDate(new Date()));
         }
-        const chartData = aggregateByDay(alerts, rangeStart, rangeEnd);
+    }
 
-        const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
-        const pieData = typeEntries.slice(0, 10).map(([type, value]) => ({
-            name: getAlertLabel(type),
-            type,
-            value,
-        }));
-        const otherSum = typeEntries.slice(10).reduce((acc, [, v]) => acc + v, 0);
-        if (otherSum > 0) {
-            pieData.push({ name: 'Otros', type: 'OTHER', value: otherSum });
-        }
-
-        return {
-            total: alerts.length,
-            byType,
-            forwards,
-            reports,
-            chartData,
-            pieData,
-            typeEntries,
-        };
-    }, [alerts, rangeStart, rangeEnd]);
-
-    const activeByDay = useMemo(
-        () => aggregateActiveUsersByDay(alerts, rangeStart, rangeEnd),
-        [alerts, rangeStart, rangeEnd],
+    const communityOptions = useMemo(
+        () => buildStatsCommunityOptions(communities),
+        [communities],
     );
 
-    const topContributors = useMemo(() => topContributorsFromAlerts(alerts, 12), [alerts]);
+    const visibleCommunityOptions = useMemo(
+        () => filterStatsOptionsByKind(communityOptions, kindFilter),
+        [communityOptions, kindFilter],
+    );
+
+    const scopedAlerts = useMemo(() => {
+        let ids = selectedCommunityIds;
+        if (ids == null && kindFilter !== 'all') {
+            ids = visibleCommunityOptions.map((o) => o.id);
+        }
+        return scopeAlertsByCommunities(rawAlerts, ids);
+    }, [rawAlerts, selectedCommunityIds, visibleCommunityOptions, kindFilter]);
+
+    const stats = useMemo(
+        () => buildScopedAlertStats(scopedAlerts, rangeStart, rangeEnd),
+        [scopedAlerts, rangeStart, rangeEnd],
+    );
+
+    const activeByDay = useMemo(
+        () => aggregateActiveUsersByDay(scopedAlerts, rangeStart, rangeEnd),
+        [scopedAlerts, rangeStart, rangeEnd],
+    );
+
+    const topContributors = useMemo(
+        () => topContributorsFromAlerts(scopedAlerts, 12),
+        [scopedAlerts],
+    );
 
     const peakDates = useMemo(() => {
         const nonzero = activeByDay.filter((r) => r.activeUsers > 0);
@@ -135,13 +168,6 @@ export default function Dashboard() {
         [activeByDay],
     );
 
-    const CHART_COLORS = ['#007AFF', '#5856D6', '#34C759', '#FF9500', '#FF3B30', '#AF52DE', '#5AC8FA', '#FFCC00', '#8E8E93'];
-
-    const periodSummary = useMemo(
-        () => formatPeriodSummary(rangeStart, rangeEnd),
-        [rangeStart, rangeEnd],
-    );
-
     if (bootstrapping) {
         return (
             <div className="loading-container">
@@ -150,395 +176,179 @@ export default function Dashboard() {
         );
     }
 
-    const periodKey = `${rangeStart.getTime()}-${rangeEnd.getTime()}-${rangeMode}`;
-
     return (
-        <>
-            <div className="dash-period-card">
-                <div className="dash-period-head">
-                    <div className="dash-period-head-main">
-                        <div className="dash-period-title">Periodo</div>
-                        <div className="dash-period-dates" key={periodKey}>
-                            {periodSummary}
-                        </div>
-                    </div>
-                </div>
-                <div className="admin-toolbar-ranges dash-period-ranges">
-                    <div className="admin-segmented admin-segmented--ios admin-segmented--scroll">
-                        {PRESET_DAYS.map(({ days: d, label }) => (
-                            <button
-                                key={d}
-                                type="button"
-                                className={`admin-segment${
-                                    rangeMode === 'preset' && presetDays === d ? ' active' : ''
-                                }`}
-                                onClick={() => {
-                                    setRangeMode('preset');
-                                    setPresetDays(d);
-                                }}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                        <button
-                            type="button"
-                            className={`admin-segment${rangeMode === 'custom' ? ' active' : ''}`}
-                            onClick={() => setRangeMode('custom')}
-                        >
-                            Personalizado
-                        </button>
-                    </div>
-                    {rangeMode === 'custom' && (
-                        <div
-                            key="custom-range"
-                            className="admin-custom-range admin-custom-range--inline admin-custom-range--animate"
-                        >
-                            <label className="admin-date-field">
-                                <span className="admin-date-field-label">Desde</span>
-                                <input
-                                    type="date"
-                                    className="admin-date-input"
-                                    value={customStart}
-                                    max={customEnd || new Date().toISOString().slice(0, 10)}
-                                    onChange={(e) => setCustomStart(e.target.value)}
-                                />
-                            </label>
-                            <span className="admin-custom-range-sep" aria-hidden>
-                                —
-                            </span>
-                            <label className="admin-date-field">
-                                <span className="admin-date-field-label">Hasta</span>
-                                <input
-                                    type="date"
-                                    className="admin-date-input"
-                                    value={customEnd}
-                                    min={customStart || undefined}
-                                    max={new Date().toISOString().slice(0, 10)}
-                                    onChange={(e) => setCustomEnd(e.target.value)}
-                                />
-                            </label>
-                        </div>
-                    )}
-                </div>
-            </div>
+        <div className="dash-page">
+            <DashFilterBar
+                rangeMode={rangeMode}
+                presetDays={presetDays}
+                customStart={customStart}
+                customEnd={customEnd}
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                kind={kindFilter}
+                onKindChange={setKindFilter}
+                onPreset={(d) => {
+                    setRangeMode('preset');
+                    setPresetDays(d);
+                }}
+                onCustomMode={enterCustomRange}
+                onCustomStart={setCustomStart}
+                onCustomEnd={setCustomEnd}
+                allOptions={communityOptions}
+                visibleOptions={visibleCommunityOptions}
+                selectedCommunityIds={selectedCommunityIds}
+                onCommunityChange={setSelectedCommunityIds}
+            />
 
             <div className="dash-main">
-            <div className="stats-grid admin-stats-grid">
-                {[
-                    {
-                        label: 'Alertas en rango',
-                        value: stats.total,
-                        icon: Activity,
-                        color: '#FF3B30',
-                        bg: 'rgba(255, 59, 48, 0.08)',
-                        variant: 'alert',
-                    },
-                    {
-                        label: 'Reenvíos (suma)',
-                        value: stats.forwards,
-                        icon: Forward,
-                        color: '#5856D6',
-                        bg: 'rgba(88, 86, 214, 0.08)',
-                        variant: 'forward',
-                    },
-                    {
-                        label: 'Reportes (suma)',
-                        value: stats.reports,
-                        icon: BarChart3,
-                        color: '#FF9500',
-                        bg: 'rgba(255, 149, 0, 0.08)',
-                        variant: 'report',
-                    },
-                ].map((s) => (
-                    <div
-                        key={s.label}
-                        className={`stat-card stat-card--dash stat-card--${s.variant}`}
-                        style={{ '--stat-accent': s.color }}
-                    >
-                        <div className="stat-card-header">
-                            <div className="stat-card-icon" style={{ background: s.bg }}>
-                                <s.icon style={{ color: s.color }} />
+                <div className="stats-grid admin-stats-grid">
+                    {[
+                        {
+                            label: 'Alertas',
+                            value: stats.total,
+                            icon: Activity,
+                            color: '#FF3B30',
+                            bg: 'rgba(255, 59, 48, 0.1)',
+                            variant: 'alert',
+                        },
+                        {
+                            label: 'Reenvíos',
+                            value: stats.forwards,
+                            icon: Forward,
+                            color: '#5856D6',
+                            bg: 'rgba(88, 86, 214, 0.1)',
+                            variant: 'forward',
+                        },
+                        {
+                            label: 'Reportes',
+                            value: stats.reports,
+                            icon: BarChart3,
+                            color: '#FF9500',
+                            bg: 'rgba(255, 149, 0, 0.1)',
+                            variant: 'report',
+                        },
+                    ].map((s) => (
+                        <div
+                            key={s.label}
+                            className={`stat-card stat-card--dash stat-card--${s.variant}`}
+                            style={{ '--stat-accent': s.color }}
+                        >
+                            <div className="stat-card-header">
+                                <div className="stat-card-icon" style={{ background: s.bg }}>
+                                    <s.icon style={{ color: s.color }} />
+                                </div>
+                            </div>
+                            <div className="stat-card-value">{s.value}</div>
+                            <div className="stat-card-label">{s.label}</div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="admin-charts-grid dash-charts-priority">
+                    <section className="section section--dash admin-chart-section">
+                        <div className="section-header">
+                            <div className="section-header-left">
+                                <div className="section-icon" style={{ background: 'rgba(88, 86, 214, 0.12)' }}>
+                                    <BarChart3 style={{ color: '#5856D6' }} />
+                                </div>
+                                <div>
+                                    <h3 className="section-title">Por tipo</h3>
+                                    <p className="section-subtitle">Histograma en el alcance actual</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="stat-card-value">{s.value}</div>
-                        <div className="stat-card-label">{s.label}</div>
-                    </div>
-                ))}
-            </div>
+                        <div className="section-body admin-chart-body">
+                            <TypeHistogramChart bars={stats.typeHistogram.bars} height={chartH} />
+                        </div>
+                    </section>
 
-            <section className="section section--dash dash-contributors">
-                <div className="section-header">
-                    <div className="section-header-left">
-                        <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.12)' }}>
-                            <Users style={{ color: '#34C759' }} />
-                        </div>
-                        <div>
-                            <h3 className="section-title">Usuarios más activos</h3>
-                            <p className="section-subtitle">
-                                Por alertas publicadas en el periodo (cuentas identificadas, sin anónimos)
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div className="section-body section-body--table">
-                    {topContributors.length === 0 ? (
-                        <p className="admin-muted admin-empty-inset">
-                            Sin actividad identificada en este rango.
-                        </p>
-                    ) : (
-                        <div className="admin-table-scroll">
-                            <table className="admin-table admin-table--users admin-table--compact">
-                                <thead>
-                                    <tr>
-                                        <th>Usuario</th>
-                                        <th className="admin-th-narrow">Alertas</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {topContributors.map((row) => (
-                                        <tr key={row.id}>
-                                            <td>
-                                                <div className="admin-user-cell">
-                                                    <span className="admin-user-avatar admin-user-avatar--sm" aria-hidden>
-                                                        {userInitials(row.label, row.id)}
-                                                    </span>
-                                                    <span className="admin-user-name">{row.label}</span>
-                                                </div>
-                                            </td>
-                                            <td className="admin-td-num">{row.count}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            <section className="section section--dash dash-activity-section">
-                <div className="section-header">
-                    <div className="section-header-left">
-                        <div className="section-icon" style={{ background: 'rgba(0, 122, 255, 0.1)' }}>
-                            <BarChart3 style={{ color: '#007AFF' }} />
-                        </div>
-                        <div>
-                            <h3 className="section-title">Usuarios activos por día</h3>
-                            <p className="section-subtitle">
-                                Picos de participación: usuarios únicos que emitieron al menos una alerta cada día
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div className="section-body admin-activity-split">
-                    <div className="admin-chart-body admin-activity-chart">
-                        {activeByDay.every((r) => r.activeUsers === 0) ? (
-                            <p className="admin-muted">Sin datos de actividad identificada.</p>
-                        ) : (
-                            <ResponsiveContainer width="100%" height={chartH}>
-                                <BarChart data={activeByDay} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
-                                    <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#9CA3AF" />
-                                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9CA3AF" width={32} />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(52, 199, 89, 0.06)' }}
-                                        contentStyle={{
-                                            borderRadius: 12,
-                                            border: '1px solid rgba(0,0,0,0.06)',
-                                            fontSize: 13,
-                                        }}
-                                    />
-                                    <Bar
-                                        dataKey="activeUsers"
-                                        name="Usuarios activos"
-                                        fill="#34C759"
-                                        radius={[7, 7, 0, 0]}
-                                        maxBarSize={48}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                    <div className="admin-activity-table-panel">
-                        {activityTableRows.length === 0 ? (
-                            <p className="admin-muted admin-empty-inset">Sin filas para mostrar.</p>
-                        ) : (
-                            <div className="admin-activity-table-wrap">
-                                <table className="admin-table admin-table--users admin-table--compact">
-                                    <thead>
-                                        <tr>
-                                            <th>Día</th>
-                                            <th className="admin-th-narrow">Activos</th>
-                                            <th className="admin-th-narrow">Alertas</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {activityTableRows.map((r) => (
-                                            <tr key={r.date} className={peakDates.has(r.date) ? 'admin-row-peak' : ''}>
-                                                <td>
-                                                    <span className="admin-day-label">{formatDayLabel(r.date)}</span>
-                                                    {peakDates.has(r.date) && (
-                                                        <span className="dash-peak-badge">Pico</span>
-                                                    )}
-                                                </td>
-                                                <td className="admin-td-num">{r.activeUsers}</td>
-                                                <td className="admin-td-num admin-td-muted">{r.alertCount}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                    <section className="section section--dash admin-chart-section">
+                        <div className="section-header">
+                            <div className="section-header-left">
+                                <div className="section-icon" style={{ background: 'rgba(0, 122, 255, 0.1)' }}>
+                                    <Activity style={{ color: '#007AFF' }} />
+                                </div>
+                                <div>
+                                    <h3 className="section-title">Alertas por día</h3>
+                                    <p className="section-subtitle">Volumen en el periodo</p>
+                                </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                        <div className="section-body admin-chart-body">
+                            {stats.chartData.length === 0 ? (
+                                <p className="admin-muted">Sin datos en este rango.</p>
+                            ) : (
+                                <ResponsiveContainer width="100%" height={chartH}>
+                                    <AreaChart data={stats.chartData}>
+                                        <defs>
+                                            <linearGradient id="dashFill" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#007AFF" stopOpacity={0.35} />
+                                                <stop offset="100%" stopColor="#007AFF" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
+                                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9CA3AF" />
+                                        <Tooltip
+                                            contentStyle={{
+                                                borderRadius: 14,
+                                                border: '1px solid rgba(255,255,255,0.5)',
+                                                background: 'rgba(255,255,255,0.92)',
+                                                fontSize: 13,
+                                            }}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="count"
+                                            stroke="#007AFF"
+                                            strokeWidth={2}
+                                            fill="url(#dashFill)"
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                    </section>
                 </div>
-            </section>
 
-            <div className="admin-charts-grid">
-                <section className="section section--dash admin-chart-section">
+                <section className="section section--dash dash-contributors">
                     <div className="section-header">
                         <div className="section-header-left">
-                            <div className="section-icon" style={{ background: 'rgba(0, 122, 255, 0.08)' }}>
-                                <Activity style={{ color: '#007AFF' }} />
+                            <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.12)' }}>
+                                <Users style={{ color: '#34C759' }} />
                             </div>
                             <div>
-                                <h3 className="section-title">Alertas por día</h3>
-                                <p className="section-subtitle">Volumen diario en el periodo</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="section-body admin-chart-body">
-                        {stats.chartData.length === 0 ? (
-                            <p className="admin-muted">Sin datos en este rango.</p>
-                        ) : (
-                            <ResponsiveContainer width="100%" height={chartH}>
-                                <AreaChart data={stats.chartData}>
-                                    <defs>
-                                        <linearGradient id="dashFill" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#007AFF" stopOpacity={0.35} />
-                                            <stop offset="100%" stopColor="#007AFF" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
-                                    <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9CA3AF" />
-                                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9CA3AF" />
-                                    <Tooltip
-                                        contentStyle={{
-                                            borderRadius: 12,
-                                            border: '1px solid rgba(0,0,0,0.06)',
-                                            fontSize: 13,
-                                        }}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="count"
-                                        stroke="#007AFF"
-                                        strokeWidth={2}
-                                        fill="url(#dashFill)"
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                </section>
-
-                <section className="section section--dash admin-chart-section">
-                    <div className="section-header">
-                        <div className="section-header-left">
-                            <div className="section-icon" style={{ background: 'rgba(88, 86, 214, 0.08)' }}>
-                                <BarChart3 style={{ color: '#5856D6' }} />
-                            </div>
-                            <div>
-                                <h3 className="section-title">Distribución por tipo</h3>
-                                <p className="section-subtitle">Participación por categoría</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="section-body admin-chart-body">
-                        {stats.pieData.length === 0 ? (
-                            <p className="admin-muted">Sin datos.</p>
-                        ) : (
-                            <ResponsiveContainer width="100%" height={chartH}>
-                                <PieChart>
-                                    <Pie
-                                        data={stats.pieData}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={52}
-                                        outerRadius={88}
-                                        paddingAngle={2}
-                                    >
-                                        {stats.pieData.map((entry, i) => (
-                                            <Cell
-                                                key={entry.type}
-                                                fill={
-                                                    entry.type === 'OTHER'
-                                                        ? '#8E8E93'
-                                                        : getAlertColor(entry.type) || CHART_COLORS[i % CHART_COLORS.length]
-                                                }
-                                            />
-                                        ))}
-                                    </Pie>
-                                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                </section>
-            </div>
-
-            <div className="admin-two-col">
-                <section className="section section--dash">
-                    <div className="section-header">
-                        <div className="section-header-left">
-                            <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.1)' }}>
-                                <UserPlus style={{ color: '#34C759' }} />
-                            </div>
-                            <div>
-                                <h3 className="section-title">Usuarios recientes</h3>
-                                <p className="section-subtitle">Altas en el periodo seleccionado</p>
+                                <h3 className="section-title">Usuarios más activos</h3>
+                                <p className="section-subtitle">Publicaciones identificadas en el alcance</p>
                             </div>
                         </div>
                     </div>
                     <div className="section-body section-body--table">
-                        {newUsers.length === 0 ? (
+                        {topContributors.length === 0 ? (
                             <p className="admin-muted admin-empty-inset">
-                                No hay altas de usuario en este periodo.
+                                Sin actividad identificada en este rango.
                             </p>
                         ) : (
                             <div className="admin-table-scroll">
-                                <table className="admin-table admin-table--users">
+                                <table className="admin-table admin-table--users admin-table--compact">
                                     <thead>
                                         <tr>
                                             <th>Usuario</th>
-                                            <th>Correo</th>
-                                            <th className="admin-th-date">Fecha de ingreso</th>
+                                            <th className="admin-th-narrow">Alertas</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {newUsers.map((u) => (
-                                            <tr key={u.id}>
+                                        {topContributors.map((row) => (
+                                            <tr key={row.id}>
                                                 <td>
                                                     <div className="admin-user-cell">
-                                                        <span className="admin-user-avatar" aria-hidden>
-                                                            {userInitials(u.displayName, u.email)}
+                                                        <span className="admin-user-avatar admin-user-avatar--sm" aria-hidden>
+                                                            {userInitials(row.label, row.id)}
                                                         </span>
-                                                        <span className="admin-user-name">
-                                                            {u.displayName?.trim() || 'Sin nombre'}
-                                                        </span>
+                                                        <span className="admin-user-name">{row.label}</span>
                                                     </div>
                                                 </td>
-                                                <td>
-                                                    {u.email ? (
-                                                        <a className="admin-user-email" href={`mailto:${u.email}`}>
-                                                            {u.email}
-                                                        </a>
-                                                    ) : (
-                                                        <span className="admin-muted">—</span>
-                                                    )}
-                                                </td>
-                                                <td className="admin-td-date">{u.createdDisplay}</td>
+                                                <td className="admin-td-num">{row.count}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -548,40 +358,177 @@ export default function Dashboard() {
                     </div>
                 </section>
 
-                <section className="section section--dash">
+                <section className="section section--dash dash-activity-section">
                     <div className="section-header">
                         <div className="section-header-left">
-                            <div className="section-icon" style={{ background: 'rgba(255, 59, 48, 0.08)' }}>
-                                <Activity style={{ color: '#FF3B30' }} />
+                            <div className="section-icon" style={{ background: 'rgba(0, 122, 255, 0.1)' }}>
+                                <BarChart3 style={{ color: '#007AFF' }} />
                             </div>
                             <div>
-                                <h3 className="section-title">Últimas alertas</h3>
-                                <p className="section-subtitle">En el mismo periodo</p>
+                                <h3 className="section-title">Usuarios activos por día</h3>
+                                <p className="section-subtitle">Emisores únicos con al menos una alerta</p>
                             </div>
                         </div>
                     </div>
-                    <div className="section-body admin-scroll-list">
-                        {alerts.length === 0 ? (
-                            <p className="admin-muted">Sin alertas en este periodo.</p>
-                        ) : (
-                            alerts.slice(0, 12).map((a) => (
-                                <AlertCard
-                                    key={a.id}
-                                    alert={a}
-                                    onClick={setSelectedAlert}
-                                    isActive={isActivePendingAlert(a, latestContextAlertId)}
-                                />
-                            ))
-                        )}
+                    <div className="section-body admin-activity-split">
+                        <div className="admin-chart-body admin-activity-chart">
+                            {activeByDay.every((r) => r.activeUsers === 0) ? (
+                                <p className="admin-muted">Sin datos de actividad identificada.</p>
+                            ) : (
+                                <ResponsiveContainer width="100%" height={chartH}>
+                                    <BarChart data={activeByDay} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#9CA3AF" />
+                                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9CA3AF" width={32} />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(52, 199, 89, 0.06)' }}
+                                            contentStyle={{
+                                                borderRadius: 14,
+                                                border: '1px solid rgba(255,255,255,0.5)',
+                                                background: 'rgba(255,255,255,0.92)',
+                                                fontSize: 13,
+                                            }}
+                                        />
+                                        <Bar
+                                            dataKey="activeUsers"
+                                            name="Usuarios activos"
+                                            fill="#34C759"
+                                            radius={[7, 7, 0, 0]}
+                                            maxBarSize={48}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                        <div className="admin-activity-table-panel">
+                            {activityTableRows.length === 0 ? (
+                                <p className="admin-muted admin-empty-inset">Sin filas para mostrar.</p>
+                            ) : (
+                                <div className="admin-activity-table-wrap">
+                                    <table className="admin-table admin-table--users admin-table--compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Día</th>
+                                                <th className="admin-th-narrow">Activos</th>
+                                                <th className="admin-th-narrow">Alertas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {activityTableRows.map((r) => (
+                                                <tr key={r.date} className={peakDates.has(r.date) ? 'admin-row-peak' : ''}>
+                                                    <td>
+                                                        <span className="admin-day-label">{formatDayLabel(r.date)}</span>
+                                                        {peakDates.has(r.date) && (
+                                                            <span className="dash-peak-badge">Pico</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="admin-td-num">{r.activeUsers}</td>
+                                                    <td className="admin-td-num admin-td-muted">{r.alertCount}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
-            </div>
 
+                <div className="admin-two-col">
+                    <section className="section section--dash">
+                        <div className="section-header">
+                            <div className="section-header-left">
+                                <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.1)' }}>
+                                    <UserPlus style={{ color: '#34C759' }} />
+                                </div>
+                                <div>
+                                    <h3 className="section-title">Usuarios recientes</h3>
+                                    <p className="section-subtitle">
+                                        Altas globales en el periodo (no filtradas por comunidad)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="section-body section-body--table">
+                            {newUsers.length === 0 ? (
+                                <p className="admin-muted admin-empty-inset">
+                                    No hay altas de usuario en este periodo.
+                                </p>
+                            ) : (
+                                <div className="admin-table-scroll">
+                                    <table className="admin-table admin-table--users">
+                                        <thead>
+                                            <tr>
+                                                <th>Usuario</th>
+                                                <th>Correo</th>
+                                                <th className="admin-th-date">Fecha de ingreso</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {newUsers.map((u) => (
+                                                <tr key={u.id}>
+                                                    <td>
+                                                        <div className="admin-user-cell">
+                                                            <span className="admin-user-avatar" aria-hidden>
+                                                                {userInitials(u.displayName, u.email)}
+                                                            </span>
+                                                            <span className="admin-user-name">
+                                                                {u.displayName?.trim() || 'Sin nombre'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {u.email ? (
+                                                            <a className="admin-user-email" href={`mailto:${u.email}`}>
+                                                                {u.email}
+                                                            </a>
+                                                        ) : (
+                                                            <span className="admin-muted">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="admin-td-date">{u.createdDisplay}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    <section className="section section--dash">
+                        <div className="section-header">
+                            <div className="section-header-left">
+                                <div className="section-icon" style={{ background: 'rgba(255, 59, 48, 0.08)' }}>
+                                    <Activity style={{ color: '#FF3B30' }} />
+                                </div>
+                                <div>
+                                    <h3 className="section-title">Últimas alertas</h3>
+                                    <p className="section-subtitle">Mismo alcance y periodo</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="section-body admin-scroll-list">
+                            {scopedAlerts.length === 0 ? (
+                                <p className="admin-muted">Sin alertas en este alcance.</p>
+                            ) : (
+                                scopedAlerts.slice(0, 12).map((a) => (
+                                    <AlertCard
+                                        key={a.id}
+                                        alert={a}
+                                        onClick={setSelectedAlert}
+                                        isActive={isActivePendingAlert(a, latestContextAlertId)}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </section>
+                </div>
             </div>
 
             {selectedAlert && (
                 <AlertDetailModal alert={selectedAlert} onClose={() => setSelectedAlert(null)} />
             )}
-        </>
+        </div>
     );
 }

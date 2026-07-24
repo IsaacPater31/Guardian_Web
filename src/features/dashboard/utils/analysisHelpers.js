@@ -3,13 +3,26 @@
  * Kept out of the page controller for ETC and testability.
  */
 
+import { resolveAlertTypePresentation } from '@/features/alerts/utils/alertTypePresentation';
+
+/** Compact presets for the glass toolbar (readable + low vertical cost). */
 export const PRESET_DAYS = [
-    { days: 7, label: '7 días' },
-    { days: 14, label: '14 días' },
-    { days: 30, label: '30 días' },
-    { days: 90, label: '90 días' },
-    { days: 180, label: '6 meses' },
-    { days: 365, label: '1 año' },
+    { days: 7, label: '7 días', ariaLabel: 'Últimos 7 días' },
+    { days: 30, label: '30 días', ariaLabel: 'Últimos 30 días' },
+    { days: 90, label: '90 días', ariaLabel: 'Últimos 90 días' },
+    { days: 365, label: '1 año', ariaLabel: 'Último año' },
+];
+
+export const CHART_FALLBACK_COLORS = [
+    '#007AFF',
+    '#5856D6',
+    '#34C759',
+    '#FF9500',
+    '#FF3B30',
+    '#AF52DE',
+    '#5AC8FA',
+    '#FFCC00',
+    '#8E8E93',
 ];
 
 export function daysAgo(n) {
@@ -151,4 +164,66 @@ export function formatDayLabel(iso) {
     if (!y) return iso;
     const dt = new Date(y, m - 1, d);
     return dt.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Histogram series by alert type (entity custom types use snapshot labels/colors).
+ * @param {Array} alerts
+ * @param {{ maxBars?: number }} [opts]
+ * @returns {{ bars: Array<{ type: string, name: string, value: number, color: string }>, otherCount: number, total: number }}
+ */
+export function aggregateByTypeHistogram(alerts, { maxBars = 12 } = {}) {
+    const groups = new Map();
+    for (const a of alerts ?? []) {
+        const { typeKey, label, color } = resolveAlertTypePresentation(a);
+        const key = typeKey || 'unknown';
+        if (!groups.has(key)) {
+            groups.set(key, { type: key, name: label || key, value: 0, color: color || '#8E8E93' });
+        }
+        groups.get(key).value += 1;
+    }
+
+    const sorted = [...groups.values()].sort((a, b) => b.value - a.value);
+    const head = sorted.slice(0, maxBars).map((row, i) => ({
+        ...row,
+        color: row.color || CHART_FALLBACK_COLORS[i % CHART_FALLBACK_COLORS.length],
+    }));
+    const otherCount = sorted.slice(maxBars).reduce((acc, r) => acc + r.value, 0);
+    if (otherCount > 0) {
+        head.push({
+            type: 'OTHER',
+            name: 'Otros',
+            value: otherCount,
+            color: '#8E8E93',
+        });
+    }
+
+    return {
+        bars: head,
+        otherCount,
+        total: (alerts ?? []).length,
+    };
+}
+
+/**
+ * KPI + chart aggregates for a scoped alert list.
+ * @param {Array} alerts
+ * @param {Date} rangeStart
+ * @param {Date} rangeEnd
+ */
+export function buildScopedAlertStats(alerts, rangeStart, rangeEnd) {
+    let forwards = 0;
+    let reports = 0;
+    for (const a of alerts ?? []) {
+        forwards += a.forwardsCount || 0;
+        reports += a.reportsCount || 0;
+    }
+    const typeHistogram = aggregateByTypeHistogram(alerts);
+    return {
+        total: (alerts ?? []).length,
+        forwards,
+        reports,
+        chartData: aggregateByDay(alerts, rangeStart, rangeEnd),
+        typeHistogram,
+    };
 }
