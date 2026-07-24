@@ -1,6 +1,9 @@
+import { useMemo, useState } from 'react';
 import {
     COMMUNITY_ICON_CATALOG,
+    COMMUNITY_ICON_CATEGORIES,
     DEFAULT_ICON_COLOR,
+    entriesForCategory,
 } from '@/shared/config/communityIconCatalog';
 
 /**
@@ -19,11 +22,36 @@ export default function CommunityIconPickerGrid({
             'CommunityIconPickerGrid: `label` is required (use iconPickerLabel / IconPickerDomain).',
         );
     }
+
+    const categories = useMemo(
+        () =>
+            COMMUNITY_ICON_CATEGORIES.filter(
+                (c) => entriesForCategory(c.id).length > 0,
+            ),
+        [],
+    );
+
+    const initialCategory = useMemo(() => {
+        if (selectedCodePoint != null) {
+            const selected = COMMUNITY_ICON_CATALOG.find(
+                (o) => o.codePoint === selectedCodePoint,
+            );
+            if (selected) return selected.category;
+        }
+        return categories[0]?.id ?? null;
+    }, [categories, selectedCodePoint]);
+
+    const [categoryId, setCategoryId] = useState(initialCategory);
+
     const colorValue = (() => {
         const raw = String(selectedColor || '').trim();
         if (/^#([0-9a-fA-F]{6})$/.test(raw)) return raw.toUpperCase();
         return DEFAULT_ICON_COLOR;
     })();
+
+    const visibleIcons = categoryId
+        ? entriesForCategory(categoryId)
+        : COMMUNITY_ICON_CATALOG;
 
     function emit(next) {
         onChange?.(next);
@@ -39,11 +67,32 @@ export default function CommunityIconPickerGrid({
         <div className="community-icon-picker">
             <p className="community-icon-picker-label">{label}</p>
             <div
+                className="community-icon-picker-categories"
+                role="tablist"
+                aria-label="Categorías de iconos"
+            >
+                {categories.map((category) => {
+                    const selected = category.id === categoryId;
+                    return (
+                        <button
+                            key={category.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={selected}
+                            className={`community-icon-picker-category${selected ? ' is-selected' : ''}`}
+                            onClick={() => setCategoryId(category.id)}
+                        >
+                            {category.labelEs}
+                        </button>
+                    );
+                })}
+            </div>
+            <div
                 className="community-icon-picker-grid"
                 role="listbox"
                 aria-label={label}
             >
-                {COMMUNITY_ICON_CATALOG.map((option) => {
+                {visibleIcons.map((option) => {
                     const isSelected = option.codePoint === selectedCodePoint;
                     return (
                         <button
@@ -51,7 +100,7 @@ export default function CommunityIconPickerGrid({
                             type="button"
                             role="option"
                             aria-selected={isSelected}
-                            title={option.label}
+                            title={`${option.labelEs} / ${option.labelEn}`}
                             className={`community-icon-picker-cell${isSelected ? ' is-selected' : ''}`}
                             onClick={() =>
                                 emit({

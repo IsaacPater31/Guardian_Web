@@ -1,0 +1,1265 @@
+{
+    "version":  2,
+    "defaultCodePoint":  58502,
+    "defaultColor":  "#5B6ABF",
+    "categories":  [
+                       {
+                           "labelEn":  "Community",
+                           "id":  "community",
+                           "labelEs":  "Comunidad"
+                       },
+                       {
+                           "labelEn":  "Place",
+                           "id":  "place",
+                           "labelEs":  "Lugar"
+                       },
+                       {
+                           "labelEn":  "Safety",
+                           "id":  "safety",
+                           "labelEs":  "Seguridad"
+                       },
+                       {
+                           "labelEn":  "Emergency",
+                           "id":  "emergency",
+                           "labelEs":  "Emergencia"
+                       },
+                       {
+                           "labelEn":  "Health",
+                           "id":  "health",
+                           "labelEs":  "Salud"
+                       },
+                       {
+                           "labelEn":  "Services",
+                           "id":  "services",
+                           "labelEs":  "Servicios"
+                       },
+                       {
+                           "labelEn":  "Work \u0026 education",
+                           "id":  "work_edu",
+                           "labelEs":  "Trabajo y educación"
+                       },
+                       {
+                           "labelEn":  "Sport",
+                           "id":  "sport",
+                           "labelEs":  "Deporte"
+                       },
+                       {
+                           "labelEn":  "Culture",
+                           "id":  "culture",
+                           "labelEs":  "Cultura"
+                       },
+                       {
+                           "labelEn":  "Mobility",
+                           "id":  "mobility",
+                           "labelEs":  "Movilidad"
+                       },
+                       {
+                           "labelEn":  "Environment",
+                           "id":  "nature",
+                           "labelEs":  "Entorno"
+                       }
+                   ],
+    "icons":  [
+                  {
+                      "id":  "group",
+                      "labelEn":  "Group",
+                      "labelEs":  "Grupo",
+                      "colorHex":  "#5B6ABF",
+                      "codePoint":  58502,
+                      "keywords":  [
+                                       "grupo",
+                                       "group",
+                                       "people"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "community",
+                      "labelEn":  "Community",
+                      "labelEs":  "Comunidad",
+                      "colorHex":  "#7C4DFF",
+                      "codePoint":  58094,
+                      "keywords":  [
+                                       "comunidad",
+                                       "community",
+                                       "groups"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "family",
+                      "labelEn":  "Family",
+                      "labelEs":  "Familia",
+                      "colorHex":  "#E91E63",
+                      "codePoint":  57943,
+                      "keywords":  [
+                                       "familia",
+                                       "family"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "diversity",
+                      "labelEn":  "Diversity",
+                      "labelEs":  "Diversidad",
+                      "colorHex":  "#FF5722",
+                      "codePoint":  985180,
+                      "keywords":  [
+                                       "diversidad",
+                                       "diversity"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "alliance",
+                      "labelEn":  "Alliance",
+                      "labelEs":  "Alianza",
+                      "colorHex":  "#009688",
+                      "codePoint":  984766,
+                      "keywords":  [
+                                       "alianza",
+                                       "handshake"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "elderly",
+                      "labelEn":  "Elderly",
+                      "labelEs":  "Adulto mayor",
+                      "colorHex":  "#8D6E63",
+                      "codePoint":  57890,
+                      "keywords":  [
+                                       "anciano",
+                                       "elderly",
+                                       "mayor"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "child_care",
+                      "labelEn":  "Child care",
+                      "labelEs":  "Infancia",
+                      "colorHex":  "#EC407A",
+                      "codePoint":  57696,
+                      "keywords":  [
+                                       "ninos",
+                                       "child",
+                                       "infancia"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "person_pin",
+                      "labelEn":  "Neighbor",
+                      "labelEs":  "Vecino",
+                      "colorHex":  "#5C6BC0",
+                      "codePoint":  58520,
+                      "keywords":  [
+                                       "vecino",
+                                       "neighbor",
+                                       "pin"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "forum",
+                      "labelEn":  "Forum",
+                      "labelEs":  "Foro",
+                      "colorHex":  "#26A69A",
+                      "codePoint":  58051,
+                      "keywords":  [
+                                       "foro",
+                                       "forum",
+                                       "chat"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "group_add",
+                      "labelEn":  "Invite",
+                      "labelEs":  "Invitar",
+                      "colorHex":  "#7E57C2",
+                      "codePoint":  58092,
+                      "keywords":  [
+                                       "invitar",
+                                       "invite",
+                                       "add"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "people_alt",
+                      "labelEn":  "People",
+                      "labelEs":  "Personas",
+                      "colorHex":  "#5B6ABF",
+                      "codePoint":  58503,
+                      "keywords":  [
+                                       "personas",
+                                       "people"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "connect_without_contact",
+                      "labelEn":  "Connect",
+                      "labelEs":  "Conexión",
+                      "colorHex":  "#00897B",
+                      "codePoint":  57735,
+                      "keywords":  [
+                                       "conexion",
+                                       "connect",
+                                       "remote"
+                                   ],
+                      "category":  "community"
+                  },
+                  {
+                      "id":  "home",
+                      "labelEn":  "Home",
+                      "labelEs":  "Hogar",
+                      "colorHex":  "#795548",
+                      "codePoint":  58136,
+                      "keywords":  [
+                                       "hogar",
+                                       "home",
+                                       "casa"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "city",
+                      "labelEn":  "City",
+                      "labelEs":  "Ciudad",
+                      "colorHex":  "#607D8B",
+                      "codePoint":  58280,
+                      "keywords":  [
+                                       "ciudad",
+                                       "city"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "building",
+                      "labelEn":  "Building",
+                      "labelEs":  "Edificio",
+                      "colorHex":  "#455A64",
+                      "codePoint":  57481,
+                      "keywords":  [
+                                       "edificio",
+                                       "building",
+                                       "apartment"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "shelter",
+                      "labelEn":  "Shelter",
+                      "labelEs":  "Refugio",
+                      "colorHex":  "#8D6E63",
+                      "codePoint":  58412,
+                      "keywords":  [
+                                       "refugio",
+                                       "shelter"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "zone",
+                      "labelEn":  "Zone",
+                      "labelEs":  "Zona",
+                      "colorHex":  "#4CAF50",
+                      "codePoint":  58312,
+                      "keywords":  [
+                                       "zona",
+                                       "zone",
+                                       "map"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "holiday_village",
+                      "labelEn":  "Residential",
+                      "labelEs":  "Residencial",
+                      "colorHex":  "#6D4C41",
+                      "codePoint":  58135,
+                      "keywords":  [
+                                       "residencial",
+                                       "village"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "location_on",
+                      "labelEn":  "Location",
+                      "labelEs":  "Ubicación",
+                      "colorHex":  "#E53935",
+                      "codePoint":  58283,
+                      "keywords":  [
+                                       "ubicacion",
+                                       "location",
+                                       "pin"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "park",
+                      "labelEn":  "Park",
+                      "labelEs":  "Parque",
+                      "colorHex":  "#43A047",
+                      "codePoint":  58488,
+                      "keywords":  [
+                                       "parque",
+                                       "park"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "cottage",
+                      "labelEn":  "Cottage",
+                      "labelEs":  "Casa",
+                      "colorHex":  "#8D6E63",
+                      "codePoint":  57755,
+                      "keywords":  [
+                                       "casa",
+                                       "cottage"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "home_work",
+                      "labelEn":  "Neighborhood",
+                      "labelEs":  "Barrio",
+                      "colorHex":  "#546E7A",
+                      "codePoint":  58141,
+                      "keywords":  [
+                                       "barrio",
+                                       "neighborhood",
+                                       "homework"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "other_houses",
+                      "labelEn":  "Houses",
+                      "labelEs":  "Viviendas",
+                      "colorHex":  "#795548",
+                      "codePoint":  58463,
+                      "keywords":  [
+                                       "viviendas",
+                                       "houses"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "my_location",
+                      "labelEn":  "My location",
+                      "labelEs":  "Mi ubicación",
+                      "colorHex":  "#1E88E5",
+                      "codePoint":  58392,
+                      "keywords":  [
+                                       "gps",
+                                       "location",
+                                       "aqui"
+                                   ],
+                      "category":  "place"
+                  },
+                  {
+                      "id":  "security",
+                      "labelEn":  "Security",
+                      "labelEs":  "Seguridad",
+                      "colorHex":  "#1F2937",
+                      "codePoint":  58774,
+                      "keywords":  [
+                                       "seguridad",
+                                       "security",
+                                       "shield"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "surveillance",
+                      "labelEn":  "Surveillance",
+                      "labelEs":  "Vigilancia",
+                      "colorHex":  "#263238",
+                      "codePoint":  58729,
+                      "keywords":  [
+                                       "vigilancia",
+                                       "surveillance",
+                                       "cctv"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "alerts",
+                      "labelEn":  "Alerts",
+                      "labelEs":  "Alertas",
+                      "colorHex":  "#FF8F00",
+                      "codePoint":  58448,
+                      "keywords":  [
+                                       "alertas",
+                                       "alerts",
+                                       "bell"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "verified_user",
+                      "labelEn":  "Verified",
+                      "labelEs":  "Verificado",
+                      "colorHex":  "#2E7D32",
+                      "codePoint":  59034,
+                      "keywords":  [
+                                       "verificado",
+                                       "verified"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "gpp_good",
+                      "labelEn":  "Protection",
+                      "labelEs":  "Proteccion",
+                      "colorHex":  "#1565C0",
+                      "codePoint":  58074,
+                      "keywords":  [
+                                       "proteccion",
+                                       "gpp",
+                                       "shield"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "local_police",
+                      "labelEn":  "Police",
+                      "labelEs":  "Policía",
+                      "colorHex":  "#1A237E",
+                      "codePoint":  58274,
+                      "keywords":  [
+                                       "policia",
+                                       "police"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "crisis_alert",
+                      "labelEn":  "Crisis alert",
+                      "labelEs":  "Crisis",
+                      "colorHex":  "#C62828",
+                      "codePoint":  984980,
+                      "keywords":  [
+                                       "crisis",
+                                       "alert"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "notification_important",
+                      "labelEn":  "Important notice",
+                      "labelEs":  "Aviso importante",
+                      "colorHex":  "#EF6C00",
+                      "codePoint":  58446,
+                      "keywords":  [
+                                       "aviso",
+                                       "important",
+                                       "notification"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "campaign",
+                      "labelEn":  "Campaign",
+                      "labelEs":  "Difusión",
+                      "colorHex":  "#6A1B9A",
+                      "codePoint":  57656,
+                      "keywords":  [
+                                       "difusion",
+                                       "campaign",
+                                       "megaphone"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "lock",
+                      "labelEn":  "Lock",
+                      "labelEs":  "Bloqueo",
+                      "colorHex":  "#37474F",
+                      "codePoint":  58286,
+                      "keywords":  [
+                                       "bloqueo",
+                                       "lock",
+                                       "candado"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "report",
+                      "labelEn":  "Report",
+                      "labelEs":  "Reporte",
+                      "colorHex":  "#D32F2F",
+                      "codePoint":  58666,
+                      "keywords":  [
+                                       "reporte",
+                                       "report",
+                                       "denuncia"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "admin_panel_settings",
+                      "labelEn":  "Admin",
+                      "labelEs":  "Administración",
+                      "colorHex":  "#455A64",
+                      "codePoint":  57442,
+                      "keywords":  [
+                                       "admin",
+                                       "settings",
+                                       "panel"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "safety_check",
+                      "labelEn":  "Safety check",
+                      "labelEs":  "Chequeo de seguridad",
+                      "colorHex":  "#00838F",
+                      "codePoint":  985022,
+                      "keywords":  [
+                                       "chequeo",
+                                       "safety",
+                                       "check"
+                                   ],
+                      "category":  "safety"
+                  },
+                  {
+                      "id":  "emergency",
+                      "labelEn":  "Emergency",
+                      "labelEs":  "Emergencia",
+                      "colorHex":  "#B71C1C",
+                      "codePoint":  984314,
+                      "keywords":  [
+                                       "emergencia",
+                                       "emergency"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "sos",
+                      "labelEn":  "SOS",
+                      "labelEs":  "SOS",
+                      "colorHex":  "#B71C1C",
+                      "codePoint":  985031,
+                      "keywords":  [
+                                       "sos",
+                                       "auxilio"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "emergency_share",
+                      "labelEn":  "Share emergency",
+                      "labelEs":  "Compartir emergencia",
+                      "colorHex":  "#D32F2F",
+                      "codePoint":  984991,
+                      "keywords":  [
+                                       "compartir",
+                                       "emergency",
+                                       "share"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "contact_emergency",
+                      "labelEn":  "Emergency contact",
+                      "labelEs":  "Contacto emergencia",
+                      "colorHex":  "#C62828",
+                      "codePoint":  985175,
+                      "keywords":  [
+                                       "contacto",
+                                       "emergency",
+                                       "contact"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "medical_services",
+                      "labelEn":  "Medical services",
+                      "labelEs":  "Servicios médicos",
+                      "colorHex":  "#AD1457",
+                      "codePoint":  58328,
+                      "keywords":  [
+                                       "medico",
+                                       "medical",
+                                       "cruz"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "local_fire_department",
+                      "labelEn":  "Fire department",
+                      "labelEs":  "Bomberos",
+                      "colorHex":  "#E65100",
+                      "codePoint":  58258,
+                      "keywords":  [
+                                       "bomberos",
+                                       "fire"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "fire_truck",
+                      "labelEn":  "Fire truck",
+                      "labelEs":  "Camión de bomberos",
+                      "colorHex":  "#EF6C00",
+                      "codePoint":  984994,
+                      "keywords":  [
+                                       "camion",
+                                       "fire",
+                                       "truck"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "flood",
+                      "labelEn":  "Flood",
+                      "labelEs":  "Inundación",
+                      "colorHex":  "#0277BD",
+                      "codePoint":  984995,
+                      "keywords":  [
+                                       "inundacion",
+                                       "flood",
+                                       "agua"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "thunderstorm",
+                      "labelEn":  "Thunderstorm",
+                      "labelEs":  "Tormenta",
+                      "colorHex":  "#455A64",
+                      "codePoint":  985035,
+                      "keywords":  [
+                                       "tormenta",
+                                       "storm",
+                                       "thunder"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "warning",
+                      "labelEn":  "Warning",
+                      "labelEs":  "Advertencia",
+                      "colorHex":  "#F9A825",
+                      "codePoint":  59083,
+                      "keywords":  [
+                                       "advertencia",
+                                       "warning"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "health_and_safety",
+                      "labelEn":  "Health and safety",
+                      "labelEs":  "Salud y seguridad",
+                      "colorHex":  "#2E7D32",
+                      "codePoint":  58117,
+                      "keywords":  [
+                                       "salud",
+                                       "seguridad",
+                                       "safety"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "car_crash",
+                      "labelEn":  "Crash",
+                      "labelEs":  "Accidente",
+                      "colorHex":  "#BF360C",
+                      "codePoint":  984979,
+                      "keywords":  [
+                                       "accidente",
+                                       "crash",
+                                       "choque"
+                                   ],
+                      "category":  "emergency"
+                  },
+                  {
+                      "id":  "health",
+                      "labelEn":  "Health",
+                      "labelEs":  "Salud",
+                      "colorHex":  "#C62828",
+                      "codePoint":  58262,
+                      "keywords":  [
+                                       "salud",
+                                       "health",
+                                       "hospital"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "wellness",
+                      "labelEn":  "Wellness",
+                      "labelEs":  "Bienestar",
+                      "colorHex":  "#AD1457",
+                      "codePoint":  57947,
+                      "keywords":  [
+                                       "bienestar",
+                                       "wellness"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "care",
+                      "labelEn":  "Care",
+                      "labelEs":  "Cuidado",
+                      "colorHex":  "#00897B",
+                      "codePoint":  58116,
+                      "keywords":  [
+                                       "cuidado",
+                                       "care",
+                                       "healing"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "volunteer",
+                      "labelEn":  "Volunteering",
+                      "labelEs":  "Voluntariado",
+                      "colorHex":  "#F06292",
+                      "codePoint":  59078,
+                      "keywords":  [
+                                       "voluntariado",
+                                       "volunteer"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "vaccines",
+                      "labelEn":  "Vaccines",
+                      "labelEs":  "Vacunas",
+                      "colorHex":  "#00838F",
+                      "codePoint":  984471,
+                      "keywords":  [
+                                       "vacunas",
+                                       "vaccines"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "accessible",
+                      "labelEn":  "Accessibility",
+                      "labelEs":  "Accesibilidad",
+                      "colorHex":  "#1565C0",
+                      "codePoint":  57406,
+                      "keywords":  [
+                                       "accesibilidad",
+                                       "accessible"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "wheelchair_pickup",
+                      "labelEn":  "Wheelchair",
+                      "labelEs":  "Movilidad reducida",
+                      "colorHex":  "#0277BD",
+                      "codePoint":  59108,
+                      "keywords":  [
+                                       "silla",
+                                       "wheelchair",
+                                       "movilidad"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "bloodtype",
+                      "labelEn":  "Blood type",
+                      "labelEs":  "Sangre",
+                      "colorHex":  "#C62828",
+                      "codePoint":  57571,
+                      "keywords":  [
+                                       "sangre",
+                                       "blood"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "monitor_heart",
+                      "labelEn":  "Heart monitor",
+                      "labelEs":  "Monitoreo cardiaco",
+                      "colorHex":  "#D81B60",
+                      "codePoint":  984381,
+                      "keywords":  [
+                                       "corazon",
+                                       "heart",
+                                       "monitor"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "local_pharmacy",
+                      "labelEn":  "Pharmacy",
+                      "labelEs":  "Farmacia",
+                      "colorHex":  "#00695C",
+                      "codePoint":  58270,
+                      "keywords":  [
+                                       "farmacia",
+                                       "pharmacy"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "medical_information",
+                      "labelEn":  "Medical info",
+                      "labelEs":  "Info médica",
+                      "colorHex":  "#AD1457",
+                      "codePoint":  985004,
+                      "keywords":  [
+                                       "medica",
+                                       "medical",
+                                       "info"
+                                   ],
+                      "category":  "health"
+                  },
+                  {
+                      "id":  "support_agent",
+                      "labelEn":  "Support",
+                      "labelEs":  "Soporte",
+                      "colorHex":  "#3949AB",
+                      "codePoint":  58913,
+                      "keywords":  [
+                                       "soporte",
+                                       "support",
+                                       "agent"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "help_center",
+                      "labelEn":  "Help center",
+                      "labelEs":  "Ayuda",
+                      "colorHex":  "#5C6BC0",
+                      "codePoint":  58122,
+                      "keywords":  [
+                                       "ayuda",
+                                       "help"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "balance",
+                      "labelEn":  "Justice",
+                      "labelEs":  "Justicia",
+                      "colorHex":  "#455A64",
+                      "codePoint":  984262,
+                      "keywords":  [
+                                       "justicia",
+                                       "balance",
+                                       "leyes"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "account_balance",
+                      "labelEn":  "Institution",
+                      "labelEs":  "Institucion",
+                      "colorHex":  "#37474F",
+                      "codePoint":  57408,
+                      "keywords":  [
+                                       "institucion",
+                                       "bank",
+                                       "gobierno"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "domain",
+                      "labelEn":  "Entity",
+                      "labelEs":  "Entidad",
+                      "colorHex":  "#546E7A",
+                      "codePoint":  57843,
+                      "keywords":  [
+                                       "entidad",
+                                       "domain",
+                                       "org"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "storefront",
+                      "labelEn":  "Storefront",
+                      "labelEs":  "Comercio",
+                      "colorHex":  "#6D4C41",
+                      "codePoint":  58892,
+                      "keywords":  [
+                                       "comercio",
+                                       "store",
+                                       "tienda"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "local_shipping",
+                      "labelEn":  "Shipping",
+                      "labelEs":  "Logistica",
+                      "colorHex":  "#EF6C00",
+                      "codePoint":  58278,
+                      "keywords":  [
+                                       "logistica",
+                                       "shipping",
+                                       "envio"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "fire_extinguisher",
+                      "labelEn":  "Extinguisher",
+                      "labelEs":  "Extintor",
+                      "colorHex":  "#E53935",
+                      "codePoint":  57992,
+                      "keywords":  [
+                                       "extintor",
+                                       "fire"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "gavel",
+                      "labelEn":  "Authority",
+                      "labelEs":  "Autoridad",
+                      "colorHex":  "#5D4037",
+                      "codePoint":  58067,
+                      "keywords":  [
+                                       "autoridad",
+                                       "gavel",
+                                       "juicio"
+                                   ],
+                      "category":  "services"
+                  },
+                  {
+                      "id":  "school",
+                      "labelEn":  "School",
+                      "labelEs":  "Escuela",
+                      "colorHex":  "#1976D2",
+                      "codePoint":  58713,
+                      "keywords":  [
+                                       "escuela",
+                                       "school"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "work",
+                      "labelEn":  "Work",
+                      "labelEs":  "Trabajo",
+                      "colorHex":  "#F57C00",
+                      "codePoint":  59122,
+                      "keywords":  [
+                                       "trabajo",
+                                       "work"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "company",
+                      "labelEn":  "Company",
+                      "labelEs":  "Empresa",
+                      "colorHex":  "#37474F",
+                      "codePoint":  57627,
+                      "keywords":  [
+                                       "empresa",
+                                       "company",
+                                       "business"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "science",
+                      "labelEn":  "Science",
+                      "labelEs":  "Ciencia",
+                      "colorHex":  "#00BCD4",
+                      "codePoint":  58714,
+                      "keywords":  [
+                                       "ciencia",
+                                       "science"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "study",
+                      "labelEn":  "Study",
+                      "labelEs":  "Estudio",
+                      "colorHex":  "#3F51B5",
+                      "codePoint":  58333,
+                      "keywords":  [
+                                       "estudio",
+                                       "study",
+                                       "book"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "engineering",
+                      "labelEn":  "Engineering",
+                      "labelEs":  "Ingeniería",
+                      "colorHex":  "#455A64",
+                      "codePoint":  57908,
+                      "keywords":  [
+                                       "ingenieria",
+                                       "engineering"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "work_outline",
+                      "labelEn":  "Office",
+                      "labelEs":  "Oficina",
+                      "colorHex":  "#FB8C00",
+                      "codePoint":  59124,
+                      "keywords":  [
+                                       "oficina",
+                                       "office",
+                                       "work"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "business_center",
+                      "labelEn":  "Business center",
+                      "labelEs":  "Centro de negocios",
+                      "colorHex":  "#546E7A",
+                      "codePoint":  57628,
+                      "keywords":  [
+                                       "negocios",
+                                       "business"
+                                   ],
+                      "category":  "work_edu"
+                  },
+                  {
+                      "id":  "soccer",
+                      "labelEn":  "Soccer",
+                      "labelEs":  "Fútbol",
+                      "colorHex":  "#388E3C",
+                      "codePoint":  58866,
+                      "keywords":  [
+                                       "futbol",
+                                       "soccer"
+                                   ],
+                      "category":  "sport"
+                  },
+                  {
+                      "id":  "gym",
+                      "labelEn":  "Gym",
+                      "labelEs":  "Gimnasio",
+                      "colorHex":  "#D32F2F",
+                      "codePoint":  57997,
+                      "keywords":  [
+                                       "gimnasio",
+                                       "gym"
+                                   ],
+                      "category":  "sport"
+                  },
+                  {
+                      "id":  "run",
+                      "labelEn":  "Running",
+                      "labelEs":  "Correr",
+                      "colorHex":  "#FF6F00",
+                      "codePoint":  57820,
+                      "keywords":  [
+                                       "correr",
+                                       "run"
+                                   ],
+                      "category":  "sport"
+                  },
+                  {
+                      "id":  "basketball",
+                      "labelEn":  "Basketball",
+                      "labelEs":  "Basket",
+                      "colorHex":  "#E65100",
+                      "codePoint":  58854,
+                      "keywords":  [
+                                       "basket",
+                                       "basketball"
+                                   ],
+                      "category":  "sport"
+                  },
+                  {
+                      "id":  "swim",
+                      "labelEn":  "Swimming",
+                      "labelEs":  "Natación",
+                      "colorHex":  "#0288D1",
+                      "codePoint":  58588,
+                      "keywords":  [
+                                       "natacion",
+                                       "swim"
+                                   ],
+                      "category":  "sport"
+                  },
+                  {
+                      "id":  "church",
+                      "labelEn":  "Church",
+                      "labelEs":  "Iglesia",
+                      "colorHex":  "#6D4C41",
+                      "codePoint":  984269,
+                      "keywords":  [
+                                       "iglesia",
+                                       "church"
+                                   ],
+                      "category":  "culture"
+                  },
+                  {
+                      "id":  "culture",
+                      "labelEn":  "Culture",
+                      "labelEs":  "Cultura",
+                      "colorHex":  "#1565C0",
+                      "codePoint":  57535,
+                      "keywords":  [
+                                       "cultura",
+                                       "culture"
+                                   ],
+                      "category":  "culture"
+                  },
+                  {
+                      "id":  "music",
+                      "labelEn":  "Music",
+                      "labelEs":  "Música",
+                      "colorHex":  "#AB47BC",
+                      "codePoint":  58389,
+                      "keywords":  [
+                                       "musica",
+                                       "music"
+                                   ],
+                      "category":  "culture"
+                  },
+                  {
+                      "id":  "theater",
+                      "labelEn":  "Theater",
+                      "labelEs":  "Teatro",
+                      "colorHex":  "#FF7043",
+                      "codePoint":  58964,
+                      "keywords":  [
+                                       "teatro",
+                                       "theater"
+                                   ],
+                      "category":  "culture"
+                  },
+                  {
+                      "id":  "car",
+                      "labelEn":  "Car",
+                      "labelEs":  "Auto",
+                      "colorHex":  "#546E7A",
+                      "codePoint":  57815,
+                      "keywords":  [
+                                       "auto",
+                                       "car",
+                                       "vehiculo"
+                                   ],
+                      "category":  "mobility"
+                  },
+                  {
+                      "id":  "bus",
+                      "labelEn":  "Bus",
+                      "labelEs":  "Bus",
+                      "colorHex":  "#1976D2",
+                      "codePoint":  57813,
+                      "keywords":  [
+                                       "bus",
+                                       "autobus"
+                                   ],
+                      "category":  "mobility"
+                  },
+                  {
+                      "id":  "walk",
+                      "labelEn":  "Walk",
+                      "labelEs":  "Caminar",
+                      "colorHex":  "#43A047",
+                      "codePoint":  57825,
+                      "keywords":  [
+                                       "caminar",
+                                       "walk"
+                                   ],
+                      "category":  "mobility"
+                  },
+                  {
+                      "id":  "bike",
+                      "labelEn":  "Bike",
+                      "labelEs":  "Bicicleta",
+                      "colorHex":  "#2E7D32",
+                      "codePoint":  58499,
+                      "keywords":  [
+                                       "bici",
+                                       "bike"
+                                   ],
+                      "category":  "mobility"
+                  },
+                  {
+                      "id":  "taxi",
+                      "labelEn":  "Taxi",
+                      "labelEs":  "Taxi",
+                      "colorHex":  "#F9A825",
+                      "codePoint":  58279,
+                      "keywords":  [
+                                       "taxi"
+                                   ],
+                      "category":  "mobility"
+                  },
+                  {
+                      "id":  "pets",
+                      "labelEn":  "Pets",
+                      "labelEs":  "Mascotas",
+                      "colorHex":  "#6D4C41",
+                      "codePoint":  58529,
+                      "keywords":  [
+                                       "mascotas",
+                                       "pets",
+                                       "perro"
+                                   ],
+                      "category":  "nature"
+                  },
+                  {
+                      "id":  "water_drop",
+                      "labelEn":  "Water",
+                      "labelEs":  "Agua",
+                      "colorHex":  "#0288D1",
+                      "codePoint":  984482,
+                      "keywords":  [
+                                       "agua",
+                                       "water"
+                                   ],
+                      "category":  "nature"
+                  },
+                  {
+                      "id":  "eco",
+                      "labelEn":  "Eco",
+                      "labelEs":  "Ecología",
+                      "colorHex":  "#2E7D32",
+                      "codePoint":  57879,
+                      "keywords":  [
+                                       "ecologia",
+                                       "eco",
+                                       "verde"
+                                   ],
+                      "category":  "nature"
+                  },
+                  {
+                      "id":  "forest",
+                      "labelEn":  "Forest",
+                      "labelEs":  "Bosque",
+                      "colorHex":  "#33691E",
+                      "codePoint":  984330,
+                      "keywords":  [
+                                       "bosque",
+                                       "forest"
+                                   ],
+                      "category":  "nature"
+                  },
+                  {
+                      "id":  "recycling",
+                      "labelEn":  "Recycling",
+                      "labelEs":  "Reciclaje",
+                      "colorHex":  "#558B2F",
+                      "codePoint":  984410,
+                      "keywords":  [
+                                       "reciclaje",
+                                       "recycling"
+                                   ],
+                      "category":  "nature"
+                  }
+              ]
+}
