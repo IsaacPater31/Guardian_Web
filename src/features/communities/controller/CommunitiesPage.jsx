@@ -25,11 +25,10 @@ const emptyForm = {
     description: '',
     iconCodePoint: DEFAULT_ICON_CODE_POINT,
     iconColor: DEFAULT_ICON_COLOR,
-    reportButtonColor: '#0D1B3E',
     reportAlertTypes: [],
 };
 
-function normalizeHexColor(value, fallback = '#0D1B3E') {
+function normalizeHexColor(value, fallback = DEFAULT_ICON_COLOR) {
     const raw = String(value || '').trim();
     if (/^#([0-9a-fA-F]{6})$/.test(raw)) return raw.toUpperCase();
     return fallback;
@@ -120,8 +119,7 @@ export default function CommunitiesPage() {
             name: c.name,
             description: c.description || '',
             iconCodePoint: c.iconCodePoint ?? DEFAULT_ICON_CODE_POINT,
-            iconColor: entity ? null : c.iconColor || DEFAULT_ICON_COLOR,
-            reportButtonColor: c.reportButtonColor || '#0D1B3E',
+            iconColor: normalizeHexColor(c.iconColor, DEFAULT_ICON_COLOR),
             reportAlertTypes: normalizeEntityReportTypes(c.reportAlertTypes),
         });
         setModal(entity ? 'edit-entity' : 'edit-community');
@@ -132,11 +130,10 @@ export default function CommunitiesPage() {
         setSaving(true);
         setErr('');
 
-        // Las entidades se muestran en el móvil como "Reporte {Nombre}";
-        // el nombre debe ser una sola palabra (p. ej. "Policía", "EPA").
+        // Nombre de entidad: una sola palabra (p. ej. "Policía", "EPA").
         const trimmedName = String(form.name || '').trim();
         const entityFlow = isEntityModal(modal);
-        const reportButtonColor = normalizeHexColor(form.reportButtonColor);
+        const iconColor = normalizeHexColor(form.iconColor, DEFAULT_ICON_COLOR);
         if (entityFlow && /\s/.test(trimmedName)) {
             setErr('El nombre de una entidad debe ser una sola palabra (p. ej. "Policía").');
             setSaving(false);
@@ -151,8 +148,7 @@ export default function CommunitiesPage() {
                     allowForwardToEntities: true,
                     createdByUid: null,
                     iconCodePoint: form.iconCodePoint,
-                    iconColor: form.iconColor,
-                    reportButtonColor,
+                    iconColor,
                 });
             } else if (modal === 'create-entity') {
                 await adminCreateCommunity({
@@ -162,7 +158,7 @@ export default function CommunitiesPage() {
                     allowForwardToEntities: true,
                     createdByUid: null,
                     iconCodePoint: form.iconCodePoint,
-                    reportButtonColor,
+                    iconColor,
                     reportAlertTypes: form.reportAlertTypes,
                 });
             } else if (modal === 'edit-community' && form.id) {
@@ -170,16 +166,14 @@ export default function CommunitiesPage() {
                     name: trimmedName,
                     description: form.description || null,
                     iconCodePoint: form.iconCodePoint,
-                    iconColor: form.iconColor,
-                    reportButtonColor,
+                    iconColor,
                 });
             } else if (modal === 'edit-entity' && form.id) {
                 await adminUpdateCommunity(form.id, {
                     name: trimmedName,
                     description: form.description || null,
                     iconCodePoint: form.iconCodePoint,
-                    iconColor: null,
-                    reportButtonColor,
+                    iconColor,
                     reportAlertTypes: form.reportAlertTypes,
                 });
             }

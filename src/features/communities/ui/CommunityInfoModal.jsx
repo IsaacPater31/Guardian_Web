@@ -69,24 +69,18 @@ export default function CommunityInfoModal({ community, memberCount, onClose }) 
                     <dd>
                         <CommunityIconDisplay
                             iconCodePoint={community.iconCodePoint}
-                            iconColor={
-                                isOfficialEntityCommunity(community)
-                                    ? community.reportButtonColor
-                                    : community.iconColor
-                            }
+                            iconColor={community.iconColor}
                             size={40}
                         />
                     </dd>
-                    <dt>Color botón reportar</dt>
+                    <dt>Color del icono</dt>
                     <dd>
-                        {isOfficialEntityCommunity(community) ? (
-                            <span
-                                className="admin-color-pill"
-                                style={{ backgroundColor: community.reportButtonColor || '#0D1B3E' }}
-                            >
-                                {community.reportButtonColor || '#0D1B3E'}
-                            </span>
-                        ) : '—'}
+                        <span
+                            className="admin-color-pill"
+                            style={{ backgroundColor: community.iconColor || '#5B6ABF' }}
+                        >
+                            {community.iconColor || '#5B6ABF'}
+                        </span>
                     </dd>
                     <dt>Tipos de reporte</dt>
                     <dd>

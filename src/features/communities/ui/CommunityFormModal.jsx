@@ -83,44 +83,17 @@ export default function CommunityFormModal({
                         />
                     </label>
                     <CommunityIconPickerGrid
+                        label={entityFlow ? 'Icono de la entidad' : 'Icono de la comunidad'}
                         selectedCodePoint={form.iconCodePoint}
-                        onSelect={(option) =>
+                        selectedColor={form.iconColor}
+                        onChange={({ iconCodePoint, iconColor }) =>
                             onFormChange((f) => ({
                                 ...f,
-                                iconCodePoint: option.codePoint,
+                                iconCodePoint,
+                                iconColor,
                             }))
                         }
                     />
-                    {entityFlow && (
-                        <label className="login-label">
-                            Color del botón Reportar
-                            <div className="admin-color-field">
-                                <input
-                                    type="color"
-                                    className="admin-color-input"
-                                    value={form.reportButtonColor || '#0D1B3E'}
-                                    onChange={(e) =>
-                                        onFormChange((f) => ({
-                                            ...f,
-                                            reportButtonColor: e.target.value,
-                                        }))
-                                    }
-                                    aria-label="Color del botón reportar"
-                                />
-                                <input
-                                    className="login-input admin-color-hex"
-                                    value={form.reportButtonColor || '#0D1B3E'}
-                                    onChange={(e) =>
-                                        onFormChange((f) => ({
-                                            ...f,
-                                            reportButtonColor: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="#0D1B3E"
-                                />
-                            </div>
-                        </label>
-                    )}
                     {entityFlow && (
                         <EntityAlertTypesPicker
                             selected={form.reportAlertTypes}
