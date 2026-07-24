@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle } from 'lucide-react';
+import {
+    X, SlidersHorizontal, Circle, CheckCircle2, Clock, CalendarDays, AlertTriangle, BellRing,
+} from 'lucide-react';
 import { getAlertColor, getAlertLabel } from '@/shared/config/alertTypes';
 import {
     STATUS_OPTIONS,
@@ -11,6 +13,7 @@ import {
     countActiveFilters,
     countActiveFiltersCompat,
 } from '@/shared/config/filterOptions';
+import MapRecentAlertsList from '@/features/alerts/ui/MapRecentAlertsList';
 
 export { EMPTY_FILTERS, countActiveFiltersCompat, DEFAULT_FILTERS };
 
@@ -19,8 +22,10 @@ export { EMPTY_FILTERS, countActiveFiltersCompat, DEFAULT_FILTERS };
  *
  * variant="drawer" — modal overlay (Alerts page); draft + Aplicar; custom dates as ISO strings.
  * variant="map"    — floating panel (Map); immediate onChange; custom dates as Date objects.
+ *                    Optional listAlerts enables Filtros | Alertas toggle (map home).
  */
-export default function AlertFilters({    variant = 'drawer',
+export default function AlertFilters({
+    variant = 'drawer',
     filters,
     onChange,
     onClose,
@@ -33,6 +38,12 @@ export default function AlertFilters({    variant = 'drawer',
     dateRange,
     customStart,
     customEnd,
+    // Optional map recent-alerts tab (null = filters-only)
+    listAlerts = null,
+    activeAlertId = null,
+    pulseAlertId = null,
+    selectedAlertId = null,
+    onRecentAlertSelect,
 }) {
     const isMap = variant === 'map';
     const resolvedLabel = typesSectionLabel
@@ -54,6 +65,11 @@ export default function AlertFilters({    variant = 'drawer',
                 typeOptions={typeOptions}
                 typesSectionLabel={resolvedLabel}
                 totalVisible={totalVisible}
+                listAlerts={listAlerts}
+                activeAlertId={activeAlertId}
+                pulseAlertId={pulseAlertId}
+                selectedAlertId={selectedAlertId}
+                onRecentAlertSelect={onRecentAlertSelect}
             />
         );
     }
@@ -270,11 +286,33 @@ function DrawerVariant({ filters, onChange, onClose, typeOptions, typesSectionLa
 
 // ─── Map (floating) ──────────────────────────────────────────────────────────
 
-function MapVariant({ filters, onChange, typeOptions, typesSectionLabel, totalVisible }) {
+function MapVariant({
+    filters,
+    onChange,
+    typeOptions,
+    typesSectionLabel,
+    totalVisible,
+    listAlerts = null,
+    activeAlertId = null,
+    pulseAlertId = null,
+    selectedAlertId = null,
+    onRecentAlertSelect,
+}) {
+    const showRecentView = listAlerts != null;
     const [isExpanded, setIsExpanded] = useState(true);
+    const [activeView, setActiveView] = useState(showRecentView ? 'recent' : 'filters');
+    const lastPulseIdRef = useRef(null);
     const { types, status, dateRange, customStart, customEnd } = filters;
     const activeCount = countActiveFilters(types, status, dateRange);
     const resolvedTypeOptions = resolveTypeOptions(typeOptions);
+    const recentAlerts = listAlerts ?? [];
+
+    useEffect(() => {
+        if (!pulseAlertId || pulseAlertId === lastPulseIdRef.current) return;
+        lastPulseIdRef.current = pulseAlertId;
+        setActiveView('recent');
+        setIsExpanded(true);
+    }, [pulseAlertId]);
 
     const emit = useCallback((patch) => {
         onChange({ types, status, dateRange, customStart, customEnd, ...patch });
@@ -295,6 +333,7 @@ function MapVariant({ filters, onChange, typeOptions, typesSectionLabel, totalVi
 
     const clearAll = () => onChange({ ...DEFAULT_FILTERS });
     const today = new Date().toISOString().split('T')[0];
+    const showingFilters = !showRecentView || activeView === 'filters';
 
     return (
         <div className="map-filter-panel">
@@ -306,11 +345,16 @@ function MapVariant({ filters, onChange, typeOptions, typesSectionLabel, totalVi
                 aria-controls="map-filter-body"
             >
                 <div className="map-filter-header-icon">
-                    <SlidersHorizontal />
+                    {showingFilters ? <SlidersHorizontal /> : <BellRing />}
                 </div>
-                <span className="map-filter-header-label">Filtros</span>
-                {activeCount > 0 && (
+                <span className="map-filter-header-label">
+                    {showingFilters ? 'Filtros' : 'Alertas'}
+                </span>
+                {showingFilters && activeCount > 0 && (
                     <span className="map-filter-badge">{activeCount}</span>
+                )}
+                {!showingFilters && recentAlerts.length > 0 && (
+                    <span className="map-filter-badge">{recentAlerts.length}</span>
                 )}
                 <div className={`map-filter-chevron${isExpanded ? '' : ' collapsed'}`}>
                     <LucideIcons.ChevronDown />
@@ -322,118 +366,157 @@ function MapVariant({ filters, onChange, typeOptions, typesSectionLabel, totalVi
                 className={`map-filter-body-wrap${isExpanded ? ' expanded' : ''}`}
             >
                 <div className="map-filter-body">
-                    <div className="map-filter-result-row">
-                        <span className="map-filter-result-label">{totalVisible} alerta{totalVisible !== 1 ? 's' : ''} visibles</span>
-                        {activeCount > 0 && (
-                            <button type="button" className="map-filter-clear-btn" onClick={clearAll}>
-                                <X /> Limpiar
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="map-filter-section">
-                        <div className="map-filter-section-title">
-                            <AlertTriangle />
-                            <span>{typesSectionLabel}</span>
-                        </div>
-                        {resolvedTypeOptions.length === 0 ? (
-                            <p className="admin-muted" style={{ margin: 0, fontSize: 12 }}>
-                                No hay tipos configurados en tus reportes.
-                            </p>
-                        ) : (
-                            <div className="map-filter-type-grid">
-                                {resolvedTypeOptions.map((opt) => {
-                                    const Icon = LucideIcons[opt.icon] || LucideIcons.AlertTriangle;
-                                    const active = types.includes(opt.key);
-                                    return (
-                                        <button
-                                            key={opt.key}
-                                            type="button"
-                                            className={`map-filter-type-chip${active ? ' active' : ''}`}
-                                            style={active ? { '--chip-color': opt.color } : {}}
-                                            onClick={() => toggleType(opt.key)}
-                                            title={opt.label}
-                                        >
-                                            <span
-                                                className="map-filter-type-dot"
-                                                style={{ background: opt.color }}
-                                            >
-                                                <Icon />
-                                            </span>
-                                            <span className="map-filter-type-label">{opt.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="map-filter-section">
-                        <div className="map-filter-section-title">
-                            <Circle />
-                            <span>Estado</span>
-                        </div>
-                        <div className="map-filter-pills">
-                            {STATUS_OPTIONS.map((opt) => (
-                                <button
-                                    key={opt.value}
-                                    className={`map-filter-pill${status === opt.value ? ' active' : ''}`}
-                                    onClick={() => emit({ status: opt.value })}
-                                >
-                                    {status === opt.value && opt.value !== 'all' && <CheckCircle2 />}
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="map-filter-section">
-                        <div className="map-filter-section-title">
-                            <CalendarDays />
-                            <span>Período</span>
-                        </div>
-                        <div className="map-filter-date-chips">
-                            {DATE_OPTIONS.filter((o) => o.value !== 'custom').map((opt) => (
-                                <button
-                                    key={opt.value}
-                                    className={`map-filter-date-chip${dateRange === opt.value ? ' active' : ''}`}
-                                    onClick={() => emit({ dateRange: opt.value })}
-                                >
-                                    {opt.label}
-                                </button>
-                            ))}
+                    {showRecentView && (
+                        <div className="map-filter-view-toggle" role="tablist" aria-label="Vista del panel">
                             <button
-                                className={`map-filter-date-chip${dateRange === 'custom' ? ' active' : ''}`}
-                                onClick={() => emit({ dateRange: 'custom' })}
+                                type="button"
+                                role="tab"
+                                aria-selected={activeView === 'filters'}
+                                className={`map-filter-view-btn${activeView === 'filters' ? ' active' : ''}`}
+                                onClick={() => setActiveView('filters')}
                             >
-                                <Clock /> Personalizado
+                                <SlidersHorizontal />
+                                Filtros
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeView === 'recent'}
+                                className={`map-filter-view-btn${activeView === 'recent' ? ' active' : ''}`}
+                                onClick={() => setActiveView('recent')}
+                            >
+                                <BellRing />
+                                Alertas
                             </button>
                         </div>
+                    )}
 
-                        {dateRange === 'custom' && (
-                            <div className="map-filter-custom-dates">
-                                <div className="map-filter-date-field">
-                                    <label>Desde</label>
-                                    <input
-                                        type="date"
-                                        max={today}
-                                        value={customStart ? customStart.toISOString().split('T')[0] : ''}
-                                        onChange={(e) => handleCustomDate('start', e.target.value)}
-                                    />
+                    {showingFilters ? (
+                        <>
+                            <div className="map-filter-result-row">
+                                <span className="map-filter-result-label">{totalVisible} alerta{totalVisible !== 1 ? 's' : ''} visibles</span>
+                                {activeCount > 0 && (
+                                    <button type="button" className="map-filter-clear-btn" onClick={clearAll}>
+                                        <X /> Limpiar
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="map-filter-section">
+                                <div className="map-filter-section-title">
+                                    <AlertTriangle />
+                                    <span>{typesSectionLabel}</span>
                                 </div>
-                                <div className="map-filter-date-field">
-                                    <label>Hasta</label>
-                                    <input
-                                        type="date"
-                                        max={today}
-                                        min={customStart ? customStart.toISOString().split('T')[0] : ''}
-                                        value={customEnd ? customEnd.toISOString().split('T')[0] : ''}
-                                        onChange={(e) => handleCustomDate('end', e.target.value)}
-                                    />
+                                {resolvedTypeOptions.length === 0 ? (
+                                    <p className="admin-muted" style={{ margin: 0, fontSize: 12 }}>
+                                        No hay tipos configurados en tus reportes.
+                                    </p>
+                                ) : (
+                                    <div className="map-filter-type-grid">
+                                        {resolvedTypeOptions.map((opt) => {
+                                            const Icon = LucideIcons[opt.icon] || LucideIcons.AlertTriangle;
+                                            const active = types.includes(opt.key);
+                                            return (
+                                                <button
+                                                    key={opt.key}
+                                                    type="button"
+                                                    className={`map-filter-type-chip${active ? ' active' : ''}`}
+                                                    style={active ? { '--chip-color': opt.color } : {}}
+                                                    onClick={() => toggleType(opt.key)}
+                                                    title={opt.label}
+                                                >
+                                                    <span
+                                                        className="map-filter-type-dot"
+                                                        style={{ background: opt.color }}
+                                                    >
+                                                        <Icon />
+                                                    </span>
+                                                    <span className="map-filter-type-label">{opt.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="map-filter-section">
+                                <div className="map-filter-section-title">
+                                    <Circle />
+                                    <span>Estado</span>
+                                </div>
+                                <div className="map-filter-pills">
+                                    {STATUS_OPTIONS.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            className={`map-filter-pill${status === opt.value ? ' active' : ''}`}
+                                            onClick={() => emit({ status: opt.value })}
+                                        >
+                                            {status === opt.value && opt.value !== 'all' && <CheckCircle2 />}
+                                            {opt.label}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                    </div>
+
+                            <div className="map-filter-section">
+                                <div className="map-filter-section-title">
+                                    <CalendarDays />
+                                    <span>Período</span>
+                                </div>
+                                <div className="map-filter-date-chips">
+                                    {DATE_OPTIONS.filter((o) => o.value !== 'custom').map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            className={`map-filter-date-chip${dateRange === opt.value ? ' active' : ''}`}
+                                            onClick={() => emit({ dateRange: opt.value })}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        className={`map-filter-date-chip${dateRange === 'custom' ? ' active' : ''}`}
+                                        onClick={() => emit({ dateRange: 'custom' })}
+                                    >
+                                        <Clock /> Personalizado
+                                    </button>
+                                </div>
+
+                                {dateRange === 'custom' && (
+                                    <div className="map-filter-custom-dates">
+                                        <div className="map-filter-date-field">
+                                            <label>Desde</label>
+                                            <input
+                                                type="date"
+                                                max={today}
+                                                value={customStart ? customStart.toISOString().split('T')[0] : ''}
+                                                onChange={(e) => handleCustomDate('start', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="map-filter-date-field">
+                                            <label>Hasta</label>
+                                            <input
+                                                type="date"
+                                                max={today}
+                                                min={customStart ? customStart.toISOString().split('T')[0] : ''}
+                                                value={customEnd ? customEnd.toISOString().split('T')[0] : ''}
+                                                onChange={(e) => handleCustomDate('end', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <MapRecentAlertsList
+                            alerts={recentAlerts}
+                            activeAlertId={activeAlertId}
+                            selectedAlertId={selectedAlertId}
+                            onSelect={onRecentAlertSelect}
+                        />
+                    )}
                 </div>
             </div>
         </div>

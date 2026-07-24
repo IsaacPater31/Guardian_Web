@@ -14,6 +14,11 @@ export default function MapFilterPanel({
     totalVisible = 0,
     typeOptions = null,
     typesSectionLabel = 'Tipo de alerta',
+    listAlerts = null,
+    activeAlertId = null,
+    pulseAlertId = null,
+    selectedAlertId = null,
+    onRecentAlertSelect,
 }) {
     return (
         <AlertFilters
@@ -27,6 +32,11 @@ export default function MapFilterPanel({
             totalVisible={totalVisible}
             typeOptions={typeOptions}
             typesSectionLabel={typesSectionLabel}
+            listAlerts={listAlerts}
+            activeAlertId={activeAlertId}
+            pulseAlertId={pulseAlertId}
+            selectedAlertId={selectedAlertId}
+            onRecentAlertSelect={onRecentAlertSelect}
         />
     );
 }

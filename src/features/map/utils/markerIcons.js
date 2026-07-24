@@ -72,9 +72,10 @@ export function createAlertIcon(alertType, hasOffset, options = {}) {
         isActive = false,
         isSelected = false,
         isAttended = false,
+        color: colorOverride = null,
     } = options;
 
-    const color = getAlertColor(alertType);
+    const color = colorOverride || getAlertColor(alertType);
     const canon = normalizeAlertType(alertType);
     const svgPath = SVG_PATHS[canon] ?? SVG_PATHS[alertType] ?? FALLBACK_SVG;
 

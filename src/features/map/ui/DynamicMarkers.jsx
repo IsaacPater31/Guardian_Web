@@ -3,6 +3,7 @@ import { Marker, useMap, useMapEvents } from 'react-leaflet';
 import { computeOffsets } from '@/features/map/utils/mapUtils';
 import { createAlertIcon } from '@/features/map/utils/markerIcons';
 import { AlertStatus } from '@/shared/config/alertTypes';
+import { resolveAlertTypePresentation } from '@/features/alerts/utils/alertTypePresentation';
 
 /**
  * DynamicMarkers — recalculates spiral-offset marker positions on every
@@ -40,6 +41,7 @@ export default function DynamicMarkers({
                 const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
                 const isActive = !isAttended && alert.id === highlightedAlertId;
                 const isSelected = alert.id === selectedAlertId;
+                const { color } = resolveAlertTypePresentation(alert);
                 const zIndexOffset = isSelected
                     ? 1800
                     : isActive
@@ -56,6 +58,7 @@ export default function DynamicMarkers({
                             isActive,
                             isSelected,
                             isAttended,
+                            color,
                         })}
                         zIndexOffset={zIndexOffset}
                         eventHandlers={{ click: () => onMarkerClick(alert) }}
