@@ -4,6 +4,12 @@ import {
     createEmptyEntityReportType,
     normalizeEntityReportTypes,
 } from '@/features/communities/utils/entityReportTypes';
+import {
+    IconPickerDomain,
+    iconPickerLabel,
+} from '@/shared/config/iconPickerLabels';
+
+const EMERGENCY_TYPE_ICON_LABEL = iconPickerLabel(IconPickerDomain.EMERGENCY_TYPE);
 
 /**
  * Free-text custom report types for entities (name + icon + color).
@@ -103,6 +109,7 @@ export default function EntityAlertTypesPicker({ selected = [], onChange }) {
                             {iconEditId === t.id && (
                                 <div className="entity-custom-type-icon-edit">
                                     <CommunityIconPickerGrid
+                                        label={EMERGENCY_TYPE_ICON_LABEL}
                                         selectedCodePoint={t.iconCodePoint}
                                         onSelect={(option) => {
                                             updateType(t.id, {
@@ -150,6 +157,7 @@ export default function EntityAlertTypesPicker({ selected = [], onChange }) {
                     </div>
                 </label>
                 <CommunityIconPickerGrid
+                    label={EMERGENCY_TYPE_ICON_LABEL}
                     selectedCodePoint={draft.iconCodePoint}
                     onSelect={(option) =>
                         setDraft((d) => ({

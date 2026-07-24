@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { isOfficialEntityCommunity } from '@/shared/domain/communityVisibility';
 import CommunityIconDisplay from '@/features/communities/ui/CommunityIconDisplay';
 import { formatEntityReportTypeNames } from '@/features/communities/utils/entityReportTypes';
+import { subjectInfoTitle } from '@/shared/config/iconPickerLabels';
 
 function formatFirestoreDate(val) {
     if (val == null) return '—';
@@ -26,6 +27,8 @@ function formatFirestoreDate(val) {
 export default function CommunityInfoModal({ community, memberCount, onClose }) {
     if (!community) return null;
 
+    const isEntity = isOfficialEntityCommunity(community);
+
     return (
         <div
             className="admin-modal-overlay"
@@ -37,7 +40,7 @@ export default function CommunityInfoModal({ community, memberCount, onClose }) 
             <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
                 <div className="admin-modal-head-row">
                     <h3 className="admin-modal-title" id="community-info-title">
-                        Información de la comunidad
+                        {subjectInfoTitle(isEntity)}
                     </h3>
                     <button
                         type="button"
@@ -52,11 +55,7 @@ export default function CommunityInfoModal({ community, memberCount, onClose }) 
                     <dt>ID documento</dt>
                     <dd className="mono">{community.id}</dd>
                     <dt>Tipo</dt>
-                    <dd>
-                        {isOfficialEntityCommunity(community)
-                            ? 'Entidad (reportes)'
-                            : 'Comunidad'}
-                    </dd>
+                    <dd>{isEntity ? 'Entidad (reportes)' : 'Comunidad'}</dd>
                     <dt>Nombre</dt>
                     <dd>{community.name || '—'}</dd>
                     <dt>Descripción</dt>
@@ -84,7 +83,7 @@ export default function CommunityInfoModal({ community, memberCount, onClose }) 
                     </dd>
                     <dt>Tipos de reporte</dt>
                     <dd>
-                        {isOfficialEntityCommunity(community)
+                        {isEntity
                             ? formatEntityReportTypeNames(community.reportAlertTypes)
                             : '—'}
                     </dd>

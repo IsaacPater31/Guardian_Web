@@ -1,23 +1,12 @@
 import CommunityIconPickerGrid from '@/features/communities/ui/CommunityIconPickerGrid';
 import EntityAlertTypesPicker from '@/features/communities/ui/EntityAlertTypesPicker';
+import {
+    communityFormModalTitle,
+    iconPickerLabelForSubject,
+} from '@/shared/config/iconPickerLabels';
 
 function isEntityModal(modal) {
     return modal === 'create-entity' || modal === 'edit-entity';
-}
-
-function modalTitle(modal) {
-    switch (modal) {
-        case 'create-community':
-            return 'Nueva comunidad';
-        case 'create-entity':
-            return 'Nueva entidad de reportes';
-        case 'edit-community':
-            return 'Editar comunidad';
-        case 'edit-entity':
-            return 'Editar entidad';
-        default:
-            return 'Comunidad';
-    }
 }
 
 /**
@@ -47,7 +36,7 @@ export default function CommunityFormModal({
             <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="admin-modal-head-row">
                     <h3 className="admin-modal-title" id="community-form-title">
-                        {modalTitle(modal)}
+                        {communityFormModalTitle(modal)}
                     </h3>
                     <button
                         type="button"
@@ -83,7 +72,7 @@ export default function CommunityFormModal({
                         />
                     </label>
                     <CommunityIconPickerGrid
-                        label={entityFlow ? 'Icono de la entidad' : 'Icono de la comunidad'}
+                        label={iconPickerLabelForSubject(entityFlow)}
                         selectedCodePoint={form.iconCodePoint}
                         selectedColor={form.iconColor}
                         onChange={({ iconCodePoint, iconColor }) =>

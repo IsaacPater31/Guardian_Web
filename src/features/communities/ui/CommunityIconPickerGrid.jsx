@@ -4,15 +4,21 @@ import {
 } from '@/shared/config/communityIconCatalog';
 
 /**
- * Icon + color picker for community/entity forms (ETC: one control for both).
+ * Shared glyph picker (community, entity, or emergency-type).
+ * Callers MUST pass a contextual [label] from `iconPickerLabels.js`.
  */
 export default function CommunityIconPickerGrid({
     selectedCodePoint,
     selectedColor,
     onChange,
     onSelect,
-    label = 'Icono',
+    label,
 }) {
+    if (!label) {
+        throw new Error(
+            'CommunityIconPickerGrid: `label` is required (use iconPickerLabel / IconPickerDomain).',
+        );
+    }
     const colorValue = (() => {
         const raw = String(selectedColor || '').trim();
         if (/^#([0-9a-fA-F]{6})$/.test(raw)) return raw.toUpperCase();
