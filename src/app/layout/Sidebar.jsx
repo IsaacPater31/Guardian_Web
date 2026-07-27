@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom';
-import { Bell, Users, House, BarChart3, LayoutGrid } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Bell, Users, House, BarChart3, LayoutGrid, Building2, ChevronDown } from 'lucide-react';
 
 const navItems = [
     { path: '/', icon: House, label: 'Inicio' },
@@ -8,9 +9,24 @@ const navItems = [
     { path: '/communities', icon: Users, label: 'Comunidades' },
 ];
 
-const moduleNavItems = [{ path: '/admin', icon: LayoutGrid, label: 'Módulo admin' }];
+const adminChildren = [
+    { path: '/admin/users', icon: Users, label: 'Usuarios' },
+    { path: '/admin/communities', icon: Building2, label: 'Comunidades' },
+];
+
+function isAdminPath(pathname) {
+    return pathname === '/admin' || pathname.startsWith('/admin/');
+}
 
 export default function Sidebar({ isOpen, onClose, collapsed }) {
+    const location = useLocation();
+    const adminActive = isAdminPath(location.pathname);
+    const [adminOpen, setAdminOpen] = useState(adminActive);
+
+    useEffect(() => {
+        if (adminActive) setAdminOpen(true);
+    }, [adminActive]);
+
     return (
         <>
             {isOpen && (
@@ -49,21 +65,51 @@ export default function Sidebar({ isOpen, onClose, collapsed }) {
                             {!collapsed && <span className="sidebar-link-label">{item.label}</span>}
                         </NavLink>
                     ))}
+
                     {!collapsed && (
-                        <div className="sidebar-section-label sidebar-section-label--spaced">Módulo</div>
+                        <div className="sidebar-nav-group">
+                            <button
+                                type="button"
+                                className={`sidebar-link sidebar-link--group${adminActive ? ' sidebar-link--group-active' : ''}`}
+                                aria-expanded={adminOpen}
+                                onClick={() => setAdminOpen((o) => !o)}
+                            >
+                                <LayoutGrid className="sidebar-link-icon" />
+                                <span className="sidebar-link-label">Admin</span>
+                                <ChevronDown
+                                    className={`sidebar-group-chevron${adminOpen ? ' open' : ''}`}
+                                    aria-hidden
+                                />
+                            </button>
+                            {adminOpen && (
+                                <div className="sidebar-subnav" role="group" aria-label="Admin">
+                                    {adminChildren.map((item) => (
+                                        <NavLink
+                                            key={item.path}
+                                            to={item.path}
+                                            className={({ isActive }) =>
+                                                `sidebar-link sidebar-link--child${isActive ? ' active' : ''}`
+                                            }
+                                            onClick={onClose}
+                                        >
+                                            <item.icon className="sidebar-link-icon" />
+                                            <span className="sidebar-link-label">{item.label}</span>
+                                        </NavLink>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     )}
-                    {moduleNavItems.map((item) => (
+                    {collapsed && (
                         <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}${collapsed ? ' collapsed' : ''}`}
+                            to="/admin/users"
+                            className={() => `sidebar-link${adminActive ? ' active' : ''} collapsed`}
                             onClick={onClose}
-                            title={collapsed ? item.label : undefined}
+                            title="Admin"
                         >
-                            <item.icon className="sidebar-link-icon" />
-                            {!collapsed && <span className="sidebar-link-label">{item.label}</span>}
+                            <LayoutGrid className="sidebar-link-icon" />
                         </NavLink>
-                    ))}
+                    )}
                 </nav>
 
                 <div className={`sidebar-footer${collapsed ? ' collapsed' : ''}`}>

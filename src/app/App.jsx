@@ -5,7 +5,8 @@ import MapPage from '@/features/map/controller/MapPage';
 import AlertsPage from '@/features/alerts/controller/AlertsPage';
 import CommunitiesPage from '@/features/communities/controller/CommunitiesPage';
 import CommunityDetailPage from '@/features/communities/controller/CommunityDetailPage';
-import AdminModulePage from '@/features/admin/controller/AdminModulePage';
+import AdminUsersPage from '@/features/admin/controller/AdminUsersPage';
+import AdminCommunitiesPage from '@/features/admin/controller/AdminCommunitiesPage';
 import UserDetailPage from '@/features/admin/controller/UserDetailPage';
 
 export default function App() {
@@ -19,8 +20,10 @@ export default function App() {
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/communities" element={<CommunitiesPage />} />
           <Route path="/communities/:id" element={<CommunityDetailPage />} />
-          <Route path="/admin" element={<AdminModulePage />} />
+          <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/users/:uid" element={<UserDetailPage />} />
+          <Route path="/admin/communities" element={<AdminCommunitiesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

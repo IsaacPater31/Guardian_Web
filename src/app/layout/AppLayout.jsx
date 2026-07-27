@@ -10,7 +10,8 @@ const pageTitles = {
     '/dashboard': { title: 'Estadísticas', subtitle: 'Analítica, usuarios y actividad de alertas' },
     '/alerts': { title: 'Alertas', subtitle: 'Histórico y filtros' },
     '/communities': { title: 'Comunidades', subtitle: 'Crear, editar y gestionar comunidades' },
-    '/admin': { title: 'Módulo admin', subtitle: 'Usuarios, comunidades y cruces' },
+    '/admin/users': { title: 'Usuarios', subtitle: 'Directorio y gestión de cuentas' },
+    '/admin/communities': { title: 'Comunidades', subtitle: 'Directorio de comunidades y entidades' },
 };
 
 function getPageInfo(pathname) {

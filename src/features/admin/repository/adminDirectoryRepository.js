@@ -82,15 +82,25 @@ export async function fetchUsersPage({ pageSize = ADMIN_LIST_PAGE_SIZE, cursor =
 }
 
 /** @returns {{ users: number, communities: number }} */
+/** @returns {Promise<number>} */
+export async function fetchUsersCount() {
+    const snap = await getCountFromServer(collection(db, Collections.USERS));
+    return snap.data().count;
+}
+
+/** @returns {Promise<number>} */
+export async function fetchCommunitiesCount() {
+    const snap = await getCountFromServer(collection(db, Collections.COMMUNITIES));
+    return snap.data().count;
+}
+
+/** @returns {Promise<{ users: number, communities: number }>} */
 export async function fetchRegistryCounts() {
-    const [u, c] = await Promise.all([
-        getCountFromServer(collection(db, Collections.USERS)),
-        getCountFromServer(collection(db, Collections.COMMUNITIES)),
+    const [users, communities] = await Promise.all([
+        fetchUsersCount(),
+        fetchCommunitiesCount(),
     ]);
-    return {
-        users: u.data().count,
-        communities: c.data().count,
-    };
+    return { users, communities };
 }
 
 

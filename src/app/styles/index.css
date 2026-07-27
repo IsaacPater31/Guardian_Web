@@ -368,6 +368,58 @@ textarea:focus:not(:focus-visible) {
   flex-shrink: 0;
 }
 
+.sidebar-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-3);
+}
+
+.sidebar-link--group {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.sidebar-link--group-active {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.sidebar-group-chevron {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition: transform var(--transition-fast);
+}
+
+.sidebar-group-chevron.open {
+  transform: rotate(180deg);
+}
+
+.sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--space-4);
+}
+
+.sidebar-link--child {
+  padding-left: var(--space-3);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar-link--child:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-link--child.active {
+  color: var(--color-sidebar-text-active);
+  background: var(--color-sidebar-active);
+  font-weight: 600;
+}
+
 /* Footer */
 .sidebar-footer {
   padding: var(--space-3) var(--space-4);
@@ -4403,7 +4455,7 @@ textarea:focus:not(:focus-visible) {
   margin-top: var(--space-5);
 }
 
-/* ─── Página Módulo admin (/admin) ─── */
+/* ─── Páginas Admin (/admin/users, /admin/communities) ─── */
 .admin-module-page {
   max-width: none;
   width: 100%;
@@ -4415,8 +4467,13 @@ textarea:focus:not(:focus-visible) {
   gap: var(--space-4);
 }
 
+.admin-module-page .admin-stats-grid--single {
+  grid-template-columns: minmax(0, 20rem);
+}
+
 @media (max-width: 640px) {
-  .admin-module-page .admin-stats-grid {
+  .admin-module-page .admin-stats-grid,
+  .admin-module-page .admin-stats-grid--single {
     grid-template-columns: 1fr;
   }
 }
@@ -4645,21 +4702,6 @@ textarea:focus:not(:focus-visible) {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text-secondary);
-}
-
-.admin-module-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-@media (min-width: 1024px) {
-  .admin-module-layout--directories {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-6);
-  }
 }
 
 .admin-module-directory {

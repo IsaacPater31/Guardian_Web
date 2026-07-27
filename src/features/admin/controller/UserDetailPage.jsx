@@ -177,8 +177,8 @@ export default function UserDetailPage() {
     if (!user) {
         return (
             <div className="admin-module-page admin-user-detail">
-                <Link to="/admin" className="admin-module-link admin-user-back">
-                    <ArrowLeft size={16} aria-hidden /> Volver al módulo admin
+                <Link to="/admin/users" className="admin-module-link admin-user-back">
+                    <ArrowLeft size={16} aria-hidden /> Volver a usuarios
                 </Link>
                 <div className="admin-module-banner admin-module-banner--error">
                     {err || 'Usuario no encontrado.'}
@@ -189,8 +189,8 @@ export default function UserDetailPage() {
 
     return (
         <div className="admin-module-page admin-user-detail">
-            <Link to="/admin" className="admin-module-link admin-user-back">
-                <ArrowLeft size={16} aria-hidden /> Volver al módulo admin
+            <Link to="/admin/users" className="admin-module-link admin-user-back">
+                <ArrowLeft size={16} aria-hidden /> Volver a usuarios
             </Link>
 
             <div className="admin-module-intro">
