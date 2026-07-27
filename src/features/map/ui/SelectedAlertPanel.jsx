@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { Eye, Forward, Flag, EyeOff, User, X, Users } from 'lucide-react';
-import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '@/shared/config/alertTypes';
+import { getTimeAgo } from '@/shared/config/alertTypes';
 import { getCommunityNames, getMemberAliasMap } from '@/features/communities/repository/communityRepository';
 import { updateAlertStatus } from '@/features/alerts/repository/alertRepository';
 import { getSubtypeLabel } from '@/features/alerts/utils/alertSubtype';
+import { resolveAlertTypePresentation } from '@/features/alerts/utils/alertTypePresentation';
 import { resolveAlertSenderLabel } from '@/shared/utils/memberDisplayLabel';
 
 export default function SelectedAlertPanel({ alert, onClose, onShowDetail, senderLabel = null }) {
@@ -14,7 +15,7 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail, sende
     const [showAttendConfirm, setShowAttendConfirm] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [statusFeedback, setStatusFeedback] = useState('');
-    const main = getAlertLabel(alert.alertType);
+    const { label: main, color, icon } = resolveAlertTypePresentation(alert);
     const sub = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const isAttended = localStatus === 'attended';
 
@@ -89,7 +90,7 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail, sende
         }
     };
 
-    const Icon = LucideIcons[getAlertIcon(alert.alertType)] || LucideIcons.AlertTriangle;
+    const Icon = LucideIcons[icon] || LucideIcons.AlertTriangle;
     const resolvedSenderLabel = alert.isAnonymous
         ? null
         : senderLabel
@@ -98,7 +99,7 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail, sende
 
     return (
         <div className="map-alert-panel">
-            <div className="map-alert-panel-header" style={{ background: getAlertColor(alert.alertType) }}>
+            <div className="map-alert-panel-header" style={{ background: color }}>
                 <div className="map-alert-panel-header-icon" style={{ background: 'rgba(255,255,255,0.2)' }}>
                     <Icon />
                 </div>
