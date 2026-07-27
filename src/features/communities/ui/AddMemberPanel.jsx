@@ -20,7 +20,7 @@ export default function AddMemberPanel({
             <div className="section-header">
                 <div className="section-header-left">
                     <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.12)' }}>
-                        <UserPlus size={18} style={{ color: '#34C759' }} />
+                        <UserPlus size={18} style={{ color: 'var(--color-success)' }} />
                     </div>
                     <div>
                         <h3 className="section-title">Agregar miembro</h3>

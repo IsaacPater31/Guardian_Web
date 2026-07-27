@@ -17,7 +17,11 @@ import {
     BarChart3,
     Users,
 } from 'lucide-react';
-import { subscribeToAlertsInDateRange, isActivePendingAlert } from '@/features/alerts/repository/alertRepository';
+import {
+    subscribeToAlertsInDateRange,
+    isActivePendingAlert,
+    resolveLatestPendingAlertId,
+} from '@/features/alerts/repository/alertRepository';
 import { subscribeUsersInCreatedRange } from '@/features/admin/repository/adminDirectoryRepository';
 import { subscribeToCommunities } from '@/features/communities/repository/communityRepository';
 import AlertCard from '@/features/alerts/ui/AlertCard';
@@ -59,7 +63,6 @@ export default function Dashboard() {
     const [selectedCommunityIds, setSelectedCommunityIds] = useState(null);
     const [kindFilter, setKindFilter] = useState('all');
     const [selectedAlert, setSelectedAlert] = useState(null);
-    const [latestContextAlertId, setLatestContextAlertId] = useState(null);
     const hasBootstrappedRef = useRef(false);
     const [chartH, setChartH] = useState(280);
 
@@ -101,9 +104,8 @@ export default function Dashboard() {
             }
             return undefined;
         }
-        const unsub = subscribeToAlertsInDateRange(rangeStart, rangeEnd, (alData, meta = {}) => {
+        const unsub = subscribeToAlertsInDateRange(rangeStart, rangeEnd, (alData) => {
             setRawAlerts(alData);
-            setLatestContextAlertId(meta.latestContextAlertId ?? null);
 
             if (!hasBootstrappedRef.current) {
                 hasBootstrappedRef.current = true;
@@ -139,6 +141,12 @@ export default function Dashboard() {
         }
         return scopeAlertsByCommunities(rawAlerts, ids);
     }, [rawAlerts, selectedCommunityIds, visibleCommunityOptions, kindFilter]);
+
+    /* Business rule: newest unattended alert in the visible scope is highlighted. */
+    const latestPendingAlertId = useMemo(
+        () => resolveLatestPendingAlertId(scopedAlerts),
+        [scopedAlerts],
+    );
 
     const stats = useMemo(
         () => buildScopedAlertStats(scopedAlerts, rangeStart, rangeEnd),
@@ -223,7 +231,7 @@ export default function Dashboard() {
                             label: 'Reportes',
                             value: stats.reports,
                             icon: BarChart3,
-                            color: '#FF9500',
+                            color: 'var(--color-warning)',
                             bg: 'rgba(255, 149, 0, 0.1)',
                             variant: 'report',
                         },
@@ -266,7 +274,7 @@ export default function Dashboard() {
                         <div className="section-header">
                             <div className="section-header-left">
                                 <div className="section-icon" style={{ background: 'rgba(0, 122, 255, 0.1)' }}>
-                                    <Activity style={{ color: '#007AFF' }} />
+                                    <Activity style={{ color: 'var(--color-info)' }} />
                                 </div>
                                 <div>
                                     <h3 className="section-title">Alertas por día</h3>
@@ -315,7 +323,7 @@ export default function Dashboard() {
                     <div className="section-header">
                         <div className="section-header-left">
                             <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.12)' }}>
-                                <Users style={{ color: '#34C759' }} />
+                                <Users style={{ color: 'var(--color-success)' }} />
                             </div>
                             <div>
                                 <h3 className="section-title">Usuarios más activos</h3>
@@ -362,7 +370,7 @@ export default function Dashboard() {
                     <div className="section-header">
                         <div className="section-header-left">
                             <div className="section-icon" style={{ background: 'rgba(0, 122, 255, 0.1)' }}>
-                                <BarChart3 style={{ color: '#007AFF' }} />
+                                <BarChart3 style={{ color: 'var(--color-info)' }} />
                             </div>
                             <div>
                                 <h3 className="section-title">Usuarios activos por día</h3>
@@ -439,7 +447,7 @@ export default function Dashboard() {
                         <div className="section-header">
                             <div className="section-header-left">
                                 <div className="section-icon" style={{ background: 'rgba(52, 199, 89, 0.1)' }}>
-                                    <UserPlus style={{ color: '#34C759' }} />
+                                    <UserPlus style={{ color: 'var(--color-success)' }} />
                                 </div>
                                 <div>
                                     <h3 className="section-title">Usuarios recientes</h3>
@@ -517,7 +525,7 @@ export default function Dashboard() {
                                         key={a.id}
                                         alert={a}
                                         onClick={setSelectedAlert}
-                                        isActive={isActivePendingAlert(a, latestContextAlertId)}
+                                        isActive={isActivePendingAlert(a, latestPendingAlertId)}
                                     />
                                 ))
                             )}

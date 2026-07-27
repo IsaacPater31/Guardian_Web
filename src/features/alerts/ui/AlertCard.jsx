@@ -19,7 +19,8 @@ export default function AlertCard({
     const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
     const identifiedLabel = (alert.userName || alert.userEmail || '').trim() || 'Usuario identificado';
 
-    const statusColor = isAttended ? '#34C759' : '#FF9F0A';
+    /* AA-safe hexes (also used as `${statusColor}14` alpha backgrounds). */
+    const statusColor = isAttended ? '#2E7D32' : '#B45309';
     const StatusIcon  = isAttended ? CheckCircle2 : Clock3;
 
     return (

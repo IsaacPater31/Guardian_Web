@@ -33,7 +33,7 @@ function InfoRow({ icon, iconColor = 'var(--color-text-tertiary)', label, childr
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em',
-                    color: accent ? `${accent}AA` : 'var(--color-text-tertiary)',
+                    color: 'var(--color-text-tertiary)',
                     marginBottom: 3, textTransform: 'uppercase',
                 }}>
                     {label}
@@ -189,23 +189,23 @@ export default function AlertDetailModal({ alert, onClose }) {
                                 background: isAttended ? '#34C75920' : '#FF9F0A20',
                             }}>
                                 {isAttended
-                                    ? <LucideIcons.CheckCircle2 style={{ width: 20, height: 20, color: '#34C759' }} />
-                                    : <LucideIcons.ClockAlert   style={{ width: 20, height: 20, color: '#FF9F0A' }} />
+                                    ? <LucideIcons.CheckCircle2 style={{ width: 20, height: 20, color: 'var(--color-success)' }} />
+                                    : <LucideIcons.ClockAlert   style={{ width: 20, height: 20, color: 'var(--color-warning)' }} />
                                 }
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{
                                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-                                    color: isAttended ? '#34C759AA' : '#FF9F0AAA',
+                                    color: isAttended ? 'var(--color-success)' : 'var(--color-warning)',
                                     textTransform: 'uppercase', marginBottom: 3,
                                 }}>
                                     {es('Estado de la alerta')}
                                 </div>
-                                <div style={{ fontSize: '15px', fontWeight: 700, color: isAttended ? '#34C759' : '#FF9F0A' }}>
+                                <div style={{ fontSize: '15px', fontWeight: 700, color: isAttended ? 'var(--color-success)' : 'var(--color-warning)' }}>
                                     {isAttended ? es('Atendida') : es('No atendida')}
                                 </div>
                                 <div style={{
-                                    fontSize: '12px', color: isAttended ? '#34C759AA' : '#FF9F0AAA',
+                                    fontSize: '12px', color: isAttended ? 'var(--color-success)' : 'var(--color-warning)',
                                     marginTop: 2, lineHeight: 1.3,
                                 }}>
                                     {isAttended
@@ -324,13 +324,13 @@ export default function AlertDetailModal({ alert, onClose }) {
                                     width: 30, height: 30, borderRadius: 8, flexShrink: 0,
                                     background: '#007AFF18', border: '1px solid #007AFF25',
                                 }}>
-                                    <Users style={{ width: 14, height: 14, color: '#007AFF' }} />
+                                    <Users style={{ width: 14, height: 14, color: 'var(--color-info)' }} />
                                 </span>
                                 <div>
-                                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: '#007AFFAA', textTransform: 'uppercase' }}>
+                                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', color: 'var(--color-info)', textTransform: 'uppercase' }}>
                                         {es('Comunidades')}
                                     </div>
-                                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#007AFF' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-info)' }}>
                                         {communityNames.length}{' '}
                                         {communityNames.length === 1 ? es('comunidad') : es('comunidades')}
                                     </div>
@@ -346,7 +346,7 @@ export default function AlertDetailModal({ alert, onClose }) {
                                         borderRadius:'20px',
                                         fontSize:    '12px',
                                         fontWeight:  600,
-                                        color:       '#007AFF',
+                                        color:       'var(--color-info)',
                                         background:  '#007AFF12',
                                         border:      '1.5px solid #007AFF33',
                                     }}>
@@ -382,7 +382,7 @@ export default function AlertDetailModal({ alert, onClose }) {
                     <div className="modal-section">
                         <div className="modal-stats">
                             <div className="modal-stat">
-                                <div className="modal-stat-value" style={{ color: '#007AFF' }}>{alert.viewedCount}</div>
+                                <div className="modal-stat-value" style={{ color: 'var(--color-info)' }}>{alert.viewedCount}</div>
                                 <div className="modal-stat-label">{es('Vistas')}</div>
                             </div>
                             <div className="modal-stat">
