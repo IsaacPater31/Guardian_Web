@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Building2, LayoutGrid, Search, Users } from 'lucide-react';
 import AdminPaginationBar from '@/features/admin/ui/AdminPaginationBar';
 import { ADMIN_LIST_PAGE_SIZE } from '@/shared/config/pagination';
-import { fetchRegistryCounts, fetchUsersPage } from '@/features/admin/repository/adminDirectoryRepository';
+import {
+    fetchRegistryCounts,
+    fetchUsersPage,
+    searchUsersByText,
+} from '@/features/admin/repository/adminDirectoryRepository';
 import { fetchCommunitiesPage } from '@/features/communities/repository/communityRepository';
 
 function formatUserDate(val) {
@@ -24,6 +28,7 @@ function formatUserDate(val) {
 }
 
 export default function AdminModulePage() {
+    const navigate = useNavigate();
     const [counts, setCounts] = useState({ users: null, communities: null });
     const [countsErr, setCountsErr] = useState(null);
     const [countsLoading, setCountsLoading] = useState(true);
@@ -35,6 +40,10 @@ export default function AdminModulePage() {
     const [usersLoading, setUsersLoading] = useState(true);
     const [usersErr, setUsersErr] = useState(null);
     const [directoryFilter, setDirectoryFilter] = useState('');
+    const [globalHits, setGlobalHits] = useState([]);
+    const [globalSearching, setGlobalSearching] = useState(false);
+    const [globalSearchErr, setGlobalSearchErr] = useState('');
+    const searchDebounceRef = useRef(null);
 
     const [communitiesPage, setCommunitiesPage] = useState(1);
     const [communities, setCommunities] = useState([]);
@@ -116,7 +125,6 @@ export default function AdminModulePage() {
                 });
                 if (cancelled) return;
                 communitiesCursorsRef.current[communitiesPage] = result.lastDoc;
-                // El directorio admin también lista entidades (a diferencia del móvil).
                 setCommunities(result.items);
                 setCommunitiesHasMore(result.hasMore);
             } catch (e) {
@@ -136,10 +144,39 @@ export default function AdminModulePage() {
         };
     }, [communitiesPage]);
 
+    useEffect(() => {
+        const q = directoryFilter.trim();
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        if (q.length < 2) {
+            setGlobalHits([]);
+            setGlobalSearchErr('');
+            setGlobalSearching(false);
+            return undefined;
+        }
+        setGlobalSearching(true);
+        setGlobalSearchErr('');
+        searchDebounceRef.current = setTimeout(async () => {
+            try {
+                const hits = await searchUsersByText(q, { limit: 10 });
+                setGlobalHits(hits);
+            } catch (e) {
+                setGlobalHits([]);
+                setGlobalSearchErr(e?.message || 'No se pudo buscar usuarios');
+            } finally {
+                setGlobalSearching(false);
+            }
+        }, 350);
+        return () => {
+            if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        };
+    }, [directoryFilter]);
+
     const directoryFilterActive = directoryFilter.trim().length > 0;
     const communitiesDirectoryFilterActive = communitiesDirectoryFilter.trim().length > 0;
+    const useGlobalSearch = directoryFilter.trim().length >= 2;
 
     const filteredDirectory = useMemo(() => {
+        if (useGlobalSearch) return globalHits;
         const f = directoryFilter.trim().toLowerCase();
         if (!f) return users;
         return users.filter((u) => {
@@ -155,7 +192,7 @@ export default function AdminModulePage() {
                 (phone && phone.includes(fq))
             );
         });
-    }, [users, directoryFilter]);
+    }, [users, directoryFilter, useGlobalSearch, globalHits]);
 
     const filteredCommunitiesDirectory = useMemo(() => {
         const f = communitiesDirectoryFilter.trim().toLowerCase();
@@ -203,6 +240,11 @@ export default function AdminModulePage() {
             setCommunitiesPage((p) => p + 1);
             scrollIntoView(communitiesListRef);
         }
+    }
+
+    function openUser(userId) {
+        if (!userId) return;
+        navigate(`/admin/users/${userId}`);
     }
 
     return (
@@ -258,13 +300,22 @@ export default function AdminModulePage() {
                         <input
                             type="search"
                             className="admin-module-input admin-module-input--search"
-                            placeholder="Buscar por nombre, correo o identificador…"
+                            placeholder="Buscar por nombre, correo o UID…"
                             value={directoryFilter}
                             onChange={(e) => setDirectoryFilter(e.target.value)}
                             autoComplete="off"
                             aria-label="Buscar usuarios"
                         />
                     </div>
+                    {useGlobalSearch && (
+                        <p className="admin-module-msg admin-module-msg--muted">
+                            {globalSearching
+                                ? 'Buscando en el directorio…'
+                                : globalSearchErr
+                                  ? globalSearchErr
+                                  : `${filteredDirectory.length} coincidencia(s) (búsqueda global).`}
+                        </p>
+                    )}
                     {usersErr && (
                         <p className="admin-module-msg admin-module-msg--muted">{usersErr}</p>
                     )}
@@ -276,22 +327,41 @@ export default function AdminModulePage() {
                                     <th>Contacto</th>
                                     <th>UID</th>
                                     <th>Alta</th>
-                                    <th>Últ. actualización</th>
+                                    <th> </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {!usersLoading && filteredDirectory.length === 0 && (
+                                {!usersLoading && !globalSearching && filteredDirectory.length === 0 && (
                                     <tr>
                                         <td colSpan={5} className="admin-module-msg admin-module-msg--muted">
-                                            {users.length === 0
+                                            {users.length === 0 && !useGlobalSearch
                                                 ? 'No hay usuarios para mostrar.'
                                                 : 'Ningún usuario coincide con la búsqueda.'}
                                         </td>
                                     </tr>
                                 )}
                                 {filteredDirectory.map((u) => (
-                                    <tr key={u.id}>
-                                        <td>{u.displayName || '—'}</td>
+                                    <tr
+                                        key={u.id}
+                                        className="admin-module-row-link"
+                                        onClick={() => openUser(u.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                openUser(u.id);
+                                            }
+                                        }}
+                                        tabIndex={0}
+                                        role="link"
+                                    >
+                                        <td>
+                                            {u.displayName || '—'}
+                                            {u.suspended ? (
+                                                <span className="admin-module-badge admin-module-badge--danger">
+                                                    Suspendido
+                                                </span>
+                                            ) : null}
+                                        </td>
                                         <td>
                                             {u.email ? (
                                                 <span className="admin-user-contact-line">{u.email}</span>
@@ -303,25 +373,35 @@ export default function AdminModulePage() {
                                         </td>
                                         <td className="admin-module-meta mono">{u.id}</td>
                                         <td>{formatUserDate(u.createdAt)}</td>
-                                        <td>{formatUserDate(u.updatedAt)}</td>
+                                        <td>
+                                            <Link
+                                                to={`/admin/users/${u.id}`}
+                                                className="admin-module-link"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                Gestionar
+                                            </Link>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                    <AdminPaginationBar
-                        page={usersPage}
-                        hasMore={usersHasMore}
-                        loading={usersLoading}
-                        onPrev={goUsersPrev}
-                        onNext={goUsersNext}
-                        total={counts.users}
-                        pageSize={ADMIN_LIST_PAGE_SIZE}
-                        shownCount={filteredDirectory.length}
-                        label="usuarios"
-                        labelSingular="usuario"
-                        filterActive={directoryFilterActive}
-                    />
+                    {!useGlobalSearch && (
+                        <AdminPaginationBar
+                            page={usersPage}
+                            hasMore={usersHasMore}
+                            loading={usersLoading}
+                            onPrev={goUsersPrev}
+                            onNext={goUsersNext}
+                            total={counts.users}
+                            pageSize={ADMIN_LIST_PAGE_SIZE}
+                            shownCount={filteredDirectory.length}
+                            label="usuarios"
+                            labelSingular="usuario"
+                            filterActive={directoryFilterActive}
+                        />
+                    )}
                 </section>
 
                 <section className="admin-module-panel admin-module-directory" ref={communitiesListRef}>

@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db }          from '@/shared/api/firebase';
 import { Collections } from '@/shared/config/collections';
-import { CommunityFields } from '@/shared/config/firestoreFields';
+import { CommunityFields, MemberFields } from '@/shared/config/firestoreFields';
 import { ADMIN_LIST_PAGE_SIZE } from '@/shared/config/pagination';
 import { fromDoc as parseCommunity } from '@/features/communities/mapper/communityMapper';
 
@@ -98,7 +98,7 @@ export async function getAllCommunities() {
 export async function getCommunityMemberCount(communityId) {
     const q        = query(
         collection(db, Collections.COMMUNITY_MEMBERS),
-        where('community_id', '==', communityId)
+        where(MemberFields.communityId, '==', communityId)
     );
     const snapshot = await getDocs(q);
     return snapshot.size;
@@ -189,7 +189,7 @@ async function enrichMembers(members) {
 export async function getCommunityMembers(communityId) {
     const q        = query(
         collection(db, Collections.COMMUNITY_MEMBERS),
-        where('community_id', '==', communityId)
+        where(MemberFields.communityId, '==', communityId)
     );
     const snapshot = await getDocs(q);
     return enrichMembers(membersFromSnapshot(snapshot));
@@ -199,7 +199,7 @@ export async function getCommunityMembers(communityId) {
 export function subscribeCommunityMembers(communityId, callback) {
     const q = query(
         collection(db, Collections.COMMUNITY_MEMBERS),
-        where('community_id', '==', communityId),
+        where(MemberFields.communityId, '==', communityId),
     );
     return onSnapshot(
         q,
@@ -222,7 +222,7 @@ export function subscribeCommunityMembers(communityId, callback) {
 export function subscribeCommunityMemberCount(communityId, callback) {
     const q = query(
         collection(db, Collections.COMMUNITY_MEMBERS),
-        where('community_id', '==', communityId),
+        where(MemberFields.communityId, '==', communityId),
     );
     return onSnapshot(
         q,

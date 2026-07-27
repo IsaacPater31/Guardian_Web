@@ -15,6 +15,9 @@ const pageTitles = {
 
 function getPageInfo(pathname) {
     if (pageTitles[pathname]) return pageTitles[pathname];
+    if (pathname.startsWith('/admin/users/')) {
+        return { title: 'Usuario', subtitle: 'Perfil, comunidades y gestión administrativa' };
+    }
     if (pathname.startsWith('/communities/')) {
         return { title: 'Miembros', subtitle: 'Roles y participantes en la comunidad' };
     }

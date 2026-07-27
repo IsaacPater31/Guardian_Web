@@ -21,6 +21,7 @@ import { CommunityFields, MemberFields, UserFields } from '@/shared/config/fires
 import { normalizeEntityReportTypes } from '@/features/communities/utils/entityReportTypes';
 import { InboxKinds, notifyMembershipEvent } from '@/shared/data/inbox/inboxNotifyRepository';
 import { ENTITY_ROLE_SET, NON_ENTITY_ROLE_SET } from '@/shared/validators/roles';
+import { runGuardedMemberMutation, assertCanRemoveOrDemoteManager } from '@/shared/domain/membershipGuards';
 
 const communitiesCol = () => collection(db, Collections.COMMUNITIES);
 const membersCol = () => collection(db, Collections.COMMUNITY_MEMBERS);
@@ -186,9 +187,23 @@ export async function adminRemoveMember(memberDocId, actor = {}) {
     const data = memberSnap.data() || {};
     const targetUserId = data[MemberFields.userId];
     const communityId = data[MemberFields.communityId];
+    const currentRole = data[MemberFields.role];
+    let communityName = 'Comunidad';
+    let isEntity = false;
+    if (communityId) {
+        const meta = await getCommunityMeta(communityId);
+        communityName = meta.name;
+        isEntity = meta.isEntity;
+        await assertCanRemoveOrDemoteManager({
+            communityId,
+            currentRole,
+            nextRole: null,
+            communityName,
+            isEntity,
+        });
+    }
     // Notify BEFORE delete so membership-gated rules still allow the inbox write.
     if (targetUserId && communityId) {
-        const { name: communityName, isEntity } = await getCommunityMeta(communityId);
         const subjectName = actor.subjectName ?? (await getUserDisplayName(targetUserId));
         await notifyMembershipEvent({
             targetUserId,
@@ -201,7 +216,12 @@ export async function adminRemoveMember(memberDocId, actor = {}) {
             subjectName,
         });
     }
-    await deleteDoc(memberRef);
+    await runGuardedMemberMutation({
+        memberDocId,
+        nextRole: null,
+        communityName,
+        isEntity,
+    });
 }
 
 export async function adminUpdateMemberRole(memberDocId, role, actor = {}) {
@@ -220,25 +240,31 @@ export async function adminUpdateMemberRole(memberDocId, role, actor = {}) {
     if (!allowedRoles.has(r)) {
         throw new Error('Rol inválido para esta comunidad');
     }
-    const previousRole = memberData[MemberFields.role];
-    const targetUserId = memberData[MemberFields.userId];
-    await updateDoc(memberRef, {
-        [MemberFields.role]: r,
+    const { name: communityName, isEntity } = await getCommunityMeta(communityId);
+    const mutation = await runGuardedMemberMutation({
+        memberDocId,
+        nextRole: r,
+        communityName,
+        isEntity,
     });
-    if (targetUserId && previousRole !== r) {
-        const { name: communityName, isEntity } = await getCommunityMeta(communityId);
-        const subjectName = actor.subjectName ?? (await getUserDisplayName(targetUserId));
+    if (
+        mutation.applied
+        && mutation.targetUserId
+        && mutation.previousRole !== r
+    ) {
+        const subjectName =
+            actor.subjectName ?? (await getUserDisplayName(mutation.targetUserId));
         await notifyMembershipEvent({
-            targetUserId,
+            targetUserId: mutation.targetUserId,
             kind: InboxKinds.roleChanged,
-            communityId,
-            communityName,
-            isEntity,
+            communityId: mutation.communityId,
+            communityName: mutation.communityName,
+            isEntity: mutation.isEntity,
             actorId: actor.actorId ?? null,
             actorName: actor.actorName ?? null,
             subjectName,
             role: r,
-            previousRole,
+            previousRole: mutation.previousRole,
         });
     }
 }

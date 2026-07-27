@@ -6,6 +6,7 @@ import AlertsPage from '@/features/alerts/controller/AlertsPage';
 import CommunitiesPage from '@/features/communities/controller/CommunitiesPage';
 import CommunityDetailPage from '@/features/communities/controller/CommunityDetailPage';
 import AdminModulePage from '@/features/admin/controller/AdminModulePage';
+import UserDetailPage from '@/features/admin/controller/UserDetailPage';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/communities" element={<CommunitiesPage />} />
           <Route path="/communities/:id" element={<CommunityDetailPage />} />
           <Route path="/admin" element={<AdminModulePage />} />
+          <Route path="/admin/users/:uid" element={<UserDetailPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

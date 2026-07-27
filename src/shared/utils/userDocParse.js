@@ -45,10 +45,18 @@ export function extractUserProfileFields(d) {
             d.fullName
         ) ?? emailLocalPart(email);
 
-    const phone = firstNonEmpty(d.phone, d.phoneNumber, d.phone_number, d.mobile);
+    const phone = firstNonEmpty(
+        d[UserFields.phone],
+        d.phone,
+        d.phoneNumber,
+        d.phone_number,
+        d.mobile
+    );
     const createdAt = d[UserFields.createdAt] ?? d.created_at ?? d.createdAt ?? null;
     const updatedAt = d[UserFields.updatedAt] ?? d.updated_at ?? d.updatedAt ?? null;
     const platformAdmin = d[UserFields.platformAdmin] === true;
+    const suspended = d[UserFields.suspended] === true;
+    const suspendedAt = d[UserFields.suspendedAt] ?? d.suspended_at ?? null;
 
-    return { displayName, email, phone, createdAt, updatedAt, platformAdmin };
+    return { displayName, email, phone, createdAt, updatedAt, platformAdmin, suspended, suspendedAt };
 }

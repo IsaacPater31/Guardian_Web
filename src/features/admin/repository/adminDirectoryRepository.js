@@ -19,7 +19,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/shared/api/firebase';
 import { Collections } from '@/shared/config/collections';
-import { MemberFields, UserFields } from '@/shared/config/firestoreFields';
+import { CommunityFields, MemberFields, UserFields } from '@/shared/config/firestoreFields';
 import { ADMIN_LIST_PAGE_SIZE } from '@/shared/config/pagination';
 import { fetchCommunitiesPage, getCommunityMembers, getCommunityName } from '@/features/communities/repository/communityRepository';
 import { extractUserProfileFields } from '@/shared/utils/userDocParse';
@@ -208,14 +208,22 @@ export async function searchUsersByText(searchText, { excludeCommunityId, limit:
     }
 
     try {
-        const snap = await getDocs(
-            query(collection(db, Collections.USERS), orderBy(documentId()), limit(500))
-        );
-        for (const d of snap.docs) {
-            if (results.length >= max) break;
-            const u = parseUserSnap(d);
-            if (existingMemberIds.has(u.id)) continue;
-            if (userMatchesText(u, d, qLower)) pushUser(u);
+        const pageSize = 500;
+        const maxPages = 40; // hasta 20_000 docs
+        let cursor = null;
+        for (let page = 0; page < maxPages && results.length < max; page += 1) {
+            const constraints = [orderBy(documentId()), limit(pageSize)];
+            if (cursor) constraints.push(startAfter(cursor));
+            const snap = await getDocs(query(collection(db, Collections.USERS), ...constraints));
+            if (snap.empty) break;
+            for (const d of snap.docs) {
+                if (results.length >= max) break;
+                const u = parseUserSnap(d);
+                if (existingMemberIds.has(u.id)) continue;
+                if (userMatchesText(u, d, qLower)) pushUser(u);
+            }
+            cursor = snap.docs[snap.docs.length - 1];
+            if (snap.docs.length < pageSize) break;
         }
     } catch {
         /* sin permiso */
@@ -225,7 +233,7 @@ export async function searchUsersByText(searchText, { excludeCommunityId, limit:
 }
 
 /**
- * Membresías de un usuario con nombre de comunidad.
+ * Membresías de un usuario con nombre de comunidad e isEntity.
  * @param {string} userId
  */
 export async function listCommunitiesForUser(userId) {
@@ -239,12 +247,24 @@ export async function listCommunitiesForUser(userId) {
     for (const d of snap.docs) {
         const data = d.data();
         const cid = data[MemberFields.communityId];
-        const name = await getCommunityName(cid);
+        let communityName = await getCommunityName(cid);
+        let isEntity = false;
+        try {
+            const cSnap = await getDoc(doc(db, Collections.COMMUNITIES, cid));
+            if (cSnap.exists()) {
+                const cd = cSnap.data() || {};
+                isEntity = cd[CommunityFields.isEntity] === true;
+                if (cd[CommunityFields.name]) communityName = cd[CommunityFields.name];
+            }
+        } catch {
+            /* sin permiso */
+        }
         out.push({
             memberDocId: d.id,
             communityId: cid,
-            communityName: name,
+            communityName: communityName || cid,
             role: data[MemberFields.role] || 'member',
+            isEntity,
         });
     }
     return out;

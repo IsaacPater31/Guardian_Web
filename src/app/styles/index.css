@@ -3753,6 +3753,26 @@ textarea:focus:not(:focus-visible) {
   cursor: pointer;
 }
 
+.admin-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-danger, #c62828);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.admin-btn-danger:disabled,
+.admin-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .admin-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -4467,6 +4487,12 @@ textarea:focus:not(:focus-visible) {
   border: 1px solid rgba(244, 67, 54, 0.25);
 }
 
+.admin-module-banner--ok {
+  background: rgba(46, 125, 50, 0.08);
+  color: #2e7d32;
+  border: 1px solid rgba(46, 125, 50, 0.25);
+}
+
 .admin-module-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -4569,6 +4595,18 @@ textarea:focus:not(:focus-visible) {
   font-weight: 600;
   background: rgba(63, 81, 181, 0.12);
   color: var(--color-accent);
+}
+
+.admin-module-badge--danger {
+  background: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+  margin-top: 0;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.admin-module-title .admin-module-badge {
+  margin-top: 0;
 }
 
 .admin-module-table {
@@ -4728,6 +4766,41 @@ textarea:focus:not(:focus-visible) {
   z-index: 1;
   background: var(--color-surface);
   box-shadow: 0 1px 0 var(--color-divider);
+}
+
+.admin-user-detail .admin-user-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.admin-user-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 480px;
+}
+
+.admin-user-readonly-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+}
+
+.admin-user-danger {
+  border-color: rgba(244, 67, 54, 0.35);
+}
+
+.admin-user-contact-line {
+  display: block;
+}
+
+.admin-module-table tr.admin-module-row-link {
+  cursor: pointer;
+}
+
+.admin-module-table tr.admin-module-row-link:hover td {
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .admin-user-contact-line {

@@ -29,8 +29,13 @@ export const UserFields = Object.freeze({
     fullName: 'full_name',
     name: 'name',
     email: 'email',
+    /** Campo canónico de teléfono en perfil admin web. */
+    phone: 'phone',
     createdAt: 'created_at',
     /** Misma clave que `UserProfileRepository.mergeProfile` (Guardian). */
     updatedAt: 'updated_at',
     platformAdmin: 'platform_admin',
+    /** Cuenta inhabilitada: no puede usar Guardian ni Usersweb. */
+    suspended: 'suspended',
+    suspendedAt: 'suspended_at',
 });
