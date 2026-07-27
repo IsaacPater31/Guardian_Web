@@ -38,7 +38,6 @@ export default function MembersTablePanel({
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Correo</th>
-                                    <th>UID</th>
                                     <th>Rol</th>
                                     <th className="admin-th-actions"> </th>
                                 </tr>
@@ -48,7 +47,6 @@ export default function MembersTablePanel({
                                     <tr key={m.id}>
                                         <td>{m.displayName || '—'}</td>
                                         <td className="admin-mono">{m.email || '—'}</td>
-                                        <td className="admin-mono admin-uid">{m.userId || '—'}</td>
                                         <td>
                                             <select
                                                 className="login-input admin-select-inline"

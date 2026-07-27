@@ -136,12 +136,13 @@ export default function UserDetailPage() {
     async function toggleSuspend() {
         if (!uid || !user) return;
         const suspending = !user.suspended;
+        const label = user.displayName || user.email || 'este usuario';
         const okConfirm = window.confirm(
             suspending
-                ? `¿Suspender a «${user.displayName || uid}»?\n\n`
+                ? `¿Suspender a «${label}»?\n\n`
                   + 'No podrá entrar a la app Guardian ni al panel Usersweb. '
                   + 'Se conservan perfil, comunidades, reportes y alertas.'
-                : `¿Reactivar a «${user.displayName || uid}»?\n\n`
+                : `¿Reactivar a «${label}»?\n\n`
                   + 'Volverá a poder entrar a Guardian y Usersweb.'
         );
         if (!okConfirm) return;
@@ -203,7 +204,9 @@ export default function UserDetailPage() {
                             </span>
                         ) : null}
                     </h2>
-                    <p className="admin-module-sub admin-module-meta mono">{user.id}</p>
+                    {user.email ? (
+                        <p className="admin-module-sub admin-module-meta">{user.email}</p>
+                    ) : null}
                 </div>
             </div>
 

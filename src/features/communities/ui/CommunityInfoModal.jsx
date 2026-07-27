@@ -52,16 +52,12 @@ export default function CommunityInfoModal({ community, memberCount, onClose }) 
                     </button>
                 </div>
                 <dl className="community-info-dl">
-                    <dt>ID documento</dt>
-                    <dd className="mono">{community.id}</dd>
                     <dt>Tipo</dt>
                     <dd>{isEntity ? 'Entidad (reportes)' : 'Comunidad'}</dd>
                     <dt>Nombre</dt>
                     <dd>{community.name || '—'}</dd>
                     <dt>Descripción</dt>
                     <dd>{community.description || '—'}</dd>
-                    <dt>Creado por (UID)</dt>
-                    <dd className="mono">{community.createdBy ?? '—'}</dd>
                     <dt>Fecha de creación</dt>
                     <dd>{formatFirestoreDate(community.createdAt)}</dd>
                     <dt>Icono</dt>

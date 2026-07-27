@@ -25,7 +25,7 @@ export default function AddMemberPanel({
                     <div>
                         <h3 className="section-title">Agregar miembro</h3>
                         <p className="section-subtitle">
-                            Busca por nombre, correo o UID y elige el rol
+                            Busca por nombre o correo y elige el rol
                         </p>
                     </div>
                 </div>
@@ -34,7 +34,7 @@ export default function AddMemberPanel({
                 <div className="admin-add-form admin-add-form--stacked">
                     <input
                         className="login-input"
-                        placeholder="Nombre, correo o UID"
+                        placeholder="Nombre o correo"
                         value={memberSearch}
                         onChange={(e) => onMemberSearchChange(e.target.value)}
                         autoComplete="off"
@@ -75,7 +75,6 @@ export default function AddMemberPanel({
                                     <span className="admin-muted">
                                         {user.email || '—'}
                                     </span>
-                                    <span className="admin-mono admin-uid">{user.id}</span>
                                 </div>
                                 <button
                                     type="button"

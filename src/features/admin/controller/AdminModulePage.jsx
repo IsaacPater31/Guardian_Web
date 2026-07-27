@@ -300,7 +300,7 @@ export default function AdminModulePage() {
                         <input
                             type="search"
                             className="admin-module-input admin-module-input--search"
-                            placeholder="Buscar por nombre, correo o UID…"
+                            placeholder="Buscar por nombre o correo…"
                             value={directoryFilter}
                             onChange={(e) => setDirectoryFilter(e.target.value)}
                             autoComplete="off"
@@ -325,7 +325,6 @@ export default function AdminModulePage() {
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Contacto</th>
-                                    <th>UID</th>
                                     <th>Alta</th>
                                     <th> </th>
                                 </tr>
@@ -333,7 +332,7 @@ export default function AdminModulePage() {
                             <tbody>
                                 {!usersLoading && !globalSearching && filteredDirectory.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="admin-module-msg admin-module-msg--muted">
+                                        <td colSpan={4} className="admin-module-msg admin-module-msg--muted">
                                             {users.length === 0 && !useGlobalSearch
                                                 ? 'No hay usuarios para mostrar.'
                                                 : 'Ningún usuario coincide con la búsqueda.'}
@@ -371,7 +370,6 @@ export default function AdminModulePage() {
                                             ) : null}
                                             {!u.email && !u.phone ? '—' : null}
                                         </td>
-                                        <td className="admin-module-meta mono">{u.id}</td>
                                         <td>{formatUserDate(u.createdAt)}</td>
                                         <td>
                                             <Link
@@ -418,7 +416,7 @@ export default function AdminModulePage() {
                         <input
                             type="search"
                             className="admin-module-input admin-module-input--search"
-                            placeholder="Buscar por nombre o identificador…"
+                            placeholder="Buscar por nombre…"
                             value={communitiesDirectoryFilter}
                             onChange={(e) => setCommunitiesDirectoryFilter(e.target.value)}
                             autoComplete="off"
@@ -433,14 +431,13 @@ export default function AdminModulePage() {
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
-                                    <th>ID</th>
                                     <th />
                                 </tr>
                             </thead>
                             <tbody>
                                 {!communitiesLoading && filteredCommunitiesDirectory.length === 0 && (
                                     <tr>
-                                        <td colSpan={3} className="admin-module-msg admin-module-msg--muted">
+                                        <td colSpan={2} className="admin-module-msg admin-module-msg--muted">
                                             {communities.length === 0
                                                 ? 'No hay comunidades para mostrar.'
                                                 : 'Ninguna comunidad coincide con la búsqueda.'}
@@ -457,7 +454,6 @@ export default function AdminModulePage() {
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="admin-module-meta mono">{c.id}</td>
                                         <td>
                                             <Link
                                                 to={`/communities/${c.id}`}

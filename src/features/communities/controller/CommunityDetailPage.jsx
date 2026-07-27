@@ -154,13 +154,18 @@ export default function CommunityDetailPage() {
         setOfficialOk('');
         setBusy(true);
         try {
-            const uid = await adminCreateOfficialUser({
+            await adminCreateOfficialUser({
                 email: officialForm.email,
                 password: officialForm.password,
                 displayName: officialForm.displayName,
                 communityId,
             });
-            setOfficialOk(`Usuario oficial creado (UID: ${uid}).`);
+            const createdLabel = officialForm.displayName || officialForm.email;
+            setOfficialOk(
+                createdLabel
+                    ? `Usuario oficial «${createdLabel}» creado.`
+                    : 'Usuario oficial creado.'
+            );
             setOfficialForm({ ...emptyOfficialForm });
         } catch (err) {
             setOfficialErr(err?.message || 'No se pudo crear el usuario oficial');

@@ -31,7 +31,6 @@ export default function CommunitiesTable({
                     <table className="admin-table admin-table--users admin-table-wide">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>Nombre</th>
                                 <th>Tipo</th>
                                 <th className="admin-th-actions">Acciones</th>
@@ -40,14 +39,13 @@ export default function CommunitiesTable({
                         <tbody>
                             {!loading && list.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="admin-muted">
+                                    <td colSpan={3} className="admin-muted">
                                         No hay comunidades para mostrar.
                                     </td>
                                 </tr>
                             )}
                             {list.map((c) => (
                                 <tr key={c.id}>
-                                    <td className="admin-td-mono admin-td-id">{c.id}</td>
                                     <td>
                                         <strong>{c.name}</strong>
                                         {c.description && (
