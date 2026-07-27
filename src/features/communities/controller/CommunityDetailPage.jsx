@@ -6,6 +6,7 @@ import {
     adminAddCommunityMember,
     adminRemoveMember,
     adminUpdateMemberRole,
+    adminUpdateMemberAlias,
 } from '@/features/communities/service/communityWriteService';
 import { adminCreateOfficialUser } from '@/features/communities/service/userProvisionService';
 import { searchUsersByText } from '@/features/admin/repository/adminDirectoryRepository';
@@ -36,6 +37,7 @@ export default function CommunityDetailPage() {
     const [searchErr, setSearchErr] = useState('');
     const searchDebounceRef = useRef(null);
     const [newRole, setNewRole] = useState('member');
+    const [newAlias, setNewAlias] = useState('');
     const [busy, setBusy] = useState(false);
     const [officialForm, setOfficialForm] = useState({ ...emptyOfficialForm });
     const [officialErr, setOfficialErr] = useState('');
@@ -109,14 +111,18 @@ export default function CommunityDetailPage() {
         };
     }, [memberSearch, communityId]);
 
-    async function addMemberByUser(user) {
+    async function addMemberByUser(user, alias = '') {
         if (!user?.id || !communityId) return;
         setBusy(true);
         setSearchErr('');
         try {
-            await adminAddCommunityMember(communityId, user.id, newRole);
+            const trimmedAlias = String(alias ?? '').trim();
+            await adminAddCommunityMember(communityId, user.id, newRole, {
+                alias: trimmedAlias || null,
+            });
             setMemberSearch('');
             setSearchResults([]);
+            setNewAlias('');
         } catch (err) {
             setSearchErr(err?.message || 'No se pudo agregar');
         } finally {
@@ -140,6 +146,17 @@ export default function CommunityDetailPage() {
         setBusy(true);
         try {
             await adminUpdateMemberRole(memberId, role);
+        } catch (err) {
+            alert(err?.message || 'Error');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function updateAlias(memberId, alias) {
+        setBusy(true);
+        try {
+            await adminUpdateMemberAlias(memberId, alias);
         } catch (err) {
             alert(err?.message || 'Error');
         } finally {
@@ -228,6 +245,8 @@ export default function CommunityDetailPage() {
                 onMemberSearchChange={setMemberSearch}
                 newRole={newRole}
                 onNewRoleChange={setNewRole}
+                newAlias={newAlias}
+                onNewAliasChange={setNewAlias}
                 searching={searching}
                 searchErr={searchErr}
                 searchResults={searchResults}
@@ -252,6 +271,7 @@ export default function CommunityDetailPage() {
                 isEntity={isEntity}
                 busy={busy}
                 onChangeRole={changeRole}
+                onUpdateAlias={updateAlias}
                 onRemoveMember={removeMemberRow}
             />
         </>

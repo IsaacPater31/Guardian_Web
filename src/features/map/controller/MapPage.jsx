@@ -18,8 +18,9 @@ import MapFilterPanel from '@/features/map/ui/MapFilterPanel';
 import MapCommunityFilterBar from '@/features/map/ui/MapCommunityFilterBar';
 import { DEFAULT_FILTERS } from '@/shared/config/filterOptions';
 import { ACTIVE_ALERT_FEEDBACK_MS } from '@/shared/config/alertTypes';
-import { getAllCommunities } from '@/features/communities/repository/communityRepository';
+import { getAllCommunities, getMemberAliasMap } from '@/features/communities/repository/communityRepository';
 import { filterAlertsByCommunities } from '@/features/alerts/utils/alertScope';
+import { resolveSenderLabelForAlert } from '@/shared/utils/memberDisplayLabel';
 
 function MapFocusController({ focusAlert }) {
     const map = useMap();
@@ -59,6 +60,7 @@ export default function MapPage() {
     const [communities, setCommunities] = useState([]);
     /** null = all; [] = none; [ids] = subset */
     const [selectedCommunityIds, setSelectedCommunityIds] = useState(null);
+    const [aliasMaps, setAliasMaps] = useState({});
     const { position: userPosition, error: geoError, request: requestLocation } = useUserGeolocation();
 
     const unsubRef = useRef(null);
@@ -144,6 +146,32 @@ export default function MapPage() {
         if (selectedCommunityIds == null) return rawAlerts;
         return filterAlertsByCommunities(rawAlerts, selectedCommunityIds);
     }, [rawAlerts, selectedCommunityIds]);
+
+    const effectiveCommunityIds = useMemo(() => {
+        if (selectedCommunityIds == null) {
+            return communities.map((c) => c.id).filter(Boolean);
+        }
+        return selectedCommunityIds;
+    }, [selectedCommunityIds, communities]);
+
+    useEffect(() => {
+        const ids = (effectiveCommunityIds || []).filter(Boolean);
+        if (!ids.length) {
+            setAliasMaps({});
+            return undefined;
+        }
+        let cancelled = false;
+        Promise.all(ids.map(async (id) => [id, await getMemberAliasMap(id)]))
+            .then((entries) => {
+                if (cancelled) return;
+                setAliasMaps(Object.fromEntries(entries));
+            })
+            .catch((err) => {
+                console.warn('[MapPage] alias maps', err);
+                if (!cancelled) setAliasMaps({});
+            });
+        return () => { cancelled = true; };
+    }, [effectiveCommunityIds]);
 
     useEffect(() => {
         if (!timedPriorityAlertId) return undefined;
@@ -289,12 +317,17 @@ export default function MapPage() {
                         alert={selectedAlert}
                         onClose={() => setSelectedAlertId(null)}
                         onShowDetail={() => setShowModal(true)}
+                        senderLabel={resolveSenderLabelForAlert(selectedAlert, aliasMaps)}
                     />
                 )}
             </div>
 
             {showModal && selectedAlert && (
-                <AlertDetailModal alert={selectedAlert} onClose={() => setShowModal(false)} />
+                <AlertDetailModal
+                    alert={selectedAlert}
+                    onClose={() => setShowModal(false)}
+                    senderLabel={resolveSenderLabelForAlert(selectedAlert, aliasMaps)}
+                />
             )}
         </div>
     );

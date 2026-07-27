@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Building2, ShieldCheck } from 'lucide-react';
+import { Plus, Building2, ShieldCheck, Search } from 'lucide-react';
 import { ADMIN_LIST_PAGE_SIZE } from '@/shared/config/pagination';
 import {
     subscribeToCommunities,
     subscribeCommunityMemberCount,
+    resolveCommunityAdminNames,
 } from '@/features/communities/repository/communityRepository';
 import {
     adminCreateCommunity,
@@ -15,6 +16,7 @@ import CommunitiesTable from '@/features/communities/ui/CommunitiesTable';
 import CommunityInfoModal from '@/features/communities/ui/CommunityInfoModal';
 import CommunityFormModal, { isEntityModal } from '@/features/communities/ui/CommunityFormModal';
 import { normalizeEntityReportTypes } from '@/features/communities/utils/entityReportTypes';
+import CommunityAdminsMeta from '@/features/communities/ui/CommunityAdminsMeta';
 import {
     DEFAULT_ICON_CODE_POINT,
     DEFAULT_ICON_COLOR,
@@ -37,7 +39,6 @@ function normalizeHexColor(value, fallback = DEFAULT_ICON_COLOR) {
 export default function CommunitiesPage() {
     const [allCommunities, setAllCommunities] = useState([]);
     const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(null);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
     const [form, setForm] = useState({ ...emptyForm });
@@ -45,6 +46,10 @@ export default function CommunitiesPage() {
     const [err, setErr] = useState('');
     const [infoCommunity, setInfoCommunity] = useState(null);
     const [infoMemberCount, setInfoMemberCount] = useState(null);
+    const [searchFilter, setSearchFilter] = useState('');
+    /** @type {[Record<string, string[]>, Function]} communityId → admin names */
+    const [adminNamesByCommunity, setAdminNamesByCommunity] = useState({});
+    const [adminsReady, setAdminsReady] = useState(false);
     const listAnchorRef = useRef(null);
 
     function closeModal() {
@@ -63,12 +68,28 @@ export default function CommunitiesPage() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [modal, infoCommunity]);
 
+    const filteredCommunities = useMemo(() => {
+        const f = searchFilter.trim().toLowerCase();
+        if (!f) return allCommunities;
+        if (!adminsReady) return allCommunities;
+        return allCommunities.filter((c) => {
+            const name = (c.name || '').toLowerCase();
+            const desc = (c.description || '').toLowerCase();
+            const admin = (adminNamesByCommunity[c.id] || [])
+                .join(' ')
+                .toLowerCase();
+            return name.includes(f) || desc.includes(f) || admin.includes(f);
+        });
+    }, [allCommunities, searchFilter, adminNamesByCommunity, adminsReady]);
+
     const list = useMemo(() => {
         const start = (page - 1) * ADMIN_LIST_PAGE_SIZE;
-        return allCommunities.slice(start, start + ADMIN_LIST_PAGE_SIZE);
-    }, [allCommunities, page]);
+        return filteredCommunities.slice(start, start + ADMIN_LIST_PAGE_SIZE);
+    }, [filteredCommunities, page]);
 
-    const hasMore = page * ADMIN_LIST_PAGE_SIZE < allCommunities.length;
+    const hasMore = page * ADMIN_LIST_PAGE_SIZE < filteredCommunities.length;
+    const listTotal = filteredCommunities.length;
+    const searchActive = searchFilter.trim().length > 0;
 
     function goToPage(nextPage) {
         setPage(nextPage);
@@ -84,11 +105,43 @@ export default function CommunitiesPage() {
                 (a.name || '').localeCompare(b.name || '', 'es'),
             );
             setAllCommunities(sorted);
-            setTotal(sorted.length);
             setLoading(false);
         });
         return unsub;
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadAdminNames() {
+            setAdminsReady(false);
+            try {
+                const map = await resolveCommunityAdminNames(allCommunities);
+                if (cancelled) return;
+                setAdminNamesByCommunity(map);
+            } catch (err) {
+                console.warn('[CommunitiesPage] admin names', err);
+                if (!cancelled) setAdminNamesByCommunity({});
+            } finally {
+                if (!cancelled) setAdminsReady(true);
+            }
+        }
+
+        if (!allCommunities.length) {
+            setAdminNamesByCommunity({});
+            setAdminsReady(true);
+            return undefined;
+        }
+
+        loadAdminNames();
+        return () => {
+            cancelled = true;
+        };
+    }, [allCommunities]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [searchFilter]);
 
     useEffect(() => {
         if (!infoCommunity) {
@@ -232,12 +285,27 @@ export default function CommunitiesPage() {
                 </div>
             </section>
 
+            <div className="admin-module-directory-search" style={{ marginBottom: 'var(--space-4)' }}>
+                <Search size={16} className="admin-module-directory-search-icon" aria-hidden />
+                <input
+                    type="search"
+                    className="admin-module-input admin-module-input--search"
+                    placeholder="Buscar por nombre, descripción o admin…"
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    autoComplete="off"
+                    aria-label="Buscar comunidades"
+                />
+            </div>
+
             <CommunitiesTable
                 list={list}
-                loading={loading}
+                loading={loading || (allCommunities.length > 0 && !adminsReady)}
                 page={page}
                 hasMore={hasMore}
-                total={total}
+                total={listTotal}
+                searchActive={searchActive}
+                adminNamesByCommunity={adminNamesByCommunity}
                 listAnchorRef={listAnchorRef}
                 onPrev={() => page > 1 && goToPage(page - 1)}
                 onNext={() => hasMore && goToPage(page + 1)}

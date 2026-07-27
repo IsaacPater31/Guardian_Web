@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { Eye, Forward, Flag, EyeOff, User, X, Users } from 'lucide-react';
 import { getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo } from '@/shared/config/alertTypes';
-import { getCommunityNames } from '@/features/communities/repository/communityRepository';
+import { getCommunityNames, getMemberAliasMap } from '@/features/communities/repository/communityRepository';
 import { updateAlertStatus } from '@/features/alerts/repository/alertRepository';
 import { getSubtypeLabel } from '@/features/alerts/utils/alertSubtype';
+import { resolveAlertSenderLabel } from '@/shared/utils/memberDisplayLabel';
 
-export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
+export default function SelectedAlertPanel({ alert, onClose, onShowDetail, senderLabel = null }) {
     const [communityNames, setCommunityNames] = useState([]);
+    const [membershipAlias, setMembershipAlias] = useState(null);
     const [localStatus, setLocalStatus] = useState(alert?.alertStatus ?? 'pending');
     const [showAttendConfirm, setShowAttendConfirm] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -35,6 +37,35 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
     }, [alert?.communityIds]);
 
     useEffect(() => {
+        let cancelled = false;
+        if (!alert?.communityIds?.length || !alert.userId || alert.isAnonymous) {
+            setMembershipAlias(null);
+            return undefined;
+        }
+        const ids = [...new Set(alert.communityIds.filter(Boolean))];
+        Promise.all(ids.map(async (id) => [id, await getMemberAliasMap(id)]))
+            .then((entries) => {
+                if (cancelled) return;
+                const maps = Object.fromEntries(entries);
+                for (const cid of ids) {
+                    const a = maps[cid]?.[alert.userId];
+                    if (a) {
+                        setMembershipAlias(a);
+                        return;
+                    }
+                }
+                setMembershipAlias(null);
+            })
+            .catch((err) => {
+                console.warn('[SelectedAlertPanel] alias map', err);
+                if (!cancelled) setMembershipAlias(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [alert?.id, alert?.userId, alert?.isAnonymous, alert?.communityIds]);
+
+    useEffect(() => {
         setLocalStatus(alert?.alertStatus ?? 'pending');
         setShowAttendConfirm(false);
         setIsUpdatingStatus(false);
@@ -59,6 +90,11 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
     };
 
     const Icon = LucideIcons[getAlertIcon(alert.alertType)] || LucideIcons.AlertTriangle;
+    const resolvedSenderLabel = alert.isAnonymous
+        ? null
+        : senderLabel
+            ?? resolveAlertSenderLabel(alert, membershipAlias)
+            ?? (alert.userName || 'Usuario desconocido');
 
     return (
         <div className="map-alert-panel">
@@ -92,7 +128,7 @@ export default function SelectedAlertPanel({ alert, onClose, onShowDetail }) {
                         <>
                             <User style={{ width: 14, height: 14, color: 'var(--color-text-tertiary)' }} />
                             <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                                {alert.userName || 'Usuario desconocido'}
+                                {resolvedSenderLabel}
                             </span>
                         </>
                     )}

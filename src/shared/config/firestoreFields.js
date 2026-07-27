@@ -12,6 +12,13 @@ export const CommunityFields = Object.freeze({
     iconColor: 'icon_color',
     reportButtonColor: 'report_button_color',
     reportAlertTypes: 'report_alert_types',
+    /** Comunidades creadas al primer acceso (p. ej. `hogar`). */
+    defaultSlug: 'default_slug',
+});
+
+/** Slug estable de la comunidad hogar por defecto (alineado con Guardian). */
+export const DefaultCommunitySlugs = Object.freeze({
+    hogar: 'hogar',
 });
 
 export const MemberFields = Object.freeze({
@@ -19,6 +26,8 @@ export const MemberFields = Object.freeze({
     communityId: 'community_id',
     role: 'role',
     joinedAt: 'joined_at',
+    /** Etiqueta libre por membresía (p. ej. "Julio Casa 10"). */
+    alias: 'alias',
     roleAdmin: 'admin',
     roleMember: 'member',
     roleOfficial: 'official',

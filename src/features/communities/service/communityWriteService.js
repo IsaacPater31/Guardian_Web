@@ -12,6 +12,7 @@ import {
     addDoc,
     updateDoc,
     deleteDoc,
+    deleteField,
     writeBatch,
     serverTimestamp,
 } from 'firebase/firestore';
@@ -149,6 +150,7 @@ async function getUserDisplayName(userId) {
  * @param {string} communityId
  * @param {string} userId — Firebase Auth UID
  * @param {'member'|'admin'|'official'} role
+ * @param {{ alias?: string|null, actorId?: string|null, actorName?: string|null, subjectName?: string|null }} [actor]
  */
 export async function adminAddCommunityMember(communityId, userId, role, actor = {}) {
     const r = normalizeRole(role);
@@ -156,12 +158,15 @@ export async function adminAddCommunityMember(communityId, userId, role, actor =
     if (!allowedRoles.has(r)) {
         throw new Error('Rol inválido para esta comunidad');
     }
-    await addDoc(membersCol(), {
+    const payload = {
         [MemberFields.communityId]: communityId,
         [MemberFields.userId]: userId,
         [MemberFields.role]: r,
         [MemberFields.joinedAt]: serverTimestamp(),
-    });
+    };
+    const trimmedAlias = String(actor.alias ?? '').trim();
+    if (trimmedAlias) payload[MemberFields.alias] = trimmedAlias;
+    await addDoc(membersCol(), payload);
     const { name: communityName, isEntity } = await getCommunityMeta(communityId);
     const subjectName = actor.subjectName ?? (await getUserDisplayName(userId));
     await notifyMembershipEvent({
@@ -267,4 +272,16 @@ export async function adminUpdateMemberRole(memberDocId, role, actor = {}) {
             previousRole: mutation.previousRole,
         });
     }
+}
+
+export async function adminUpdateMemberAlias(memberDocId, alias) {
+    const memberRef = doc(db, Collections.COMMUNITY_MEMBERS, memberDocId);
+    const memberSnap = await getDoc(memberRef);
+    if (!memberSnap.exists()) {
+        throw new Error('Miembro no encontrado');
+    }
+    const trimmed = String(alias ?? '').trim();
+    await updateDoc(memberRef, {
+        [MemberFields.alias]: trimmed ? trimmed : deleteField(),
+    });
 }

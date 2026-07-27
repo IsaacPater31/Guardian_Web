@@ -9,6 +9,8 @@ export default function AddMemberPanel({
     onMemberSearchChange,
     newRole,
     onNewRoleChange,
+    newAlias,
+    onNewAliasChange,
     searching,
     searchErr,
     searchResults,
@@ -25,7 +27,7 @@ export default function AddMemberPanel({
                     <div>
                         <h3 className="section-title">Agregar miembro</h3>
                         <p className="section-subtitle">
-                            Busca por nombre o correo y elige el rol
+                            Busca por nombre o correo, alias opcional y elige el rol
                         </p>
                     </div>
                 </div>
@@ -50,6 +52,13 @@ export default function AddMemberPanel({
                             </option>
                         ))}
                     </select>
+                    <input
+                        className="login-input"
+                        placeholder="Alias (opcional)"
+                        value={newAlias}
+                        onChange={(e) => onNewAliasChange(e.target.value)}
+                        autoComplete="off"
+                    />
                 </div>
                 {searching && (
                     <p className="admin-muted" style={{ marginTop: 'var(--space-2)' }}>
@@ -80,7 +89,7 @@ export default function AddMemberPanel({
                                     type="button"
                                     className="admin-btn-primary"
                                     disabled={busy}
-                                    onClick={() => onAddMember(user)}
+                                    onClick={() => onAddMember(user, newAlias)}
                                 >
                                     <UserPlus size={18} /> Añadir
                                 </button>

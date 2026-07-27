@@ -4,9 +4,10 @@ import { X, Clock, CheckCircle2, Clock3, Users } from 'lucide-react';
 import {
     getAlertColor, getAlertIcon, getAlertLabel, getTimeAgo, AlertStatus,
 } from '@/shared/config/alertTypes';
-import { getCommunityNames } from '@/features/communities/repository/communityRepository';
+import { getCommunityNames, getMemberAliasMap } from '@/features/communities/repository/communityRepository';
 import { updateAlertStatus } from '@/features/alerts/repository/alertRepository';
 import { getSubtypeLabel } from '@/features/alerts/utils/alertSubtype';
+import { resolveAlertSenderLabel } from '@/shared/utils/memberDisplayLabel';
 
 /** Detalle de alerta en español (producto). */
 const es = (copy) => copy;
@@ -51,8 +52,9 @@ function InfoRow({ icon, iconColor = 'var(--color-text-tertiary)', label, childr
 }
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
-export default function AlertDetailModal({ alert, onClose }) {
+export default function AlertDetailModal({ alert, onClose, senderLabel = null }) {
     const [communityNames, setCommunityNames] = useState([]);
+    const [membershipAlias, setMembershipAlias] = useState(null);
     const [localStatus, setLocalStatus] = useState(alert?.alertStatus ?? AlertStatus.PENDING);
     const [showAttendConfirm, setShowAttendConfirm] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -77,6 +79,35 @@ export default function AlertDetailModal({ alert, onClose }) {
     }, [alert?.communityIds]);
 
     useEffect(() => {
+        let cancelled = false;
+        if (!alert?.communityIds?.length || !alert.userId || alert.isAnonymous) {
+            setMembershipAlias(null);
+            return undefined;
+        }
+        const ids = [...new Set(alert.communityIds.filter(Boolean))];
+        Promise.all(ids.map(async (id) => [id, await getMemberAliasMap(id)]))
+            .then((entries) => {
+                if (cancelled) return;
+                const maps = Object.fromEntries(entries);
+                for (const cid of ids) {
+                    const a = maps[cid]?.[alert.userId];
+                    if (a) {
+                        setMembershipAlias(a);
+                        return;
+                    }
+                }
+                setMembershipAlias(null);
+            })
+            .catch((err) => {
+                console.warn('[AlertDetailModal] alias map', err);
+                if (!cancelled) setMembershipAlias(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [alert?.id, alert?.userId, alert?.isAnonymous, alert?.communityIds]);
+
+    useEffect(() => {
         setLocalStatus(alert?.alertStatus ?? AlertStatus.PENDING);
         setShowAttendConfirm(false);
         setIsUpdatingStatus(false);
@@ -94,7 +125,9 @@ export default function AlertDetailModal({ alert, onClose }) {
     const isAttended= localStatus === AlertStatus.ATTENDED;
     const reporterName = alert.isAnonymous
         ? es('Anónimo')
-        : (alert.userName || '').trim() || es('Usuario desconocido');
+        : senderLabel
+            ?? resolveAlertSenderLabel(alert, membershipAlias)
+            ?? ((alert.userName || '').trim() || es('Usuario desconocido'));
     const headline = subLabel ? `${mainLabel} → ${subLabel}` : mainLabel;
 
     const timestamp = alert.timestamp?.toDate

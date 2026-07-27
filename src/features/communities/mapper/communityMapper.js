@@ -41,6 +41,7 @@ export function fromDoc(docSnap) {
         reportAlertTypes: normalizeEntityReportTypes(
             d[CommunityFields.reportAlertTypes] ?? d.report_alert_types,
         ),
+        defaultSlug: d[CommunityFields.defaultSlug] ?? d.default_slug ?? null,
     };
 }
 

@@ -9,6 +9,7 @@ export default function MembersTablePanel({
     isEntity,
     busy,
     onChangeRole,
+    onUpdateAlias,
     onRemoveMember,
 }) {
     return (
@@ -37,6 +38,7 @@ export default function MembersTablePanel({
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
+                                    <th>Alias</th>
                                     <th>Correo</th>
                                     <th>Rol</th>
                                     <th className="admin-th-actions"> </th>
@@ -45,7 +47,26 @@ export default function MembersTablePanel({
                             <tbody>
                                 {members.map((m) => (
                                     <tr key={m.id}>
-                                        <td>{m.displayName || '—'}</td>
+                                        <td>
+                                            <div>{m.displayName || '—'}</div>
+                                            {m.alias && m.profileName && (
+                                                <div className="admin-muted admin-desc">{m.profileName}</div>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <input
+                                                className="login-input admin-select-inline"
+                                                defaultValue={m.alias ?? ''}
+                                                key={`${m.id}-${m.alias ?? ''}`}
+                                                placeholder={m.profileName || 'Alias opcional'}
+                                                onBlur={(e) => {
+                                                    const next = e.target.value.trim();
+                                                    const prev = (m.alias ?? '').trim();
+                                                    if (next !== prev) onUpdateAlias(m.id, next || null);
+                                                }}
+                                                disabled={busy}
+                                            />
+                                        </td>
                                         <td className="admin-mono">{m.email || '—'}</td>
                                         <td>
                                             <select

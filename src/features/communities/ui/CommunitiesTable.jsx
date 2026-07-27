@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Pencil, Trash2, Users, Info } from 'lucide-react';
 import { isOfficialEntityCommunity } from '@/shared/domain/communityVisibility';
+import { isDefaultHogarCommunity } from '@/shared/utils/communityAdmins';
+import CommunityAdminsMeta from '@/features/communities/ui/CommunityAdminsMeta';
 import AdminPaginationBar from '@/features/admin/ui/AdminPaginationBar';
 import { ADMIN_LIST_PAGE_SIZE } from '@/shared/config/pagination';
 
@@ -13,6 +15,8 @@ export default function CommunitiesTable({
     page,
     hasMore,
     total,
+    searchActive = false,
+    adminNamesByCommunity = {},
     listAnchorRef,
     onPrev,
     onNext,
@@ -40,23 +44,31 @@ export default function CommunitiesTable({
                             {!loading && list.length === 0 && (
                                 <tr>
                                     <td colSpan={3} className="admin-muted">
-                                        No hay comunidades para mostrar.
+                                        {searchActive
+                                            ? 'Ninguna comunidad coincide con la búsqueda.'
+                                            : 'No hay comunidades para mostrar.'}
                                     </td>
                                 </tr>
                             )}
-                            {list.map((c) => (
+                            {list.map((c) => {
+                                const adminNames = adminNamesByCommunity[c.id] || [];
+                                const isHogar = isDefaultHogarCommunity(c);
+                                return (
                                 <tr key={c.id}>
                                     <td>
-                                        <strong>{c.name}</strong>
-                                        {c.description && (
+                                        <strong className="community-table-name">{c.name}</strong>
+                                        <CommunityAdminsMeta names={adminNames} compact />
+                                        {c.description ? (
                                             <div className="admin-muted admin-desc">{c.description}</div>
-                                        )}
+                                        ) : null}
                                     </td>
                                     <td>
                                         {isOfficialEntityCommunity(c) ? (
                                             <span className="admin-badge admin-badge--entity">
                                                 Entidad
                                             </span>
+                                        ) : isHogar ? (
+                                            <span className="admin-muted">Hogar</span>
                                         ) : (
                                             <span className="admin-muted">Comunidad</span>
                                         )}
@@ -97,7 +109,8 @@ export default function CommunitiesTable({
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

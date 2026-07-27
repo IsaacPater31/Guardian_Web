@@ -23,10 +23,11 @@ import {
     resolveLatestPendingAlertId,
 } from '@/features/alerts/repository/alertRepository';
 import { subscribeUsersInCreatedRange } from '@/features/admin/repository/adminDirectoryRepository';
-import { subscribeToCommunities } from '@/features/communities/repository/communityRepository';
+import { subscribeToCommunities, getMemberAliasMap } from '@/features/communities/repository/communityRepository';
 import AlertCard from '@/features/alerts/ui/AlertCard';
 import AlertDetailModal from '@/features/alerts/ui/AlertDetailModal';
 import DashFilterBar from '@/features/dashboard/ui/DashFilterBar';
+import { resolveSenderLabelForAlert } from '@/shared/utils/memberDisplayLabel';
 import TypeHistogramChart from '@/features/dashboard/ui/TypeHistogramChart';
 import {
     computeAnalysisRange,
@@ -63,6 +64,7 @@ export default function Dashboard() {
     const [selectedCommunityIds, setSelectedCommunityIds] = useState(null);
     const [kindFilter, setKindFilter] = useState('all');
     const [selectedAlert, setSelectedAlert] = useState(null);
+    const [aliasMaps, setAliasMaps] = useState({});
     const hasBootstrappedRef = useRef(false);
     const [chartH, setChartH] = useState(280);
 
@@ -141,6 +143,26 @@ export default function Dashboard() {
         }
         return scopeAlertsByCommunities(rawAlerts, ids);
     }, [rawAlerts, selectedCommunityIds, visibleCommunityOptions, kindFilter]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const ids = [...new Set(scopedAlerts.flatMap((a) => a.communityIds ?? []))];
+        if (ids.length === 0) {
+            setAliasMaps({});
+            return undefined;
+        }
+        Promise.all(ids.map(async (id) => [id, await getMemberAliasMap(id)]))
+            .then((entries) => {
+                if (!cancelled) setAliasMaps(Object.fromEntries(entries));
+            })
+            .catch((err) => {
+                console.warn("[DashboardPage] alias maps", err);
+                if (!cancelled) setAliasMaps({});
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [scopedAlerts]);
 
     /* Business rule: newest unattended alert in the visible scope is highlighted. */
     const latestPendingAlertId = useMemo(
@@ -526,6 +548,7 @@ export default function Dashboard() {
                                         alert={a}
                                         onClick={setSelectedAlert}
                                         isActive={isActivePendingAlert(a, latestPendingAlertId)}
+                                        senderLabel={resolveSenderLabelForAlert(a, aliasMaps)}
                                     />
                                 ))
                             )}
@@ -535,7 +558,11 @@ export default function Dashboard() {
             </div>
 
             {selectedAlert && (
-                <AlertDetailModal alert={selectedAlert} onClose={() => setSelectedAlert(null)} />
+                <AlertDetailModal
+                    alert={selectedAlert}
+                    onClose={() => setSelectedAlert(null)}
+                    senderLabel={resolveSenderLabelForAlert(selectedAlert, aliasMaps)}
+                />
             )}
         </div>
     );

@@ -9,6 +9,7 @@ export default function AlertCard({
     alert,
     onClick,
     isActive = false,
+    senderLabel = null,
 }) {
     const color      = getAlertColor(alert.alertType, alert);
     const iconName   = getAlertIcon(alert.alertType, alert);
@@ -17,7 +18,8 @@ export default function AlertCard({
     const sub        = getSubtypeLabel(alert.alertType, alert.subtype, alert.customDetail, true);
     const timeAgo    = getTimeAgo(alert.timestamp);
     const isAttended = alert.alertStatus === AlertStatus.ATTENDED;
-    const identifiedLabel = (alert.userName || alert.userEmail || '').trim() || 'Usuario identificado';
+    const identifiedLabel = senderLabel
+        ?? ((alert.userName || alert.userEmail || '').trim() || 'Usuario identificado');
 
     /* AA-safe hexes (also used as `${statusColor}14` alpha backgrounds). */
     const statusColor = isAttended ? '#2E7D32' : '#B45309';

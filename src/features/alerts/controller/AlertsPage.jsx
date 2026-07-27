@@ -10,7 +10,7 @@ import AlertCard from '@/features/alerts/ui/AlertCard';
 import AlertDetailModal from '@/features/alerts/ui/AlertDetailModal';
 import AlertFilterPanel from '@/features/alerts/ui/AlertFilters';
 import CommunityScopeFilterBar from '@/features/communities/ui/CommunityScopeFilterBar';
-import { subscribeToCommunities } from '@/features/communities/repository/communityRepository';
+import { subscribeToCommunities, getMemberAliasMap } from '@/features/communities/repository/communityRepository';
 import {
     buildStatsCommunityOptions,
     filterStatsOptionsByKind,
@@ -18,6 +18,7 @@ import {
 } from '@/features/dashboard/utils/statsScope';
 import { filterAlertsByCommunities } from '@/features/alerts/utils/alertScope';
 import { EMPTY_FILTERS, countActiveFilters } from '@/shared/config/filterOptions';
+import { resolveSenderLabelForAlert } from '@/shared/utils/memberDisplayLabel';
 
 const STATUS_LABELS = {
     pending: 'No atendidas',
@@ -49,6 +50,7 @@ export default function AlertsPage() {
     const [kindFilter, setKindFilter] = useState('all');
     /** null = all visible for kind; [] = none; [ids] = subset */
     const [selectedCommunityIds, setSelectedCommunityIds] = useState(null);
+    const [aliasMaps, setAliasMaps] = useState({});
 
     useEffect(() => subscribeToCommunities(setCommunities), []);
 
@@ -77,6 +79,26 @@ export default function AlertsPage() {
         }
         return selectedCommunityIds;
     }, [selectedCommunityIds, visibleCommunityOptions]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const ids = [...new Set(effectiveCommunityIds)];
+        if (ids.length === 0) {
+            setAliasMaps({});
+            return undefined;
+        }
+        Promise.all(ids.map(async (id) => [id, await getMemberAliasMap(id)]))
+            .then((entries) => {
+                if (!cancelled) setAliasMaps(Object.fromEntries(entries));
+            })
+            .catch((err) => {
+                console.warn("[AlertsPage] alias maps", err);
+                if (!cancelled) setAliasMaps({});
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [effectiveCommunityIds]);
 
     const alerts = useMemo(
         () => filterAlertsByCommunities(rawAlerts, effectiveCommunityIds),
@@ -332,6 +354,7 @@ export default function AlertsPage() {
                                     alert={alert}
                                     onClick={setSelectedAlert}
                                     isActive={isActivePendingAlert(alert, latestPendingAlertId)}
+                                    senderLabel={resolveSenderLabelForAlert(alert, aliasMaps)}
                                 />
                             ))}
                         </div>
@@ -351,6 +374,7 @@ export default function AlertsPage() {
                 <AlertDetailModal
                     alert={selectedAlert}
                     onClose={() => setSelectedAlert(null)}
+                    senderLabel={resolveSenderLabelForAlert(selectedAlert, aliasMaps)}
                 />
             )}
         </>
